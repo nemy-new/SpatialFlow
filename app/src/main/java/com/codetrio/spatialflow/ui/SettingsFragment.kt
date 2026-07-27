@@ -78,6 +78,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Description
@@ -345,6 +346,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setHideNavOnScroll(hide: Boolean) {
         _hideNavOnScroll.value = hide
         prefs.edit {putBoolean("hide_nav_on_scroll", hide)}
+    }
+
+    // ── App Language ─────────────────────────────────────────────────────────
+    private val _appLanguage = MutableStateFlow(prefs.getString("app_language", "system") ?: "system")
+    val appLanguage: StateFlow<String> = _appLanguage.asStateFlow()
+
+    fun setLanguage(langCode: String) {
+        _appLanguage.value = langCode
+        prefs.edit { putString("app_language", langCode) }
+        val localeList = if (langCode == "system" || langCode.isEmpty()) {
+            androidx.core.os.LocaleListCompat.getEmptyLocaleList()
+        } else {
+            androidx.core.os.LocaleListCompat.forLanguageTags(langCode)
+        }
+        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(localeList)
     }
 
 
@@ -1188,6 +1204,7 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
         val tabSwitchBlur by viewModel.tabSwitchBlur.collectAsStateWithLifecycle()
         val playerTheme by viewModel.playerTheme.collectAsStateWithLifecycle()
         val forceHighRefreshRate by viewModel.forceHighRefreshRate.collectAsStateWithLifecycle()
+        val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
 
         AppearanceScreen(
             navController = navController,
@@ -1212,7 +1229,9 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
             playerTheme = playerTheme,
             onPlayerThemeChange = { viewModel.setPlayerTheme(it) },
             forceHighRefreshRate = forceHighRefreshRate,
-            onForceHighRefreshRateChange = { viewModel.setForceHighRefreshRate(it) }
+            onForceHighRefreshRateChange = { viewModel.setForceHighRefreshRate(it) },
+            appLanguage = appLanguage,
+            onAppLanguageChange = { viewModel.setLanguage(it) }
         )
     }
 
@@ -1422,64 +1441,64 @@ private fun SettingsMainScreen(navController: androidx.navigation.NavController)
             items = listOf(
                 {
                     SettingsCategoryItem(
-                        title = "Account & Sync",
-                        subtitle = "YouTube Music login, history sync",
+                        title = stringResource(R.string.settings_cat_account),
+                        subtitle = stringResource(R.string.settings_cat_account_sub),
                         icon = Icons.Rounded.AccountCircle,
                         onClick = { navController.navigate(SettingsRoute.Account.route) }
                     )
                 },
                 {
                     SettingsCategoryItem(
-                        title = "Playback",
-                        subtitle = "Audio behavior, crossfade, audio focus",
+                        title = stringResource(R.string.settings_cat_playback),
+                        subtitle = stringResource(R.string.settings_cat_playback_sub),
                         icon = Icons.Rounded.PlayCircle,
                         onClick = { navController.navigate(SettingsRoute.Playback.route) }
                     )
                 },
                 {
                     SettingsCategoryItem(
-                        title = "Music Management",
-                        subtitle = "Manage folders, refresh library, storage",
+                        title = stringResource(R.string.settings_cat_music_mgmt),
+                        subtitle = stringResource(R.string.settings_cat_music_mgmt_sub),
                         icon = Icons.Rounded.LibraryMusic,
                         onClick = { navController.navigate(SettingsRoute.MusicManagement.route) }
                     )
                 },
                 {
                     SettingsCategoryItem(
-                        title = "Appearance",
-                        subtitle = "Themes, layout, visual styles",
+                        title = stringResource(R.string.settings_cat_appearance),
+                        subtitle = stringResource(R.string.settings_cat_appearance_sub),
                         icon = Icons.Rounded.Palette,
                         onClick = { navController.navigate(SettingsRoute.Appearance.route) }
                     )
                 },
                 {
                     SettingsCategoryItem(
-                        title = "Haptics",
-                        subtitle = "Vibration strength, haptic feedback",
+                        title = stringResource(R.string.settings_cat_haptics),
+                        subtitle = stringResource(R.string.settings_cat_haptics_sub),
                         icon = Icons.Rounded.Vibration,
                         onClick = { navController.navigate(SettingsRoute.Haptics.route) }
                     )
                 },
                 {
                     SettingsCategoryItem(
-                        title = "Backup & Restore",
-                        subtitle = "Export and import your library and settings",
+                        title = stringResource(R.string.settings_cat_backup),
+                        subtitle = stringResource(R.string.settings_cat_backup_sub),
                         icon = Icons.Rounded.SettingsBackupRestore,
                         onClick = { navController.navigate(SettingsRoute.BackupRestore.route) }
                     )
                 },
                 {
                     SettingsCategoryItem(
-                        title = "Feedback & Bug Reports",
-                        subtitle = "Report issues, request features, export logs",
+                        title = stringResource(R.string.settings_cat_feedback),
+                        subtitle = stringResource(R.string.settings_cat_feedback_sub),
                         icon = Icons.Rounded.BugReport,
                         onClick = { navController.navigate(SettingsRoute.Feedback.route) }
                     )
                 },
                 {
                     SettingsCategoryItem(
-                        title = "About",
-                        subtitle = "App version, credits, updates",
+                        title = stringResource(R.string.settings_cat_about),
+                        subtitle = stringResource(R.string.settings_cat_about_sub),
                         icon = Icons.Rounded.Info,
                         onClick = { navController.navigate(SettingsRoute.About.route) }
                     )
@@ -2096,7 +2115,9 @@ private fun AppearanceScreen(
     playerTheme: String,
     onPlayerThemeChange: (String) -> Unit,
     forceHighRefreshRate: Boolean,
-    onForceHighRefreshRateChange: (Boolean) -> Unit
+    onForceHighRefreshRateChange: (Boolean) -> Unit,
+    appLanguage: String,
+    onAppLanguageChange: (String) -> Unit
 ) {
     Scaffold(
         topBar = { SettingsDetailTopBar("Appearance") { navController.popBackStack() } }
@@ -2111,6 +2132,7 @@ private fun AppearanceScreen(
         ) {
             SettingsHeader(stringResource(R.string.settings_header_general))
             SettingsGroupCard(buildList {
+                add { AppLanguageRow(appLanguage, onAppLanguageChange) }
                 add { ThemeRow(darkMode, onDarkModeChange) }
                 if (darkMode) {
                     add { AmoledBlackRow(amoledBlack, onAmoledBlackChange) }
@@ -2196,6 +2218,92 @@ private fun AppearanceScreen(
                 add { DynamicNavStyleRow(dynamicNavStyle, onDynamicNavStyleChange) }
             })
         }
+    }
+}
+
+@Composable
+private fun AppLanguageRow(currentLang: String, onSelect: (String) -> Unit) {
+    var showDialog by remember { mutableStateOf(false) }
+    val langLabel = when (currentLang) {
+        "ja" -> stringResource(R.string.lang_japanese)
+        "en" -> stringResource(R.string.lang_english)
+        else -> stringResource(R.string.lang_system)
+    }
+
+    ListItem(
+        headlineContent = {
+            Text(
+                text = stringResource(R.string.setting_app_language),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        },
+        supportingContent = {
+            Text(
+                text = langLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        leadingContent = {
+            Icon(
+                imageVector = Icons.Rounded.Language,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        },
+        trailingContent = {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable { showDialog = true }
+    )
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text(text = stringResource(R.string.setting_app_language)) },
+            text = {
+                Column {
+                    val options = listOf(
+                        "system" to stringResource(R.string.lang_system),
+                        "ja" to stringResource(R.string.lang_japanese),
+                        "en" to stringResource(R.string.lang_english)
+                    )
+                    options.forEach { (code, label) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onSelect(code)
+                                    showDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp)
+                        ) {
+                            RadioButton(
+                                selected = (currentLang == code),
+                                onClick = {
+                                    onSelect(code)
+                                    showDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text(text = stringResource(R.string.action_cancel))
+                }
+            }
+        )
     }
 }
 

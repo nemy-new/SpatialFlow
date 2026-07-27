@@ -172,6 +172,14 @@ class MainActivity : AppCompatActivity() {
             System.currentTimeMillis() - splashStartTime < SPLASH_DURATION
         }
 
+        val appPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+        val lang = appPrefs.getString("app_language", "system") ?: "system"
+        if (lang != "system" && lang.isNotEmpty()) {
+            androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                androidx.core.os.LocaleListCompat.forLanguageTags(lang)
+            )
+        }
+
         DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
 
