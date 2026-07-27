@@ -94,6 +94,12 @@ android {
             universalApk true
         }
     }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
 }
 
 
