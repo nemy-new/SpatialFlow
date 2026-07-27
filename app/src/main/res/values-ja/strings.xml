@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App name -->
-    <string name="app_name">SpatialFlow</string>
+    <string name="app_name">OverDrive</string>
 
     <!-- Bottom tabs -->
     <string name="tab_library">ライブラリ</string>
@@ -95,7 +95,7 @@
     <string name="whats_new_title">バージョン %1$s の新機能</string>
     <string name="whats_new_positive_button">確認</string>
     <string name="whats_new_content_template"><![CDATA[
-        <big><b>SpatialFlow 1.8 の新機能</b></big><br><br>
+        <big><b>OverDrive 1.8 の新機能</b></big><br><br>
 
         <b>YouTube Music ストリーミング対応</b><br>
         <b>カラオケ歌詞表示</b><br>
@@ -109,9 +109,9 @@
 
         + 多数の機能改善とパフォーマンス向上<br><br>
 
-        <a href="https://github.com/MythicalSHUB/SpatialFlow/releases"><b>完全な変更履歴を見る (GitHub)</b></a><br><br>
+        <a href="https://github.com/MythicalSHUB/OverDrive/releases"><b>完全な変更履歴を見る (GitHub)</b></a><br><br>
 
-        <i>SpatialFlow 1.8 は、単なるオフライン音楽プレイヤーから新次元へ進化しました。</i>
+        <i>OverDrive 1.8 は、単なるオフライン音楽プレイヤーから新次元へ進化しました。</i>
         ]]></string>
 
     <!-- Widget Descriptions -->

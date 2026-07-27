@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App name -->
-    <string name="app_name">SpatialFlow</string>
+    <string name="app_name">OverDrive</string>
 
     <!-- Bottom tabs -->
     <string name="tab_library">Library</string>
@@ -109,9 +109,9 @@
 
         + Many improvements and fixes<br><br>
 
-        <a href="https://github.com/MythicalSHUB/SpatialFlow/releases"><b>View Full Changelog</b></a><br><br>
+        <a href="https://github.com/MythicalSHUB/OverDrive/releases"><b>View Full Changelog</b></a><br><br>
 
-        <i>SpatialFlow 1.8 is no longer just an offline music player.</i>
+        <i>OverDrive 1.8 is no longer just an offline music player.</i>
         ]]></string>
 
     <!-- Widget Descriptions -->

@@ -27,7 +27,7 @@
 -keep class android.provider.MediaStore$Audio$Media { *; }
 
 # ============ Custom Views ============
--keep class com.codetrio.spatialflow.ui.custom.** { *; }
+-keep class com.codetrio.overdrive.ui.custom.** { *; }
 
 # ============ Palette ============
 -keep class androidx.palette.graphics.** { *; }
@@ -41,7 +41,7 @@
 
 # ============ Lyrics & JSON Models ============
 # Keep lyrics data classes (Gson needs field names to match JSON)
--keep class com.codetrio.spatialflow.data.lyrics.** { *; }
+-keep class com.codetrio.overdrive.data.lyrics.** { *; }
 -keepattributes *Annotation*
 -keepattributes Signature
 
@@ -62,8 +62,8 @@
 -dontwarn org.jaudiotagger.**
 
 # ============ InnerTube & Models ============
--keep class com.codetrio.spatialflow.data.innertube.** { *; }
--keep class com.codetrio.spatialflow.model.** { *; }
+-keep class com.codetrio.overdrive.data.innertube.** { *; }
+-keep class com.codetrio.overdrive.model.** { *; }
 
 # ============ NewPipe Extractor & Jsoup ============
 -keep class org.schabi.newpipe.extractor.** { *; }

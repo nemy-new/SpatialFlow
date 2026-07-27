@@ -1,6 +1,6 @@
-package com.codetrio.spatialflow
+package com.codetrio.overdrive
 
-import com.codetrio.spatialflow.data.innertube.YouTubeMusic
+import com.codetrio.overdrive.data.innertube.YouTubeMusic
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,9 +19,9 @@ class InnerTubeSearchTest {
                 assertTrue("Should parse at least one search result item", searchResult.items.isNotEmpty())
                 
                 // Validate that we have multiple item types parsed (songs, albums, artists, etc.)
-                val songCount = searchResult.items.count { it is com.codetrio.spatialflow.data.innertube.SearchItem.Song }
-                val artistCount = searchResult.items.count { it is com.codetrio.spatialflow.data.innertube.SearchItem.Artist }
-                val playlistCount = searchResult.items.count { it is com.codetrio.spatialflow.data.innertube.SearchItem.Playlist }
+                val songCount = searchResult.items.count { it is com.codetrio.overdrive.data.innertube.SearchItem.Song }
+                val artistCount = searchResult.items.count { it is com.codetrio.overdrive.data.innertube.SearchItem.Artist }
+                val playlistCount = searchResult.items.count { it is com.codetrio.overdrive.data.innertube.SearchItem.Playlist }
                 
                 println("Test search found: $songCount songs, $artistCount artists, $playlistCount playlists.")
                 assertTrue("Should successfully parse songs in results", songCount > 0)
@@ -39,7 +39,7 @@ class InnerTubeSearchTest {
                 sections.forEach { section ->
                     println("Section: ${section.title}")
                     section.items.forEach { item ->
-                        if (item is com.codetrio.spatialflow.data.innertube.SearchItem.Playlist) {
+                        if (item is com.codetrio.overdrive.data.innertube.SearchItem.Playlist) {
                             println("  Playlist: ${item.playlist.title}, thumb: ${item.playlist.thumbnailUrl}, color: ${item.playlist.color}")
                         }
                     }
