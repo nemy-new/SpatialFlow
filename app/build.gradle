@@ -220,15 +220,3 @@ tasks.named("dependencyUpdates").configure {
         isNonStable(it.candidate.version)
     }
 }
-
-tasks.register("patchElf16Kb", Exec) {
-    commandLine 'python3', "${rootProject.projectDir}/gradle/patch_elf_16kb.py", "${project.projectDir}/build/intermediates"
-    ignoreExitValue = true
-    mustRunAfter tasks.matching { it.name.contains("NativeLibs") || it.name.contains("DebugSymbols") }
-}
-
-tasks.configureEach { task ->
-    if (task.name.startsWith("package") || task.name.startsWith("bundle")) {
-        task.dependsOn("patchElf16Kb")
-    }
-}
