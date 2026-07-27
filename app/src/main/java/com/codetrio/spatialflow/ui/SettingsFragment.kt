@@ -338,6 +338,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         prefs.edit {putBoolean("hide_nav_labels", hide)}
     }
 
+    // ── Hide Nav on Scroll ─────────────────────────────────────────────────
+    private val _hideNavOnScroll = MutableStateFlow(prefs.getBoolean("hide_nav_on_scroll", false))
+    val hideNavOnScroll: StateFlow<Boolean> = _hideNavOnScroll.asStateFlow()
+
+    fun setHideNavOnScroll(hide: Boolean) {
+        _hideNavOnScroll.value = hide
+        prefs.edit {putBoolean("hide_nav_on_scroll", hide)}
+    }
+
 
 
     // ── Dynamic Nav Style ──────────────────────────────────────────────────
@@ -1173,6 +1182,7 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
         val showAnimatedArt by viewModel.showAnimatedArt.collectAsStateWithLifecycle()
         val dynamicAlbumTheme by viewModel.dynamicAlbumTheme.collectAsStateWithLifecycle()
         val hideNavLabels by viewModel.hideNavLabels.collectAsStateWithLifecycle()
+        val hideNavOnScroll by viewModel.hideNavOnScroll.collectAsStateWithLifecycle()
         val dynamicNavStyle by viewModel.dynamicNavStyle.collectAsStateWithLifecycle()
         val navigationBlur by viewModel.navigationBlur.collectAsStateWithLifecycle()
         val tabSwitchBlur by viewModel.tabSwitchBlur.collectAsStateWithLifecycle()
@@ -1191,6 +1201,8 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
             onDynamicAlbumThemeChange = { viewModel.setDynamicAlbumTheme(it) },
             hideNavLabels = hideNavLabels,
             onHideNavLabelsChange = { viewModel.setHideNavLabels(it) },
+            hideNavOnScroll = hideNavOnScroll,
+            onHideNavOnScrollChange = { viewModel.setHideNavOnScroll(it) },
             dynamicNavStyle = dynamicNavStyle,
             onDynamicNavStyleChange = { viewModel.setDynamicNavStyle(it) },
             navigationBlur = navigationBlur,
@@ -2073,6 +2085,8 @@ private fun AppearanceScreen(
     onDynamicAlbumThemeChange: (Boolean) -> Unit,
     hideNavLabels: Boolean,
     onHideNavLabelsChange: (Boolean) -> Unit,
+    hideNavOnScroll: Boolean,
+    onHideNavOnScrollChange: (Boolean) -> Unit,
     dynamicNavStyle: Boolean,
     onDynamicNavStyleChange: (Boolean) -> Unit,
     navigationBlur: Boolean,
@@ -2177,6 +2191,7 @@ private fun AppearanceScreen(
 
             SettingsHeader("Navigation Bar")
             SettingsGroupCard(buildList {
+                add { HideNavOnScrollRow(hideNavOnScroll, onHideNavOnScrollChange) }
                 add { HideNavLabelsRow(hideNavLabels, onHideNavLabelsChange) }
                 add { DynamicNavStyleRow(dynamicNavStyle, onDynamicNavStyleChange) }
             })
@@ -2293,6 +2308,33 @@ private fun HideNavLabelsRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
                 )
                 Text(
                     text = "Remove text labels from the bottom navigation bar",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onToggle
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+    )
+}
+
+@Composable
+private fun HideNavOnScrollRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
+    ListItem(
+        onClick = { onToggle(!checked) },
+        content = {
+            Column {
+                Text(
+                    text = "Hide on Scroll",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "Automatically hide navigation bar when scrolling down",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

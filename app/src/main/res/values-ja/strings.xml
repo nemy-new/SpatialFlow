@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources> <!-- App name -->
+    <string name="app_name">SpatialFlow</string> <!-- Bottom tabs -->
+    <string name="tab_library">ライブラリ</string>
+    <string name="tab_explore">見つける</string>
+    <string name="tab_effects">エフェクト</string>
+    <string name="tab_settings">設定</string> <!-- Player fragment -->
+    <string name="search_songs_hint">曲やアーティストを検索…</string> <!-- Settings headers -->
+    <string name="settings_header_general">一般</string>
+    <string name="settings_header_about">アプリについて</string> <!-- General settings -->
+    <string name="setting_dark_mode">ダークモード</string>
+    <string name="setting_audio_focus">オーディオフォーカスを管理</string>
+    <string name="settings_haptics_title">バイブレーション・触覚フィードバック</string>
+    <string name="settings_haptics_not_supported">このデバイスはハプティクス（触覚フィードバック）に対応していません</string>
+    <string name="setting_vibration_strength">バイブレーションの強さ</string> <!-- Playback settings -->
+    <string name="settings_header_playback">再生</string>
+    <string name="setting_crossfade">クロスフェード</string>
+    <string name="setting_sleep_timer">スリープタイマー</string>
+    <string name="setting_sleep_timer_off">オフ</string> <!-- Library settings -->
+    <string name="settings_header_library">ライブラリ</string>
+    <string name="setting_music_source">音楽の読み込み元</string>
+    <string name="setting_music_source_default">デバイス内のすべての音声ファイル</string>
+    <string name="setting_add_more_path">フォルダを追加</string> <!-- Storage settings -->
+    <string name="settings_header_storage">ストレージ</string>
+    <string name="setting_clear_cache">キャッシュを消去</string> <!-- What's New dialog -->
+    <string name="whats_new_title">バージョン %1$s の新機能</string>
+    <string name="whats_new_positive_button">確認</string>
+    <string name="whats_new_content_template"><![CDATA[
+        <big><b>SpatialFlow 1.8 の新機能</b></big><br><br>
+
+        <b>YouTube Music ストリーミング対応</b><br>
+        <b>カラオケ歌詞表示</b><br>
+        <b>グローバル歌詞サポート</b><br>
+        <b>パーソナルライブラリ機能</b><br>
+        <b>リスニング振り返り (Recap)</b><br>
+        <b>ミュージック・ハプティクス（音楽連動振動）</b><br>
+        <b>Material 3 Expressive UI 刷新</b><br>
+        <b>ワンクリック音楽ダウンロード</b><br>
+        <b>強化されたオーディオエフェクト・イコライザー</b><br><br>
+
+        + 多数の機能改善とパフォーマンス向上<br><br>
+
+        <a href="https://github.com/MythicalSHUB/SpatialFlow/releases"><b>完全な変更履歴を見る (GitHub)</b></a><br><br>
+
+        <i>SpatialFlow 1.8 は、単なるオフライン音楽プレイヤーから新次元へ進化しました。</i>
+        ]]></string> <!-- Widget Descriptions -->
+    <string name="widget_small_desc">Expressive Aura - アートワークの脈動背景を持つコンパクトな2x2プレイヤー。</string>
+    <string name="widget_medium_desc">Waveform Bridge - 曲の詳細と操作ボタンを備えた4x2インタラクティブプレイヤー。</string>
+    <string name="widget_large_desc">Music Dashboard - 検索グリッドとフルコントロールを備えた4x4没入型ダッシュボード。</string>
+
+    <!-- Language & Category localization -->
+    <string name="setting_app_language">アプリの言語 (Language)</string>
+    <string name="setting_app_language_desc">日本語と英語を選択できます</string>
+    <string name="lang_system">システム設定（自動）</string>
+    <string name="lang_english">English (英語)</string>
+    <string name="lang_japanese">日本語 (Japanese)</string>
+
+    <string name="settings_title">設定</string>
+    <string name="settings_cat_account">アカウントと同期</string>
+    <string name="settings_cat_account_sub">YouTube Music ログイン、履歴同期</string>
+    <string name="settings_cat_playback">再生</string>
+    <string name="settings_cat_playback_sub">オーディオ設定、クロスフェード、オーディオフォーカス</string>
+    <string name="settings_cat_music_mgmt">音楽管理</string>
+    <string name="settings_cat_music_mgmt_sub">フォルダ管理、ライブラリ更新、ストレージ</string>
+    <string name="settings_cat_appearance">外観・デザイン</string>
+    <string name="settings_cat_appearance_sub">テーマ、レイアウト、表示スタイル、言語</string>
+    <string name="settings_cat_haptics">ハプティクス（触覚フィードバック）</string>
+    <string name="settings_cat_haptics_sub">振動の強さ、操作時のハプティック反応</string>
+    <string name="settings_cat_backup">バックアップと復元</string>
+    <string name="settings_cat_backup_sub">ライブラリや設定のエクスポートとインポート</string>
+    <string name="settings_cat_feedback">フィードバックと不具合報告</string>
+    <string name="settings_cat_feedback_sub">不具合の報告、機能リクエスト、ログ出力</string>
+    <string name="settings_cat_about">アプリについて</string>
+    <string name="settings_cat_about_sub">アプリバージョン、クレジット、アップデート</string>
+</resources>

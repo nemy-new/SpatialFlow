@@ -134,7 +134,10 @@ class MainActivity : AppCompatActivity() {
         private set
 
     fun hideBottomNavWithAnimation() {
-        isBottomNavVisible = false
+        val prefs = getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean("hide_nav_on_scroll", false)) {
+            isBottomNavVisible = false
+        }
     }
 
     fun showBottomNavWithAnimation() {
