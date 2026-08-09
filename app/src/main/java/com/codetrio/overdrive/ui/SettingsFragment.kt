@@ -62,6 +62,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -361,6 +362,27 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             androidx.core.os.LocaleListCompat.forLanguageTags(langCode)
         }
         androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(localeList)
+    }
+
+    private val _floatingNavBar = kotlinx.coroutines.flow.MutableStateFlow(prefs.getBoolean("floating_nav_bar", false))
+    val floatingNavBar: kotlinx.coroutines.flow.StateFlow<Boolean> = _floatingNavBar.asStateFlow()
+    fun setFloatingNavBar(floating: Boolean) {
+        _floatingNavBar.value = floating
+        prefs.edit {putBoolean("floating_nav_bar", floating)}
+    }
+    
+    private val _unifiedFloatingBar = kotlinx.coroutines.flow.MutableStateFlow(prefs.getBoolean("unified_floating_bar", false))
+    val unifiedFloatingBar: kotlinx.coroutines.flow.StateFlow<Boolean> = _unifiedFloatingBar.asStateFlow()
+    fun setUnifiedFloatingBar(unified: Boolean) {
+        _unifiedFloatingBar.value = unified
+        prefs.edit {putBoolean("unified_floating_bar", unified)}
+    }
+
+    private val _showVolumeSlider = kotlinx.coroutines.flow.MutableStateFlow(prefs.getBoolean("show_volume_slider", true))
+    val showVolumeSlider: kotlinx.coroutines.flow.StateFlow<Boolean> = _showVolumeSlider.asStateFlow()
+    fun setShowVolumeSlider(show: Boolean) {
+        _showVolumeSlider.value = show
+        prefs.edit {putBoolean("show_volume_slider", show)}
     }
 
 
@@ -1205,6 +1227,8 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
         val playerTheme by viewModel.playerTheme.collectAsStateWithLifecycle()
         val forceHighRefreshRate by viewModel.forceHighRefreshRate.collectAsStateWithLifecycle()
         val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+        val floatingNavBar by viewModel.floatingNavBar.collectAsStateWithLifecycle()
+        val unifiedFloatingBar by viewModel.unifiedFloatingBar.collectAsStateWithLifecycle()
 
         AppearanceScreen(
             navController = navController,
@@ -1231,7 +1255,11 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
             forceHighRefreshRate = forceHighRefreshRate,
             onForceHighRefreshRateChange = { viewModel.setForceHighRefreshRate(it) },
             appLanguage = appLanguage,
-            onAppLanguageChange = { viewModel.setLanguage(it) }
+            onAppLanguageChange = { viewModel.setLanguage(it) },
+            floatingNavBar = floatingNavBar,
+            onFloatingNavBarChange = { viewModel.setFloatingNavBar(it) },
+            unifiedFloatingBar = unifiedFloatingBar,
+            onUnifiedFloatingBarChange = { viewModel.setUnifiedFloatingBar(it) }
         )
     }
 
@@ -1256,6 +1284,7 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
         val audioQuality by viewModel.audioQuality.collectAsStateWithLifecycle()
         val volumeNormalizationEnabled by viewModel.volumeNormalizationEnabled.collectAsStateWithLifecycle()
         val targetLufs by viewModel.targetLufs.collectAsStateWithLifecycle()
+        val showVolumeSlider by viewModel.showVolumeSlider.collectAsStateWithLifecycle()
         PlaybackScreen(
             navController = navController,
             crossfadeEnabled = crossfadeEnabled,
@@ -1279,7 +1308,9 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
             volumeNormalizationEnabled = volumeNormalizationEnabled,
             onVolumeNormalizationChange = { viewModel.setVolumeNormalizationEnabled(it) },
             targetLufs = targetLufs,
-            onTargetLufsChange = { viewModel.setTargetLufs(it) }
+            onTargetLufsChange = { viewModel.setTargetLufs(it) },
+            showVolumeSlider = showVolumeSlider,
+            onShowVolumeSliderChange = { viewModel.setShowVolumeSlider(it) }
         )
     }
 
@@ -1356,6 +1387,22 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
     ) {
         WhatsNewScreen(navController = navController)
     }
+
+/*     composableWithBlur(
+        route = SettingsRoute.CustomizeBottomNav.route,
+        enterTransition = enterAnim,
+        exitTransition = exitAnim,
+        popEnterTransition = popEnterAnim,
+        popExitTransition = popExitAnim
+    ) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val activity = context.findActivity() as androidx.activity.ComponentActivity
+        val playerSharedViewModel: com.codetrio.overdrive.viewmodel.PlayerSharedViewModel = androidx.lifecycle.viewmodel.compose.viewModel(activity)
+        com.codetrio.overdrive.ui.settings.BottomNavCustomizeScreen(
+            playerViewModel = playerSharedViewModel,
+            onBack = { navController.popBackStack() }
+        )
+    } */
 }
 
 
@@ -1392,6 +1439,7 @@ sealed class SettingsRoute(val route: String) {
     object Feedback : SettingsRoute("feedback")
     object WhatsNew : SettingsRoute("whats_new")
     object BackupRestore : SettingsRoute("backup_restore")
+    object CustomizeBottomNav : SettingsRoute("customize_bottom_nav")
 }
 
 @Composable
@@ -1422,19 +1470,20 @@ private fun SettingsMainScreen(navController: androidx.navigation.NavController)
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
             .statusBarsPadding()
-            .then(if (isLandscape) Modifier.padding(start = 88.dp) else Modifier)
             .nestedScroll(nestedScrollConnection)
             .verticalScroll(scrollState)
             .padding(horizontal = 24.dp)
-            .padding(bottom = 120.dp)
+            .padding(bottom = 400.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Settings",
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
+                .widthIn(max = 840.dp)
                 .fillMaxWidth()
-                .padding(top = 16.dp, bottom = 24.dp)
+                .padding(start = 16.dp, top = 16.dp, bottom = 24.dp)
         )
 
         SettingsGroupCard(
@@ -1582,7 +1631,8 @@ private fun MusicManagementScreen(
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 120.dp)
+                    .padding(bottom = 400.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 SettingsHeader(stringResource(R.string.settings_header_library))
                 SettingsGroupCard(buildList {
@@ -1721,7 +1771,8 @@ private fun BackupRestoreScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 120.dp)
+                .padding(bottom = 400.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             SettingsHeader("Backup & Restore")
             SettingsGroupCard(buildList {
@@ -1916,7 +1967,8 @@ private fun AccountScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 120.dp)
+                .padding(bottom = 400.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             SettingsHeader("YouTube Music Account")
             SettingsGroupCard(listOf(
@@ -2117,7 +2169,11 @@ private fun AppearanceScreen(
     forceHighRefreshRate: Boolean,
     onForceHighRefreshRateChange: (Boolean) -> Unit,
     appLanguage: String,
-    onAppLanguageChange: (String) -> Unit
+    onAppLanguageChange: (String) -> Unit,
+    floatingNavBar: Boolean,
+    onFloatingNavBarChange: (Boolean) -> Unit,
+    unifiedFloatingBar: Boolean,
+    onUnifiedFloatingBarChange: (Boolean) -> Unit
 ) {
     Scaffold(
         topBar = { SettingsDetailTopBar("Appearance") { navController.popBackStack() } }
@@ -2128,7 +2184,8 @@ private fun AppearanceScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 120.dp)
+                .padding(bottom = 400.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             SettingsHeader(stringResource(R.string.settings_header_general))
             SettingsGroupCard(buildList {
@@ -2213,9 +2270,14 @@ private fun AppearanceScreen(
 
             SettingsHeader("Navigation Bar")
             SettingsGroupCard(buildList {
+                add { BottomNavCustomizeRow { navController.navigate(SettingsRoute.CustomizeBottomNav.route) } }
                 add { HideNavOnScrollRow(hideNavOnScroll, onHideNavOnScrollChange) }
                 add { HideNavLabelsRow(hideNavLabels, onHideNavLabelsChange) }
                 add { DynamicNavStyleRow(dynamicNavStyle, onDynamicNavStyleChange) }
+                add { FloatingNavBarRow(floatingNavBar, onFloatingNavBarChange) }
+                if (floatingNavBar) {
+                    add { UnifiedFloatingBarRow(unifiedFloatingBar, onUnifiedFloatingBarChange) }
+                }
             })
         }
     }
@@ -2572,7 +2634,9 @@ private fun PlaybackScreen(
     volumeNormalizationEnabled: Boolean,
     onVolumeNormalizationChange: (Boolean) -> Unit,
     targetLufs: Float,
-    onTargetLufsChange: (Float) -> Unit
+    onTargetLufsChange: (Float) -> Unit,
+    showVolumeSlider: Boolean,
+    onShowVolumeSliderChange: (Boolean) -> Unit
 ) {
     Scaffold(
         topBar = { SettingsDetailTopBar("Playback") { navController.popBackStack() } }
@@ -2583,7 +2647,8 @@ private fun PlaybackScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 120.dp)
+                .padding(bottom = 400.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             SettingsHeader("Crossfade")
             SettingsGroupCard(listOf(
@@ -2598,6 +2663,11 @@ private fun PlaybackScreen(
             SettingsHeader("Audio Focus")
             SettingsGroupCard(listOf(
                 { AudioFocusRow(audioFocus, onAudioFocusToggle) }
+            ))
+
+            SettingsHeader(stringResource(R.string.text_volume_bar))
+            SettingsGroupCard(listOf(
+                { ShowVolumeSliderRow(showVolumeSlider, onShowVolumeSliderChange) }
             ))
 
             SettingsHeader("Queue & Autoplay")
@@ -2764,7 +2834,8 @@ private fun HapticsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 120.dp)
+                .padding(bottom = 400.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             SettingsHeader(stringResource(R.string.settings_haptics_title))
             SettingsGroupCard(buildList {
@@ -3101,7 +3172,7 @@ private fun AboutScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 120.dp),
+                .padding(bottom = 400.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -3196,7 +3267,7 @@ private fun SettingsHeader(text: String) {
         text = text,
         style = MaterialTheme.typography.titleLarge,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
+        modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth().padding(start = 16.dp, top = 24.dp, bottom = 12.dp)
     )
 }
 
@@ -3206,6 +3277,7 @@ private fun SettingsGroupCard(items: List<@Composable () -> Unit>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .widthIn(max = 840.dp)
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
     ) {
@@ -4214,7 +4286,8 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 120.dp)
+                .padding(bottom = 400.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             SettingsHeader("Report & Request")
             SettingsGroupCard(
@@ -4286,9 +4359,27 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
                 )
             )
 
+            val prefs = context.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
+            var debugToastsEnabled by remember { mutableStateOf(prefs.getBoolean("debug_toasts_enabled", false)) }
+
             SettingsHeader("Debug Information")
             SettingsGroupCard(
                 items = listOf(
+                    {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.pref_debug_toasts), style = MaterialTheme.typography.bodyLarge) },
+                            supportingContent = { Text(stringResource(R.string.pref_debug_toasts_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                            trailingContent = { Switch(checked = debugToastsEnabled, onCheckedChange = { 
+                                debugToastsEnabled = it
+                                prefs.edit().putBoolean("debug_toasts_enabled", it).apply()
+                            }) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            modifier = Modifier.clickable { 
+                                debugToastsEnabled = !debugToastsEnabled
+                                prefs.edit().putBoolean("debug_toasts_enabled", debugToastsEnabled).apply()
+                            }
+                        )
+                    },
                     {
                         ListItem(
                             headlineContent = { Text("Copy Debug Information", style = MaterialTheme.typography.bodyLarge) },
@@ -4333,4 +4424,49 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
             )
         }
     }
+}
+
+@Composable
+private fun BottomNavCustomizeRow(onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.setting_customize_bottom_nav), style = MaterialTheme.typography.bodyLarge) },
+        supportingContent = { Text(stringResource(R.string.setting_customize_bottom_nav_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        leadingContent = { Icon(androidx.compose.material.icons.Icons.Rounded.Palette, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp)) },
+        trailingContent = { Icon(androidx.compose.material.icons.Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+        modifier = Modifier.clickable { onClick() }
+    )
+}
+
+@Composable
+private fun FloatingNavBarRow(floating: Boolean, onSelect: (Boolean) -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.text_floating_nav_bar), style = MaterialTheme.typography.bodyLarge) },
+        supportingContent = { Text(stringResource(R.string.text_floating_nav_bar_sub), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        trailingContent = { Switch(checked = floating, onCheckedChange = onSelect) },
+        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+        modifier = Modifier.clickable { onSelect(!floating) }
+    )
+}
+
+@Composable
+private fun UnifiedFloatingBarRow(unified: Boolean, onSelect: (Boolean) -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.text_unified_floating_bar), style = MaterialTheme.typography.bodyLarge) },
+        supportingContent = { Text(stringResource(R.string.text_unified_floating_bar_sub), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        trailingContent = { Switch(checked = unified, onCheckedChange = onSelect) },
+        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+        modifier = Modifier.clickable { onSelect(!unified) }
+    )
+}
+
+@Composable
+private fun ShowVolumeSliderRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.text_volume_bar), style = MaterialTheme.typography.bodyLarge) },
+        supportingContent = { Text(stringResource(R.string.text_show_m3e_expressive_volume_slider_below_playback_controls), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        trailingContent = { Switch(checked = checked, onCheckedChange = onToggle) },
+        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+        modifier = Modifier.clickable { onToggle(!checked) }
+    )
 }
