@@ -1388,7 +1388,7 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
         WhatsNewScreen(navController = navController)
     }
 
-/*     composableWithBlur(
+    composableWithBlur(
         route = SettingsRoute.CustomizeBottomNav.route,
         enterTransition = enterAnim,
         exitTransition = exitAnim,
@@ -1402,7 +1402,7 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
             playerViewModel = playerSharedViewModel,
             onBack = { navController.popBackStack() }
         )
-    } */
+    }
 }
 
 
