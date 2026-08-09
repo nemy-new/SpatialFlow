@@ -58,7 +58,7 @@ fun HistoryScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Listening History", fontWeight = FontWeight.Bold) },
+                title = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_listening_history), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -106,13 +106,13 @@ fun HistoryScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "No listening history yet",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_listening_history_yet),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Songs you listen to from your account will appear here.",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_songs_you_listen_to_from_your_account_will_appear_here),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center

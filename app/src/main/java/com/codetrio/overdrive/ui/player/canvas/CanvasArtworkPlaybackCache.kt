@@ -111,6 +111,13 @@ object CanvasArtworkPlaybackCache {
     private fun cacheArtworkInBackground(directory: File, mediaId: String, artwork: CanvasArtwork) {
         synchronized(this@CanvasArtworkPlaybackCache) {
             cacheJobs[mediaId]?.takeIf { it.isActive }?.let { return }
+            
+            // Limit to at most 2 concurrent downloads by cancelling the oldest ones
+            while (cacheJobs.size >= 2) {
+                val oldestKey = cacheJobs.keys.firstOrNull() ?: break
+                cacheJobs.remove(oldestKey)?.cancel()
+            }
+
             cacheJobs[mediaId] = persistScope.launch {
                 try {
                     cacheArtworkVideos(directory = directory, mediaId = mediaId, artwork = artwork)

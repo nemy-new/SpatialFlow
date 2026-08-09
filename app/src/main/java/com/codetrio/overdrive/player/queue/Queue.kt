@@ -356,19 +356,20 @@ fun SlidingQueueDrawer(
     isDark: Boolean,
     isAutoplayEnabled: Boolean,
     onAutoplayToggle: (Boolean) -> Unit,
+    isEmbedded: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     
     val slidingOffset by animateDpAsState(
-        targetValue = if (isQueueExpanded) 0.dp else screenHeight + 100.dp,
+        targetValue = if (isEmbedded || isQueueExpanded) 0.dp else screenHeight + 100.dp,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
         label = "QueueSlidingOffset"
     )
 
     val queueCornerRadius by animateDpAsState(
-        targetValue = if (isQueueExpanded) 0.dp else 32.dp,
+        targetValue = if (isEmbedded || isQueueExpanded) 0.dp else 32.dp,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
         label = "QueueCornerRadius"
     )
@@ -500,21 +501,25 @@ fun SlidingQueueDrawer(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                if (!isEmbedded) {
                     Box(
                         modifier = Modifier
-                            .size(width = 36.dp, height = 4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(
-                                if (isDark) Color.White.copy(alpha = 0.2f)
-                                else Color.Black.copy(alpha = 0.12f)
-                            )
-                    )
+                            .fillMaxWidth()
+                            .padding(top = 12.dp, bottom = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 36.dp, height = 4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(
+                                    if (isDark) Color.White.copy(alpha = 0.2f)
+                                    else Color.Black.copy(alpha = 0.12f)
+                                )
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
                 // Row 1: Title and Collapse
@@ -534,19 +539,21 @@ fun SlidingQueueDrawer(
                         color = if (isDark) Color.White else Color.Black
                     )
 
-                    IconButton(
-                        onClick = { onQueueExpandedChange(false) },
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = (if (isDark) Color.White else Color.Black).copy(alpha = 0.05f)
-                        ),
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_keyboard_arrow_down),
-                            contentDescription = "Collapse Queue",
-                            tint = if (isDark) Color.White else Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
+                    if (!isEmbedded) {
+                        IconButton(
+                            onClick = { onQueueExpandedChange(false) },
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = (if (isDark) Color.White else Color.Black).copy(alpha = 0.05f)
+                            ),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_keyboard_arrow_down),
+                                contentDescription = "Collapse Queue",
+                                tint = if (isDark) Color.White else Color.Black,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
 

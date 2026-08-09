@@ -3,7 +3,6 @@ package com.codetrio.overdrive.util
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.graphics.Bitmap
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -11,12 +10,9 @@ import android.util.Log
 
 import androidx.core.app.NotificationCompat
 import android.net.Uri
-import com.bumptech.glide.Glide
 import com.codetrio.overdrive.R
 import com.codetrio.overdrive.data.innertube.NewPipeStreamExtractor
 import com.codetrio.overdrive.model.SongItem
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.ReturnCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -113,10 +109,15 @@ object SongDownloader {
                 }
 
                 val mimeType = bestStream?.mimeType ?: ""
-                val isOpusSource = mimeType.contains("webm", ignoreCase = true) || 
-                                   mimeType.contains("opus", ignoreCase = true) ||
-                                   streamUrl.contains("mime=audio/webm") ||
-                                   streamUrl.contains("codecs=opus")
+                val outputExtension = when {
+                    mimeType.contains("webm", ignoreCase = true) ||
+                        mimeType.contains("opus", ignoreCase = true) ||
+                        streamUrl.contains("mime=audio/webm") ||
+                        streamUrl.contains("codecs=opus") -> ".webm"
+                    mimeType.contains("mp4", ignoreCase = true) ||
+                        mimeType.contains("m4a", ignoreCase = true) -> ".m4a"
+                    else -> ".m4a"
+                }
 
                 // Create temp download file
                 val tempDownloadFile = File(context.cacheDir, "temp_download_${videoId}.tmp")
@@ -159,95 +160,11 @@ object SongDownloader {
                     }
                 }
 
-                // Load, auto-crop 1:1, and compress thumbnail to a temp file
-                var artworkFile: File? = null
-                val thumbnailUrl = song.thumbnailUrl
-                if (!thumbnailUrl.isNullOrEmpty()) {
-                    try {
-                        val future = Glide.with(context)
-                            .asBitmap()
-                            .load(thumbnailUrl)
-                            .submit()
-                        val originalBitmap = future.get()
-                        if (originalBitmap != null) {
-                            val size = originalBitmap.width.coerceAtMost(originalBitmap.height)
-                            val x = (originalBitmap.width - size) / 2
-                            val y = (originalBitmap.height - size) / 2
-                            val croppedBitmap = Bitmap.createBitmap(originalBitmap, x, y, size, size)
-                            
-                            val artFile = File(context.cacheDir, "temp_art_${videoId}.jpg")
-                            FileOutputStream(artFile).use { fos ->
-                                croppedBitmap.compress(Bitmap.CompressFormat.JPEG, 95, fos)
-                            }
-                            artworkFile = artFile
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to fetch and crop thumbnail", e)
-                    }
-                }
-
-                // Prepare output file (Ogg Opus format)
-                val fileName = "$cleanTitleStr - $cleanArtistStr.opus"
+                // Persist the downloaded stream in its native container to avoid native transcoding.
+                val fileName = "$cleanTitleStr - $cleanArtistStr$outputExtension"
                 val outputFile = AudioFileManager.createOutputFile(context, fileName)
-                val cleanAlbumStr = cleanAlbum(song.title)
-
-                // Encode cover art as METADATA_BLOCK_PICTURE (Opus/FLAC Vorbis Comment standard)
-                // Must be done BEFORE artworkFile is deleted.
-                val pictureBase64: String = artworkFile?.let { art ->
-                    try {
-                        val jpegBytes = art.readBytes()
-                        val mime = "image/jpeg"
-                        val mimeBytes = mime.toByteArray(Charsets.US_ASCII)
-                        val buf = java.nio.ByteBuffer.allocate(
-                            4 +                // picture type
-                            4 + mimeBytes.size + // MIME type length + MIME type string
-                            4 +                // description length (empty, 0 bytes follow)
-                            4 +                // width
-                            4 +                // height
-                            4 +                // color depth
-                            4 +                // indexed-color count
-                            4 + jpegBytes.size // data length + raw JPEG bytes
-                        ).order(java.nio.ByteOrder.BIG_ENDIAN)
-                        buf.putInt(3)             // picture type: front cover
-                        buf.putInt(mimeBytes.size)
-                        buf.put(mimeBytes)
-                        buf.putInt(0)             // description length (empty)
-                        buf.putInt(0)             // width
-                        buf.putInt(0)             // height
-                        buf.putInt(0)             // color depth
-                        buf.putInt(0)             // indexed-color count
-                        buf.putInt(jpegBytes.size)
-                        buf.put(jpegBytes)
-                        android.util.Base64.encodeToString(buf.array(), android.util.Base64.NO_WRAP)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "METADATA_BLOCK_PICTURE encoding failed", e)
-                        ""
-                    }
-                } ?: ""
-
-                // Package using FFmpeg — metadata + cover art embedded as Vorbis Comments natively
-                val ffmpegArgs = FFmpegCommandBuilder.buildOpusPackageArgs(
-                    inputPath = tempDownloadFile.absolutePath,
-                    outputPath = outputFile.absolutePath,
-                    isOpusSource = isOpusSource,
-                    title = cleanTitleStr,
-                    artist = cleanArtistStr,
-                    album = cleanAlbumStr,
-                    pictureBase64 = pictureBase64
-                ).toTypedArray()
-
-                Log.d(TAG, "Executing FFmpeg packaging (${ffmpegArgs.size} args)")
-                val session = com.arthenica.ffmpegkit.FFmpegKit.executeWithArguments(ffmpegArgs)
-                val success = ReturnCode.isSuccess(session.returnCode)
-
-                // Clean up temp files
-                try { tempDownloadFile.delete() } catch (_: Exception) {}
-                try { artworkFile?.delete() } catch (_: Exception) {}
-
-                if (!success) {
-                    Log.e(TAG, "FFmpeg packaging failed with code ${session.returnCode}\n${session.allLogsAsString}")
-                    throw Exception("FFmpeg failed to remux audio stream to Opus container")
-                }
+                tempDownloadFile.copyTo(outputFile, overwrite = true)
+                tempDownloadFile.delete()
 
                 // Copy file to MediaStore and request a media scan
                 AudioFileManager.scanFile(context, outputFile)
@@ -329,6 +246,8 @@ object SongDownloader {
         
         val fileNames = listOf(
             "$cleanTitleStr - $cleanArtistStr.opus",
+            "$cleanTitleStr - $cleanArtistStr.webm",
+            "$cleanTitleStr - $cleanArtistStr.m4a",
             "$cleanTitleStr - $cleanArtistStr.mp3"
         )
 
@@ -373,6 +292,8 @@ object SongDownloader {
         
         val fileNames = listOf(
             "$cleanTitleStr - $cleanArtistStr.opus",
+            "$cleanTitleStr - $cleanArtistStr.webm",
+            "$cleanTitleStr - $cleanArtistStr.m4a",
             "$cleanTitleStr - $cleanArtistStr.mp3"
         )
 

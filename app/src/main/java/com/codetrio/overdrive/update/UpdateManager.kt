@@ -21,8 +21,8 @@ class UpdateManager(private val context: Context) {
 
     companion object {
         private const val TAG = "UpdateManager"
-        private const val GITHUB_OWNER = "MythicalSHUB"
-        private const val GITHUB_REPO = "SpatialFlow"
+        private const val GITHUB_OWNER = "nemy-new"
+        private const val GITHUB_REPO = "OverDrive"
     }
 
     private val client: GitHubReleaseClient = GitHubReleaseClient(GITHUB_OWNER, GITHUB_REPO)

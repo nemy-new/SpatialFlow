@@ -34,12 +34,11 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.imageLoader
 import coil.request.ImageRequest
 import com.flaviofaria.kenburnsview.KenBurnsView
 import com.flaviofaria.kenburnsview.RandomTransitionGenerator
-import com.google.android.renderscript.Toolkit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -74,7 +73,7 @@ fun SpatialFloatingLight(
     }
 
     val context = LocalContext.current
-    val imageLoader = remember { ImageLoader(context) }
+    val imageLoader = context.imageLoader
 
     SpatialWrapper {
         LaunchedEffect(album()) {
@@ -92,10 +91,8 @@ fun SpatialFloatingLight(
                             bitmap = rawBitmap,
                             kenBurnsMode = backgroundEffectEnabled
                         )
-                        rawBitmap.recycle()
 
                         val resolved = imageResolve(compressed)
-                        compressed.recycle()
 
                         drawable.value = resolved.toDrawable(context.resources)
                     }
@@ -226,8 +223,8 @@ fun SpatialFloatingLight(
  * 3. RenderScript Toolkit.blur (radius 12) executed on downscaled bitmap.
  */
 fun imageResolve(image: Bitmap, moreLight: Boolean = false): Bitmap {
-    var resizedBitmap = image.copy(Bitmap.Config.ARGB_8888, true)
-    resizedBitmap.applyCanvas {
+    val processedBitmap = image.copy(Bitmap.Config.ARGB_8888, true)
+    processedBitmap.applyCanvas {
         val paint = Paint().apply {
             isAntiAlias = true
             isFilterBitmap = true
@@ -235,26 +232,223 @@ fun imageResolve(image: Bitmap, moreLight: Boolean = false): Bitmap {
         }
 
         val saturationMatrix = ColorMatrix()
-        saturationMatrix.setSaturation(2.0f)
+        saturationMatrix.setSaturation(2.2f)
 
         paint.colorFilter = ColorMatrixColorFilter(saturationMatrix)
-        drawBitmap(resizedBitmap, 0f, 0f, paint)
+        drawBitmap(processedBitmap, 0f, 0f, paint)
 
         if (moreLight) {
-            drawColor((0x1AFFFFFF).toInt())
-            drawColor((0xFFFFFFFF).toInt(), PorterDuff.Mode.OVERLAY)
-            drawColor((0x52FFFFFF).toInt())
-            drawColor((0xBFFFFFFF).toInt(), PorterDuff.Mode.OVERLAY)
+            drawColor(0x26FFFFFF.toInt())
+            drawColor(0x4DFFFFFF.toInt(), PorterDuff.Mode.OVERLAY)
         } else {
-            drawColor((0x33000000).toInt(), PorterDuff.Mode.OVERLAY)
-            drawColor((0x40000000).toInt())
+            drawColor(0x4D000000.toInt(), PorterDuff.Mode.OVERLAY)
+            drawColor(0x66000000.toInt())
         }
     }
 
-    try {
-        resizedBitmap = Toolkit.blur(resizedBitmap, 12)
-    } catch (_: Exception) {
-        // Fallback if NDK binding encounters unexpected hardware constraint
+    return fastBlur(processedBitmap, 1.0f, 15)
+}
+
+/**
+ * A fast, lightweight box/stack blur implementation for bitmaps.
+ */
+private fun fastBlur(sentBitmap: Bitmap, scale: Float, radius: Int): Bitmap {
+    var bitmap = sentBitmap
+    if (scale != 1.0f) {
+        val width = (bitmap.width * scale).toInt()
+        val height = (bitmap.height * scale).toInt()
+        if (width > 0 && height > 0) {
+            bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true)
+        }
     }
-    return resizedBitmap
+    if (radius < 1) {
+        return bitmap
+    }
+    
+    val w = bitmap.width
+    val h = bitmap.height
+    
+    val pix = IntArray(w * h)
+    bitmap.getPixels(pix, 0, w, 0, 0, w, h)
+    
+    val wm = w - 1
+    val hm = h - 1
+    val wh = w * h
+    val div = radius + radius + 1
+    
+    val r = IntArray(wh)
+    val g = IntArray(wh)
+    val b = IntArray(wh)
+    var rsum: Int; var gsum: Int; var bsum: Int; var x: Int; var y: Int; var i: Int; var p: Int; var yp: Int; var yi: Int; var yw: Int
+    val vmin = IntArray(maxOf(w, h))
+    
+    var divsum = (div + 1) shr 1
+    divsum *= divsum
+    val dv = IntArray(256 * divsum)
+    for (i in 0 until 256 * divsum) {
+        dv[i] = (i / divsum)
+    }
+    
+    yw = 0
+    yi = 0
+    
+    val stack = Array(div) { IntArray(3) }
+    var stackpointer: Int
+    var stackstart: Int
+    var sir: IntArray
+    var rbs: Int
+    val r1 = radius + 1
+    var routsum: Int; var goutsum: Int; var boutsum: Int; var rinsum: Int; var ginsum: Int; var binsum: Int
+    
+    for (y in 0 until h) {
+        rinsum = 0; ginsum = 0; binsum = 0; routsum = 0; goutsum = 0; boutsum = 0; rsum = 0; gsum = 0; bsum = 0
+        for (i in -radius..radius) {
+            p = pix[yi + minOf(wm, maxOf(i, 0))]
+            sir = stack[i + radius]
+            sir[0] = (p and 0xff0000) shr 16
+            sir[1] = (p and 0x00ff00) shr 8
+            sir[2] = (p and 0x0000ff)
+            rbs = r1 - kotlin.math.abs(i)
+            rsum += sir[0] * rbs
+            gsum += sir[1] * rbs
+            bsum += sir[2] * rbs
+            if (i > 0) {
+                rinsum += sir[0]
+                ginsum += sir[1]
+                binsum += sir[2]
+            } else {
+                routsum += sir[0]
+                goutsum += sir[1]
+                boutsum += sir[2]
+            }
+        }
+        stackpointer = radius
+        
+        for (x in 0 until w) {
+            r[yi] = dv[rsum]
+            g[yi] = dv[gsum]
+            b[yi] = dv[bsum]
+            
+            rsum -= routsum
+            gsum -= goutsum
+            bsum -= boutsum
+            
+            stackstart = stackpointer - radius + div
+            sir = stack[stackstart % div]
+            
+            routsum -= sir[0]
+            goutsum -= sir[1]
+            boutsum -= sir[2]
+            
+            if (y == 0) {
+                vmin[x] = minOf(x + radius + 1, wm)
+            }
+            p = pix[yw + vmin[x]]
+            
+            sir[0] = (p and 0xff0000) shr 16
+            sir[1] = (p and 0x00ff00) shr 8
+            sir[2] = (p and 0x0000ff)
+            
+            rinsum += sir[0]
+            ginsum += sir[1]
+            binsum += sir[2]
+            
+            rsum += rinsum
+            gsum += ginsum
+            bsum += binsum
+            
+            stackpointer = (stackpointer + 1) % div
+            sir = stack[stackpointer % div]
+            
+            routsum += sir[0]
+            goutsum += sir[1]
+            boutsum += sir[2]
+            
+            rinsum -= sir[0]
+            ginsum -= sir[1]
+            binsum -= sir[2]
+            
+            yi++
+        }
+        yw += w
+    }
+    
+    for (x in 0 until w) {
+        rinsum = 0; ginsum = 0; binsum = 0; routsum = 0; goutsum = 0; boutsum = 0; rsum = 0; gsum = 0; bsum = 0
+        yp = -radius * w
+        for (i in -radius..radius) {
+            yi = maxOf(0, yp) + x
+            sir = stack[i + radius]
+            sir[0] = r[yi]
+            sir[1] = g[yi]
+            sir[2] = b[yi]
+            
+            rbs = r1 - kotlin.math.abs(i)
+            
+            rsum += r[yi] * rbs
+            gsum += g[yi] * rbs
+            bsum += b[yi] * rbs
+            
+            if (i > 0) {
+                rinsum += sir[0]
+                ginsum += sir[1]
+                binsum += sir[2]
+            } else {
+                routsum += sir[0]
+                goutsum += sir[1]
+                boutsum += sir[2]
+            }
+            if (i < hm) {
+                yp += w
+            }
+        }
+        yi = x
+        stackpointer = radius
+        for (y in 0 until h) {
+            pix[yi] = (0xff000000.toInt() or (dv[rsum] shl 16) or (dv[gsum] shl 8) or dv[bsum])
+            
+            rsum -= routsum
+            gsum -= goutsum
+            bsum -= boutsum
+            
+            stackstart = stackpointer - radius + div
+            sir = stack[stackstart % div]
+            
+            routsum -= sir[0]
+            goutsum -= sir[1]
+            boutsum -= sir[2]
+            
+            if (x == 0) {
+                vmin[y] = minOf(y + r1, hm) * w
+            }
+            p = x + vmin[y]
+            
+            sir[0] = r[p]
+            sir[1] = g[p]
+            sir[2] = b[p]
+            
+            rinsum += sir[0]
+            ginsum += sir[1]
+            binsum += sir[2]
+            
+            rsum += rinsum
+            gsum += ginsum
+            bsum += binsum
+            
+            stackpointer = (stackpointer + 1) % div
+            sir = stack[stackpointer % div]
+            
+            routsum += sir[0]
+            goutsum += sir[1]
+            boutsum += sir[2]
+            
+            rinsum -= sir[0]
+            ginsum -= sir[1]
+            binsum -= sir[2]
+            
+            yi += w
+        }
+    }
+    bitmap.setPixels(pix, 0, w, 0, 0, w, h)
+    return bitmap
 }

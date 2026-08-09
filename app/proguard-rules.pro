@@ -71,10 +71,6 @@
 -keep class org.jsoup.** { *; }
 -dontwarn org.jsoup.**
 
-# ============ FFmpegKit ============
--keep class com.arthenica.ffmpegkit.** { *; }
--dontwarn com.arthenica.ffmpegkit.**
-
 # ============ Rhino (org.mozilla.javascript) ============
 -dontwarn java.beans.**
 -dontwarn org.mozilla.javascript.**

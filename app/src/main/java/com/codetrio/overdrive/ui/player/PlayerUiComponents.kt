@@ -6,7 +6,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -20,6 +23,7 @@ import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
@@ -111,9 +115,10 @@ internal fun SplitLikeDislikeChip(
     onDislikeClick: () -> Unit,
     contentColor: Color,
     accentColor: Color,
-    isDark: Boolean
+    isDark: Boolean,
+    customBackgroundColor: Color? = null
 ) {
-    val backgroundColor = contentColor.copy(alpha = if (isDark) 0.08f else 0.06f)
+    val backgroundColor = customBackgroundColor ?: contentColor.copy(alpha = if (isDark) 0.08f else 0.06f)
     val displayLikesText = remember(likesCount) {
         likesCount.ifBlank { "Like" }
     }
@@ -187,12 +192,13 @@ internal fun PillChip(
     isDark: Boolean,
     isSelected: Boolean = false,
     progress: Float? = null,
+    customBackgroundColor: Color? = null,
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = if (isSelected) {
         accentColor.copy(alpha = if (isDark) 0.25f else 0.18f)
     } else {
-        contentColor.copy(alpha = if (isDark) 0.08f else 0.06f)
+        customBackgroundColor ?: contentColor.copy(alpha = if (isDark) 0.08f else 0.06f)
     }
     
     val tintColor = if (isSelected) accentColor else contentColor.copy(alpha = 0.8f)
@@ -443,5 +449,112 @@ internal fun LyricsMetadataFooter(
                 maxLines = 1
             )
         }
+    }
+}
+
+@Composable
+fun VolumeSlider(
+    modifier: Modifier = Modifier,
+    contentColor: Color = Color.White,
+    dynamicAccentColor: Color = Color.White
+) {
+    val context = LocalContext.current
+    val audioManager = remember { context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager }
+    val maxVolume = remember { audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).toFloat() }
+    
+    var currentVolume by remember { 
+        mutableStateOf(audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()) 
+    }
+
+    // React to hardware volume button changes
+    DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                if (intent?.action == "android.media.VOLUME_CHANGED_ACTION") {
+                    currentVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()
+                }
+            }
+        }
+        val filter = android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION")
+        context.registerReceiver(receiver, filter)
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_volume_down),
+            contentDescription = "Volume Down",
+            tint = contentColor.copy(alpha = 0.7f),
+            modifier = Modifier.size(20.dp)
+        )
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        val fraction = if (maxVolume > 0f) currentVolume / maxVolume else 0f
+        var isDragging by remember { mutableStateOf(false) }
+        
+        val trackHeight by androidx.compose.animation.core.animateDpAsState(
+            targetValue = if (isDragging) 32.dp else 24.dp,
+            animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy),
+            label = "volume_track_height"
+        )
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(trackHeight)
+                .clip(CircleShape)
+                .background(contentColor.copy(alpha = 0.2f))
+                .pointerInput(Unit) {
+                    val componentWidth = size.width.toFloat()
+                    detectTapGestures(
+                        onPress = { offset ->
+                            isDragging = true
+                            val newValue = (offset.x / componentWidth) * maxVolume
+                            currentVolume = newValue.coerceIn(0f, maxVolume)
+                            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, currentVolume.toInt(), 0)
+                            tryAwaitRelease()
+                            isDragging = false
+                        }
+                    )
+                }
+                .pointerInput(Unit) {
+                    val componentWidth = size.width.toFloat()
+                    detectHorizontalDragGestures(
+                        onDragStart = { isDragging = true },
+                        onDragEnd = { isDragging = false },
+                        onDragCancel = { isDragging = false },
+                        onHorizontalDrag = { change, _ ->
+                            change.consume()
+                            val newValue = (change.position.x / componentWidth) * maxVolume
+                            currentVolume = newValue.coerceIn(0f, maxVolume)
+                            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, currentVolume.toInt(), 0)
+                        }
+                    )
+                },
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction)
+                    .fillMaxHeight()
+                    .clip(CircleShape)
+                    .background(dynamicAccentColor)
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        Icon(
+            painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_volume_up),
+            contentDescription = "Volume Up",
+            tint = contentColor.copy(alpha = 0.7f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }

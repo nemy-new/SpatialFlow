@@ -101,7 +101,7 @@ fun AccountScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text("Account Settings", fontWeight = FontWeight.Bold) },
+                title = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_account_settings), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -267,7 +267,7 @@ fun AccountSettingsSection(
             item {
                 Column {
                     Text(
-                        text = "Recent Listening History", 
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_recent_listening_history), 
                         style = MaterialTheme.typography.titleLarge, 
                         fontWeight = FontWeight.Bold, 
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -343,8 +343,8 @@ fun AccountSettingsSection(
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                     content = {
                         Column {
-                            Text("Sync Playlists", fontWeight = FontWeight.Medium, style = MaterialTheme.typography.titleMedium)
-                            Text("Auto-update library states with remote servers", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sync_playlists), fontWeight = FontWeight.Medium, style = MaterialTheme.typography.titleMedium)
+                            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_auto_update_library_states_with_remote_servers), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 )
@@ -356,8 +356,8 @@ fun AccountSettingsSection(
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                     content = {
                         Column {
-                            Text("Diagnostics Tool", fontWeight = FontWeight.Medium, style = MaterialTheme.typography.titleMedium)
-                            Text("Inspect background security context", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_diagnostics_tool), fontWeight = FontWeight.Medium, style = MaterialTheme.typography.titleMedium)
+                            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_inspect_background_security_context), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 )
@@ -379,7 +379,7 @@ fun AccountSettingsSection(
                 ) {
                     Icon(Icons.Default.PowerSettingsNew, null)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Disconnect Account", fontWeight = FontWeight.Bold)
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_disconnect_account), fontWeight = FontWeight.Bold)
                 }
             } else {
                 Button(
@@ -393,7 +393,7 @@ fun AccountSettingsSection(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Login, null)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Sign In to YouTube Music", fontWeight = FontWeight.Bold)
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sign_in_to_youtube_music), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -402,10 +402,10 @@ fun AccountSettingsSection(
     if (showTokenAlert) {
         AlertDialog(
             onDismissRequest = { showTokenAlert = false },
-            title = { Text("Authentication Signature") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_authentication_signature)) },
             text = { Text(token, fontSize = 11.sp, style = MaterialTheme.typography.labelSmall) },
             confirmButton = {
-                TextButton(onClick = { showTokenAlert = false }) { Text("Done") }
+                TextButton(onClick = { showTokenAlert = false }) { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_done)) }
             }
         )
     }

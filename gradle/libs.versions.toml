@@ -10,6 +10,7 @@ coreSplashscreen = "1.2.0"
 espressoCoreVersion = "3.7.0"
 glide = "5.0.9"
 graphicsShapes = "1.1.0"
+graphicsPath = "1.1.0"
 jaudiotagger = "3.0.1"
 junit = "4.13.2"
 kotlinStdlib = "2.2.10"
@@ -45,6 +46,7 @@ kotlinxSerializationJson = "1.11.0"
 
 [libraries]
 androidx-graphics-shapes = { module = "androidx.graphics:graphics-shapes", version.ref = "graphicsShapes" }
+androidx-graphics-path = { module = "androidx.graphics:graphics-path", version.ref = "graphicsPath" }
 appcompat-v170 = { module = "androidx.appcompat:appcompat", version.ref = "appcompatVersion" }
 constraintlayout-v220 = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayoutVersion" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "retrofit" }
@@ -117,4 +119,3 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-

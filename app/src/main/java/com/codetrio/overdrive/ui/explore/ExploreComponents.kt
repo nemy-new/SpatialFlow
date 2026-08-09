@@ -629,7 +629,7 @@ fun TopResultCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Go to Profile",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_go_to_profile),
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold
                             ),
@@ -658,7 +658,7 @@ fun TopResultCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Play",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_play),
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold
                             ),
@@ -970,7 +970,7 @@ fun BentoCell(
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
                         Text(
-                            text = "Feature",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_feature),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Black,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -1046,7 +1046,7 @@ fun HomeSectionRow(
                             contentColor = MaterialTheme.colorScheme.onBackground
                         )
                     ) {
-                        Text("Play all", style = MaterialTheme.typography.labelSmall)
+                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_play_all), style = MaterialTheme.typography.labelSmall)
                     }
                 }
                 
@@ -1069,7 +1069,7 @@ fun HomeSectionRow(
 
         when {
             // 0. BENTO GRID — High Fidelity Personal Mix
-            section.title.contains("personalized mix", ignoreCase = true) && section.items.size >= 5 -> {
+            (section.title.contains("personalized", ignoreCase = true) || section.title.contains("おすすめ", ignoreCase = true) || section.title.contains("あなた専用", ignoreCase = true) || section.title.contains("ミックス", ignoreCase = true)) && section.items.size >= 5 -> {
                 val items = section.items
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -1766,7 +1766,7 @@ fun OnlineSongBottomSheet(
                             modifier = Modifier.size(24.dp)
                         )
                     }
-                    Text("Play next", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_play_next), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                 }
 
                 // Card 2: Share
@@ -1801,7 +1801,7 @@ fun OnlineSongBottomSheet(
                             modifier = Modifier.size(24.dp)
                         )
                     }
-                    Text("Share", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_share), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                 }
             }
 

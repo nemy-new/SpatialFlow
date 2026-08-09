@@ -118,7 +118,7 @@ fun SleepTimerBottomSheet(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Sleep Timer",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sleep_timer),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -272,7 +272,7 @@ fun SleepTimerBottomSheet(
                         },
                         content = {
                             Text(
-                                text = "Stop at end of track",
+                                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_stop_at_end_of_track),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -319,7 +319,7 @@ fun SleepTimerBottomSheet(
                 ) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel Timer", modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Cancel", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_cancel), fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.width(2.dp))
@@ -343,7 +343,7 @@ fun SleepTimerBottomSheet(
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = "Custom Timer", modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Custom", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_custom), fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -365,16 +365,16 @@ fun SleepTimerBottomSheet(
                     }
                     showTimePicker = false
                 }) {
-                    Text("Set", fontWeight = FontWeight.Bold)
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_set), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showTimePicker = false }) {
-                    Text("Cancel")
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_cancel))
                 }
             },
             title = {
-                Text("Select Duration", style = MaterialTheme.typography.titleMedium)
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_select_duration), style = MaterialTheme.typography.titleMedium)
             },
             text = {
                 Box(

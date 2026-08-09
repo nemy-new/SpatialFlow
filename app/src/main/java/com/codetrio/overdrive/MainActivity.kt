@@ -2,6 +2,16 @@
 
 package com.codetrio.overdrive
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Search
+import com.codetrio.overdrive.ui.explore.SearchScreen
+import androidx.compose.ui.draw.alpha
+
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
@@ -300,17 +310,29 @@ class MainActivity : AppCompatActivity() {
                     if (isTablet) {
                         val navBackStackEntry by currentNavController.currentBackStackEntryAsState()
                         val currentDestination = navBackStackEntry?.destination
+                        
+                        val showNavRail = currentDestination?.route in listOf("explore", "search", "library", "effects", "settings")
 
-                        androidx.compose.material3.NavigationRail(
+                        val playerExpansionFraction by playerViewModel.playerExpansionFraction.collectAsStateWithLifecycle(initialValue = 0f)
+                        if (showNavRail) {
+                            androidx.compose.foundation.layout.Box(
+                                modifier = Modifier
+                                    .width(80.dp * (1f - playerExpansionFraction))
+                                    .alpha(1f - playerExpansionFraction)
+                            ) {
+                            androidx.compose.material3.NavigationRail(
+                            modifier = Modifier.requiredWidth(80.dp).offset(x = -80.dp * playerExpansionFraction),
                             containerColor = MaterialTheme.colorScheme.surfaceContainer
                         ) {
-                            val items = listOf(
-                                Triple("explore", "Explore", R.drawable.ic_explore),
+                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+                            val items = listOf<Triple<String, String, Any>>(
+                                Triple("explore", "Home", Icons.Rounded.Home),
+                                Triple("search", "Search", Icons.Rounded.Search),
                                 Triple("library", "Library", R.drawable.ic_library_music),
                                 Triple("effects", "Effects", R.drawable.ic_equalizer),
                                 Triple("settings", "Settings", R.drawable.ic_settings)
                             )
-                            items.forEach { (route, label, iconResId) ->
+                            items.forEach { (route, label, iconData) ->
                                 val selected = currentDestination?.route == route
                                 androidx.compose.material3.NavigationRailItem(
                                     selected = selected,
@@ -324,9 +346,18 @@ class MainActivity : AppCompatActivity() {
                                             }
                                         }
                                     },
-                                    icon = { Icon(painter = painterResource(id = iconResId), contentDescription = label, modifier = Modifier.size(26.dp)) },
+                                    icon = {
+                                        if (iconData is androidx.compose.ui.graphics.vector.ImageVector) {
+                                            Icon(imageVector = iconData, contentDescription = label, modifier = Modifier.size(26.dp))
+                                        } else if (iconData is Int) {
+                                            Icon(painter = painterResource(id = iconData), contentDescription = label, modifier = Modifier.size(26.dp))
+                                        }
+                                    },
                                     label = if (hideNavLabels) null else { { Text(label) } }
                                 )
+                            }
+                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+                        }
                             }
                         }
 
@@ -344,7 +375,7 @@ class MainActivity : AppCompatActivity() {
                         val navBackStackEntry by currentNavController.currentBackStackEntryAsState()
                         val currentDestination = navBackStackEntry?.destination
 
-                        val showBottomBar = currentDestination?.route in listOf("explore", "library", "effects", "settings")
+                        val showBottomBar = currentDestination?.route in listOf("explore", "search", "library", "effects", "settings")
 
                         val density = LocalDensity.current
                         val navigationBarsHeightPx = WindowInsets.navigationBars.getBottom(density).toFloat()
@@ -418,13 +449,14 @@ class MainActivity : AppCompatActivity() {
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                             tonalElevation = navElevation
                         ) {
-                            val items = listOf(
-                                Triple("explore", "Explore", R.drawable.ic_explore),
+                            val items = listOf<Triple<String, String, Any>>(
+                                Triple("explore", "Home", Icons.Rounded.Home),
+                                Triple("search", "Search", Icons.Rounded.Search),
                                 Triple("library", "Library", R.drawable.ic_library_music),
                                 Triple("effects", "Effects", R.drawable.ic_equalizer),
                                 Triple("settings", "Settings", R.drawable.ic_settings)
                             )
-                             items.forEach { (route, label, iconResId) ->
+                             items.forEach { (route, label, iconData) ->
                                 val selected = currentDestination?.route == route
                                 NavigationBarItem(
                                     selected = selected,
@@ -442,7 +474,13 @@ class MainActivity : AppCompatActivity() {
                                             }
                                         }
                                     },
-                                    icon = { Icon(painter = painterResource(id = iconResId), contentDescription = label, modifier = Modifier.size(navIconSize)) },
+                                    icon = {
+                                        if (iconData is androidx.compose.ui.graphics.vector.ImageVector) {
+                                            Icon(imageVector = iconData, contentDescription = label, modifier = Modifier.size(navIconSize))
+                                        } else if (iconData is Int) {
+                                            Icon(painter = painterResource(id = iconData), contentDescription = label, modifier = Modifier.size(navIconSize))
+                                        }
+                                    },
                                     label = if (hideNavLabels) null else { { Text(label) } }
                                 )
                             }
@@ -452,7 +490,7 @@ class MainActivity : AppCompatActivity() {
                 ) { paddingValues ->
                     val navBackStackEntry by currentNavController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
-                    val showBottomBar = currentDestination?.route in listOf("explore", "library", "effects", "settings")
+                    val showBottomBar = currentDestination?.route in listOf("explore", "search", "library", "effects", "settings")
 
                     val playerExpansionFractionState = remember { mutableStateOf(0f) }
                     LaunchedEffect(playerViewModel) {
@@ -517,15 +555,16 @@ class MainActivity : AppCompatActivity() {
                             val routeIndices = remember {
                                 mapOf(
                                     "explore" to 0,
-                                    "library" to 1,
-                                    "effects" to 2,
-                                    "settings" to 3,
-                                    "music_management" to 4,
-                                    "account" to 4,
-                                    "appearance" to 4,
-                                    "playback" to 4,
-                                    "haptics" to 4,
-                                    "about" to 4,
+                                    "search" to 1,
+                                    "library" to 2,
+                                    "effects" to 3,
+                                    "settings" to 4,
+                                    "music_management" to 5,
+                                    "account" to 5,
+                                    "appearance" to 5,
+                                    "playback" to 5,
+                                    "haptics" to 5,
+                                    "about" to 5,
                                     "feedback" to 4,
                                     "whats_new" to 4,
                                     "backup_restore" to 4
@@ -633,6 +672,21 @@ class MainActivity : AppCompatActivity() {
                                         }
                                     )
                                 }
+                                composableWithBlur("search") {
+                                    SearchScreen(
+                                        viewModel = exploreViewModel,
+                                        playerSharedViewModel = playerViewModel,
+                                        onNavigateToExplore = {
+                                            currentNavController.navigate("explore") {
+                                                popUpTo(currentNavController.graph.findStartDestination().id) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    )
+                                }
                                 composableWithBlur("library") {
                                     LibraryScreen(
                                         viewModel = playerViewModel,
@@ -686,7 +740,8 @@ class MainActivity : AppCompatActivity() {
                         if (currentRoute != "onboarding" && currentRoute != "google_signin") {
                             PlayerBottomSheetCompose(
                                 activity = this@MainActivity,
-                                viewModel = playerViewModel
+                                viewModel = playerViewModel,
+                                isTablet = isTablet
                             )
                         }
                         }
@@ -1088,7 +1143,7 @@ fun NavGraphBuilder.composableWithBlur(
     content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit
 ) {
     // Main bottom-nav tab routes — blur here is most expensive since users switch these constantly.
-    val mainTabRoutes = setOf("explore", "library", "effects", "settings")
+    val mainTabRoutes = setOf("explore", "search", "library", "effects", "settings")
     val isMainTabRoute = route in mainTabRoutes
 
     composable(

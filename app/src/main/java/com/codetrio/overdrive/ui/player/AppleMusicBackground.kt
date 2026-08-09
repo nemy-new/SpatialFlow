@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.codetrio.overdrive.model.SongItem
@@ -40,8 +43,9 @@ fun AppleMusicBackground(
     canvasArtwork: CanvasArtwork? = null,
     isPlaying: Boolean = true,
     isLyricsModeEnabled: Boolean = false,
+    isMvMode: Boolean = false,
     accentColor: Color = Color(0xFF6200EE),
-    backgroundColor: Color = Color.Black,
+    backgroundColor: Color = Color.Transparent,
     content: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -68,6 +72,7 @@ fun AppleMusicBackground(
         mutableStateOf(prefs.getString("player_theme", "fluid") ?: "fluid")
     }
     val isStatic = remember(playerTheme.value) { playerTheme.value == "static" }
+    val isImmersion = remember(playerTheme.value) { playerTheme.value == "immersion" }
 
     DisposableEffect(Unit) {
         val prefs = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
@@ -120,6 +125,24 @@ fun AppleMusicBackground(
         label         = "dark_muted_spring"
     ).value
 
+    // ── Immersion Mode ambient brightness protection ───────────────────────────
+    val safeImmersionTop = remember(animatedVibrant) {
+        val hsl = FloatArray(3)
+        androidx.core.graphics.ColorUtils.colorToHSL(animatedVibrant.toArgb(), hsl)
+        // Only clamp lightness if the extracted color is too bright (e.g., white or pastel covers)
+        // This preserves 100% of the luminous, vibrant beauty on normal artwork while keeping white UI controls legible
+        // And don't let it get too dark (floor at 0.25)
+        hsl[2] = hsl[2].coerceIn(0.25f, 0.52f)
+        Color(androidx.core.graphics.ColorUtils.HSLToColor(hsl))
+    }
+    val safeImmersionBottom = remember(animatedDarkVibrant, animatedDarkMuted) {
+        val baseColor = if (animatedDarkVibrant != Color.Transparent) animatedDarkVibrant else animatedDarkMuted
+        val hsl = FloatArray(3)
+        androidx.core.graphics.ColorUtils.colorToHSL(baseColor.toArgb(), hsl)
+        hsl[2] = hsl[2].coerceIn(0.20f, 0.45f)
+        Color(androidx.core.graphics.ColorUtils.HSLToColor(hsl))
+    }
+
     // ── Canvas motion artwork ──────────────────────────────────────────────────────
     val hasCanvas = !isLyricsModeEnabled && showAnimatedArt.value && canvasArtwork != null
     val canvasUrl = remember(canvasArtwork) {
@@ -135,7 +158,7 @@ fun AppleMusicBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(if (isImmersion) safeImmersionBottom else animatedDarkMuted.copy(alpha = 0.5f))
     ) {
 
         if (isStatic) {
@@ -147,19 +170,8 @@ fun AppleMusicBackground(
                         .background(animatedDarkMuted.copy(alpha = 1f))
                 )
             }
-        } else {
-            // FLUID THEME — BLURRED ARTWORK CANVAS + Dynamic KenBurns & Mesh Saturation
-            SpatialWrapper {
-                SpatialFloatingLight(
-                    modifier = Modifier.fillMaxSize(),
-                    album = { artworkUrl },
-                    isPlaying = { isPlaying },
-                    isLyricsPage = { isLyricsModeEnabled },
-                    backgroundEffectEnabled = kenBurnsEnabled.value
-                )
-            }
-
-            // Dynamic Palette Gradient Overlay
+        } else if (isImmersion) {
+            // IMMERSION THEME — DEEP VIBRANT AMBIENT GRADIENT (GENTLE, RICH & NO BLACK)
             SpatialWrapper {
                 Box(
                     modifier = Modifier
@@ -167,9 +179,52 @@ fun AppleMusicBackground(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    animatedVibrant.copy(alpha = 0.30f),
-                                    animatedDarkVibrant.copy(alpha = 0.20f),
-                                    animatedDarkMuted.copy(alpha = 0.15f)
+                                    safeImmersionTop,
+                                    safeImmersionTop,
+                                    safeImmersionBottom,
+                                    safeImmersionBottom
+                                )
+                            )
+                        )
+                )
+            }
+        } else {
+            // FLUID THEME — BLURRED ARTWORK CANVAS + Dynamic KenBurns & Mesh Saturation
+            SpatialWrapper {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .animatedFluidBackground(
+                            backgroundColor = Color.Black,
+                            vibrant = animatedVibrant,
+                            darkVibrant = animatedDarkVibrant,
+                            darkMuted = animatedDarkMuted,
+                            isAnimated = isPlaying
+                        )
+                ) {
+                    if (!isMvMode) {
+                        SpatialFloatingLight(
+                            modifier = Modifier.fillMaxSize(),
+                            album = { artworkUrl },
+                            isPlaying = { isPlaying },
+                            isLyricsPage = { isLyricsModeEnabled },
+                            backgroundEffectEnabled = kenBurnsEnabled.value
+                        )
+                    }
+                }
+            }
+
+            // Dynamic Palette Gradient Overlay (Subtle blend)
+            SpatialWrapper {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    animatedVibrant.copy(alpha = 0.15f),
+                                    animatedDarkVibrant.copy(alpha = 0.10f),
+                                    animatedDarkMuted.copy(alpha = 0.08f)
                                 )
                             )
                         )
@@ -177,36 +232,57 @@ fun AppleMusicBackground(
             }
         }
 
-        // ── Canvas Video Overlay (if available) ──────────────────────────────────
-        if (hasCanvas && !canvasUrl.isNullOrBlank()) {
+        // ── Canvas Video Overlay / Immersion Artwork Overlay ─────────────────────
+        if (!isMvMode && ((hasCanvas && !canvasUrl.isNullOrBlank()) || (isImmersion && !isLyricsModeEnabled && !artworkUrl.isNullOrBlank()))) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(3f / 4f)
+                        .offset(y = if (isImmersion && !hasCanvas) 20.dp else 0.dp)
+                        .aspectRatio(if (isImmersion && !hasCanvas) 1f else (3f / 4f))
                         .align(Alignment.TopCenter)
                         .graphicsLayer {
                             compositingStrategy = CompositingStrategy.Offscreen
                         }
                         .drawWithContent {
                             drawContent()
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    0.0f  to Color.White,
+                            val gradientBrush = if (isImmersion && !hasCanvas) {
+                                Brush.verticalGradient(
+                                    0.0f  to Color.Transparent,
+                                    0.45f to Color.White,
+                                    0.58f to Color.White,
+                                    1.0f  to Color.Transparent
+                                )
+                            } else {
+                                Brush.verticalGradient(
+                                    0.0f  to Color.Transparent,
+                                    0.15f to Color.White,
                                     0.50f to Color.White,
                                     1.0f  to Color.Transparent
-                                ),
+                                )
+                            }
+                            drawRect(
+                                brush = gradientBrush,
                                 blendMode = BlendMode.DstIn
                             )
                         }
                 ) {
-                    CanvasArtworkPlayer(
-                        primaryUrl  = canvasUrl,
-                        fallbackUrl = null,
-                        isPlaying   = isPlaying,
-                        resizeMode  = AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH,
-                        modifier    = Modifier.fillMaxSize()
-                    )
+                    if (hasCanvas && !canvasUrl.isNullOrBlank()) {
+                        CanvasArtworkPlayer(
+                            primaryUrl  = canvasUrl,
+                            fallbackUrl = null,
+                            isPlaying   = isPlaying,
+                            resizeMode  = AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH,
+                            modifier    = Modifier.fillMaxSize()
+                        )
+                    } else if (artworkUrl != null) {
+                        coil.compose.AsyncImage(
+                            model = artworkUrl,
+                            contentDescription = "Immersion Artwork",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }

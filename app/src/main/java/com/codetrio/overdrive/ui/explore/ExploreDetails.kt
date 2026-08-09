@@ -96,7 +96,7 @@ fun AlbumDetailView(
     onStartRadioClick: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     AdaptiveDetailContainer(
         isLandscape = isLandscape,
@@ -148,7 +148,7 @@ fun PlaylistDetailView(
     onStartRadioClick: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     AdaptiveDetailContainer(
         isLandscape = isLandscape,
@@ -205,7 +205,7 @@ fun ArtistDetailView(
     onSectionClick: ((String, String?, String) -> Unit)? = null
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     val formattedSubtitle = remember(artistPage.artist.subscriberCount) {
         val raw = artistPage.artist.subscriberCount ?: ""
@@ -334,7 +334,7 @@ fun ArtistDetailView(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Top songs", style = MaterialTheme.typography.titleLarge,
+                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_top_songs), style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -872,7 +872,7 @@ fun ExpressiveConnectedButtonGroup(
                         ) {
                             Icon(Icons.Default.Shuffle, null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Shuffle", fontWeight = FontWeight.Bold)
+                            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_shuffle), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -918,7 +918,7 @@ fun ExpressiveConnectedButtonGroup(
                         ) {
                             Icon(Icons.Default.Radio, null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Radio", fontWeight = FontWeight.Bold)
+                            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_radio), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -945,7 +945,7 @@ fun SectionDetailView(
     onStartRadioClick: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val hasSongsOnly = section.items.isNotEmpty() && section.items.all { it is SearchItem.Song }
 
     if (hasSongsOnly) {
@@ -1066,7 +1066,7 @@ fun MoodDetailView(
     onStartRadioClick: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     val (_, fallbackImageUrl) = getMoodVisuals(moodDetail.moodName)
 

@@ -50,7 +50,7 @@ fun PlayerThemeBottomSheet(
                 .padding(bottom = 24.dp)
         ) {
             Text(
-                text = "Player Theme",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_player_theme),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -63,14 +63,14 @@ fun PlayerThemeBottomSheet(
                     .clickable { onThemeSelect("fluid") },
                 headlineContent = {
                     Text(
-                        text = "Fluid Theme",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_fluid_theme),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
                 supportingContent = {
                     Text(
-                        text = "Organic mesh gradient with drifting colors and video motion art when available.",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_organic_mesh_gradient_with_drifting_colors_and_video_motion_art_when_available),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -97,14 +97,14 @@ fun PlayerThemeBottomSheet(
                     .clickable { onThemeSelect("static") },
                 headlineContent = {
                     Text(
-                        text = "Static Theme",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_static_theme),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
                 supportingContent = {
                     Text(
-                        text = "Single solid background color with video motion art when available.",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_single_solid_background_color_with_video_motion_art_when_available),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -113,6 +113,40 @@ fun PlayerThemeBottomSheet(
                     RadioButton(
                         selected = currentTheme == "static",
                         onClick = { onThemeSelect("static") }
+                    )
+                },
+                colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                thickness = 1.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            // Option 3: Immersion Theme
+            ListItem(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onThemeSelect("immersion") },
+                headlineContent = {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_immersion_theme),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_edge_to_edge_album_artwork_blending_seamlessly_into_an_ambient_gradient_with_redesigned_controls),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                trailingContent = {
+                    RadioButton(
+                        selected = currentTheme == "immersion",
+                        onClick = { onThemeSelect("immersion") }
                     )
                 },
                 colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
@@ -131,7 +165,7 @@ fun PlayerThemeBottomSheet(
             ) {
                 Icon(Icons.Default.Close, contentDescription = "Close Theme Selector", modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Close", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_close), fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

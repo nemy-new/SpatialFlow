@@ -80,22 +80,15 @@ class OverDriveApplication : Application(), ImageLoaderFactory {
         // Initialize canvas motion artwork disk cache
         CanvasArtworkPlaybackCache.init(this)
 
-        // Warm up native FFmpeg binaries in background thread so playback can bind instantly later
-        Thread {
-            try {
-                com.arthenica.ffmpegkit.FFmpegKitConfig.ignoreSignal(com.arthenica.ffmpegkit.Signal.SIGXCPU)
-                com.arthenica.ffmpegkit.FFmpegKit.executeAsync("-version") { }
-            } catch (_: Exception) {
-            }
-        }.start()
-        
         // Initialize global theme mode
         val prefs = getSharedPreferences("AppSettings", MODE_PRIVATE)
-        val isDarkMode = prefs.getBoolean("dark_mode", true)
-        AppCompatDelegate.setDefaultNightMode(
-            if (isDarkMode) AppCompatDelegate.MODE_NIGHT_YES 
-            else AppCompatDelegate.MODE_NIGHT_NO
-        )
+        val themeMode = prefs.getString("theme_mode", "system") ?: "system"
+        val nightMode = when (themeMode) {
+            "dark" -> AppCompatDelegate.MODE_NIGHT_YES
+            "light" -> AppCompatDelegate.MODE_NIGHT_NO
+            else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        }
+        AppCompatDelegate.setDefaultNightMode(nightMode)
 
         // Apply dynamic colors to all activities
         DynamicColors.applyToActivitiesIfAvailable(this)

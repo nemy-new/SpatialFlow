@@ -110,11 +110,14 @@ internal fun FullScreenLyricsOverlay(
     providerResults: Map<String, LyricsResult>,
     selectedProvider: String?,
     onProviderSelected: (String) -> Unit,
+    syncOffsetMs: Long,
+    onSyncOffsetChange: (Long) -> Unit,
     isPlaying: Boolean = false,
     playbackSpeed: Float = 1f,
     onPlayPauseClick: () -> Unit = {},
     duration: Long,
     onCollapse: (() -> Unit)? = null,
+    isEmbedded: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val consumeClicks = remember { MutableInteractionSource() }
@@ -123,7 +126,6 @@ internal fun FullScreenLyricsOverlay(
     var dragSeekProgress by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var lastSeekTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
     var lastSeekPos by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    var syncOffsetMs by remember { mutableStateOf(0L) }
 
     val effectivePositionProvider = remember(currentPositionProvider, syncOffsetMs) {
         { (currentPositionProvider() + syncOffsetMs).toInt().coerceAtLeast(0) }
@@ -162,98 +164,35 @@ internal fun FullScreenLyricsOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (onCollapse != null) {
-                    IconButton(onClick = onCollapse) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_keyboard_arrow_down),
-                            contentDescription = "Collapse Lyrics",
-                            tint = contentColor.copy(alpha = 0.8f),
-                            modifier = Modifier.size(28.dp)
-                        )
+                if (!isEmbedded) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(
+                                enabled = onCollapse != null,
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onCollapse?.invoke() }
+                            )
+                    ) {
+                        currentSong?.thumbnailUrl?.let { url ->
+                            coil.compose.AsyncImage(
+                                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                                    .data(url)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Return to Player",
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                 } else {
                     Spacer(modifier = Modifier.size(48.dp))
                 }
 
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.animateContentSize(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            )
-                        )
-                    ) {
-                        Text(
-                            text = "LYRICS",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = contentColor.copy(alpha = 0.5f),
-                            letterSpacing = 1.sp
-                        )
-
-                        val activeResult = providerResults[selectedProvider] ?: providerResults.values
-                            .filter { it.confidence >= 0f && it.hasLyrics() }
-                            .maxWithOrNull(
-                                compareBy<LyricsResult> { it.isWordByWord }
-                                    .thenBy { it.isSynced }
-                                    .thenBy { it.providerName?.startsWith("BetterLyrics") == true }
-                                    .thenBy { it.providerName == "SyncLRC" }
-                                    .thenBy { it.confidence }
-                            )
-
-                        val isActuallyKaraoke = activeResult?.isWordByWord == true ||
-                                (!syncedLyrics.isNullOrEmpty() && syncedLyrics.any { !it.isInterlude && it.isWordByWord && it.words.isNotEmpty() })
-
-                        val lyricTypeBadge = when {
-                            activeResult == null -> null
-                            !activeResult.hasLyrics() -> null
-                            isActuallyKaraoke -> "Karaoke Lyrics"
-                            activeResult.isSynced -> "Synced Lyrics"
-                            else -> "Plain Lyrics"
-                        }
-
-                        AnimatedVisibility(
-                            visible = lyricTypeBadge != null,
-                            enter = fadeIn(
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow
-                                )
-                            ) + slideInHorizontally(
-                                initialOffsetX = { it / 2 },
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow
-                                )
-                            ),
-                            exit = fadeOut() + slideOutHorizontally()
-                        ) {
-                            if (lyricTypeBadge != null) {
-                                Text(
-                                    text = " • $lyricTypeBadge",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = contentColor.copy(alpha = 0.4f),
-                                    letterSpacing = 1.sp
-                                )
-                            }
-                        }
-                    }
-                    Text(
-                        text = currentSong?.title ?: "Unknown Title",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = contentColor,
-                        maxLines = 1,
-                        modifier = Modifier.basicMarqueeWithFadedEdges(edgeWidth = 8.dp)
-                    )
-                }
+                    Spacer(modifier = Modifier.weight(1f))
 
                 IconButton(onClick = { showProvidersSheet = true }) {
                     Icon(
@@ -299,7 +238,9 @@ internal fun FullScreenLyricsOverlay(
                         ) {
                             Text(
                                 text = plainLyrics,
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
                                 color = contentColor.copy(alpha = 0.9f)
                             )
                             LyricsMetadataFooter(
@@ -323,7 +264,7 @@ internal fun FullScreenLyricsOverlay(
                                 color = dynamicAccentColor
                             )
                             Text(
-                                text = "Searching lyrics across providers...",
+                                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_searching_lyrics_across_providers),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = contentColor.copy(alpha = 0.7f)
                             )
@@ -391,88 +332,7 @@ internal fun FullScreenLyricsOverlay(
                     label = "LyricsPlayPressScale"
                 )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Play/Pause button — same height as the seekbar container
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .graphicsLayer {
-                                scaleX = pressScale
-                                scaleY = pressScale
-                            }
-                            .clip(playPauseShape)
-                            .background(dynamicAccentColor)
-                            .clickable(
-                                interactionSource = playInteractionSource,
-                                indication = null
-                            ) { onPlayPauseClick() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play),
-                            contentDescription = if (isPlaying) "Pause" else "Play",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
 
-                    // Seekbar container
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(dynamicAccentColor.copy(alpha = 0.15f))
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = formatLyricsTime(currentPos.toLong()),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = contentColor.copy(alpha = 0.8f),
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            
-                            WavyMusicSlider(
-                                value = displayProgress,
-                                onValueChange = { newValue ->
-                                    isDraggingSeekbar = true
-                                    dragSeekProgress = newValue
-                                },
-                                onValueChangeFinished = {
-                                    isDraggingSeekbar = false
-                                    lastSeekTime = System.currentTimeMillis()
-                                    lastSeekPos = dragSeekProgress
-                                    onSeekTo((dragSeekProgress * safeDur).toInt())
-                                },
-                                modifier = Modifier.weight(1f),
-                                activeTrackColor = dynamicAccentColor,
-                                inactiveTrackColor = contentColor.copy(alpha = 0.2f),
-                                thumbColor = dynamicAccentColor,
-                                thumbRadius = 6.dp,
-                                waveAmplitudeWhenPlaying = 3.dp,
-                                waveLength = 36.dp,
-                                thumbLineHeightWhenInteracting = 16.dp
-                            )
-                            
-                            Text(
-                                text = formatLyricsTime(duration),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = contentColor.copy(alpha = 0.8f),
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
             }
 
             if (showProvidersSheet && contentReady) {
@@ -495,7 +355,7 @@ internal fun FullScreenLyricsOverlay(
                             providerResults = providerResults,
                             selectedProvider = selectedProvider,
                             syncOffsetMs = syncOffsetMs,
-                            onSyncOffsetChange = { syncOffsetMs = it },
+                            onSyncOffsetChange = onSyncOffsetChange,
                             onProviderSelected = onProviderSelected,
                             onRefindClick = onRetryLyrics,
                             accentColor = dynamicAccentColor,
@@ -563,7 +423,7 @@ private fun UnifiedLyricsBottomSheetContent(
                 )
             ) {
                 Text(
-                    text = "Providers",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_providers),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -593,7 +453,7 @@ private fun UnifiedLyricsBottomSheetContent(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "Sync Control",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sync_control),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -865,7 +725,7 @@ private fun ProvidersListTab(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Refind & Re-search All Providers",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_refind_re_search_all_providers),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = contentColor

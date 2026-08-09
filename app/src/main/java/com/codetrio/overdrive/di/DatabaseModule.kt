@@ -24,4 +24,9 @@ object DatabaseModule {
     fun providePlaylistDao(database: MusicDatabase): PlaylistDao {
         return database.playlistDao()
     }
+
+    @Provides
+    fun provideLyricsSyncDao(database: MusicDatabase): com.codetrio.overdrive.data.db.LyricsSyncDao {
+        return database.lyricsSyncDao()
+    }
 }

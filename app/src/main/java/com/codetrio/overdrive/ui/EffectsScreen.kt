@@ -290,8 +290,6 @@ fun EffectsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
             .statusBarsPadding()
-            // Offset for Navigation Rail in landscape (80dp + margin)
-            .then(if (isLandscape) Modifier.padding(start = 88.dp) else Modifier)
             .nestedScroll(nestedScrollConnection)
             .verticalScroll(scrollState)
             .padding(horizontal = 24.dp)
@@ -300,14 +298,14 @@ fun EffectsScreen(
         // Header
         Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
             Text(
-                text = "Audio Effects",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_audio_effects),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Configure studio-grade soundstages, equalizers, and performance enhancers",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_configure_studio_grade_soundstages_equalizers_and_performance_enhancers),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -396,7 +394,8 @@ fun ProcessingCard(progress: Int) {
 @Composable
 fun SegmentedFeatureCard(
     enabled: Boolean,
-    items: List<@Composable () -> Unit>
+    items: List<@Composable () -> Unit>,
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceContainerHigh
 ) {
     Column(
         modifier = Modifier
@@ -409,7 +408,7 @@ fun SegmentedFeatureCard(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = getEffectsSegmentedShape(index = index, count = items.size),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                color = containerColor
             ) {
                 item()
             }
@@ -461,7 +460,7 @@ fun Audio8DSection(
     SectionContainer {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                Text(text = "8D Audio", style = MaterialTheme.typography.titleLarge)
+                Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_8d_audio), style = MaterialTheme.typography.titleLarge)
                 IconButton(
                     onClick = { showDialog = true },
                     modifier = Modifier.padding(start = 8.dp).size(28.dp)
@@ -490,7 +489,7 @@ fun Audio8DSection(
         
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Spatial 360° rotating audio effect for an immersive sound stage experience.",
+            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_spatial_360_rotating_audio_effect_for_an_immersive_sound_stage_experience),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -499,11 +498,11 @@ fun Audio8DSection(
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("Information") },
-            text = { Text("8D only works on Local/Downloaded Songs") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_information)) },
+            text = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_8d_only_works_on_local_downloaded_songs)) },
             confirmButton = {
                 TextButton(onClick = { showDialog = false }) {
-                    Text("Got it")
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_got_it))
                 }
             },
             icon = {
@@ -526,7 +525,7 @@ fun LoudnessSection(
 ) {
     SectionContainer {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Loudness Enhancer", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_loudness_enhancer), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             ExpressiveSwitch(checked = enabled, onCheckedChange = onToggle, enabled = interactionEnabled)
         }
         AnimatedVisibility(visible = enabled) {
@@ -541,7 +540,7 @@ fun LoudnessSection(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Gain", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_gain), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     Text(
                         text = String.format(LocalLocale.current.platformLocale, "%s%d dB", if (value > 0) "+" else "", value.toInt()),
                         style = MaterialTheme.typography.labelLarge,
@@ -598,12 +597,12 @@ fun EqualizerSection(enabled: Boolean, onToggle: (Boolean) -> Unit, bands: List<
     if (showSaveDialog) {
         AlertDialog(
             onDismissRequest = { showSaveDialog = false },
-            title = { Text("Save Preset") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_save_preset)) },
             text = {
                 OutlinedTextField(
                     value = newPresetName,
                     onValueChange = { newPresetName = it },
-                    label = { Text("Preset Name") },
+                    label = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_preset_name)) },
                     singleLine = true
                 )
             },
@@ -622,17 +621,17 @@ fun EqualizerSection(enabled: Boolean, onToggle: (Boolean) -> Unit, bands: List<
                         showSaveDialog = false
                         newPresetName = ""
                     }
-                ) { Text("Save") }
+                ) { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_save)) }
             },
             dismissButton = {
-                TextButton(onClick = { showSaveDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showSaveDialog = false }) { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_cancel)) }
             }
         )
     }
 
     SectionContainer {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Equalizer", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_equalizer), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             ExpressiveSwitch(checked = enabled, onCheckedChange = onToggle, enabled = interactionEnabled)
         }
         
@@ -745,7 +744,7 @@ fun EqualizerSection(enabled: Boolean, onToggle: (Boolean) -> Unit, bands: List<
                         enabled = enabled && interactionEnabled,
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
                     ) {
-                        Text("+ Save Custom", style = MaterialTheme.typography.labelLarge)
+                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_save_custom), style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -775,7 +774,7 @@ fun EqualizerSection(enabled: Boolean, onToggle: (Boolean) -> Unit, bands: List<
 fun BalanceSection(enabled: Boolean, onToggle: (Boolean) -> Unit, value: Float, onChange: (Float) -> Unit, interactionEnabled: Boolean) {
     SectionContainer {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Stereo Balance", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_stereo_balance), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             ExpressiveSwitch(checked = enabled, onCheckedChange = onToggle, enabled = interactionEnabled)
         }
         AnimatedVisibility(visible = enabled) {
@@ -790,16 +789,16 @@ fun BalanceSection(enabled: Boolean, onToggle: (Boolean) -> Unit, value: Float, 
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Position", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_position), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     Text(text = when { value.toInt() == 0 -> "Center"; value.toInt() < 0 -> "L${abs(value.toInt())}"; else -> "R${value.toInt()}" }, style = MaterialTheme.typography.labelLarge, color = if (enabled && interactionEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 ResponsiveSlider(value = value, onValueChange = onChange, valueRange = -50f..50f, enabled = enabled && interactionEnabled)
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Left", style = MaterialTheme.typography.labelSmall)
+                    Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_left), style = MaterialTheme.typography.labelSmall)
                     Text(
-                        text = "Center",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_center),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (enabled && interactionEnabled && value.toInt() != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                         modifier = Modifier
@@ -808,7 +807,7 @@ fun BalanceSection(enabled: Boolean, onToggle: (Boolean) -> Unit, value: Float, 
                             }
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     )
-                    Text(text = "Right", style = MaterialTheme.typography.labelSmall)
+                    Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_right), style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -820,7 +819,7 @@ fun BalanceSection(enabled: Boolean, onToggle: (Boolean) -> Unit, value: Float, 
 fun SpeedSection(enabled: Boolean, onToggle: (Boolean) -> Unit, value: Float, onChange: (Float) -> Unit, interactionEnabled: Boolean, isPitchMatched: Boolean, onPitchMatchToggle: () -> Unit) {
     SectionContainer {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Playback Speed", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_playback_speed), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             ExpressiveSwitch(checked = enabled, onCheckedChange = onToggle, enabled = interactionEnabled)
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -853,7 +852,7 @@ fun SpeedSection(enabled: Boolean, onToggle: (Boolean) -> Unit, value: Float, on
                 modifier = Modifier.height(32.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Match Pitch", style = MaterialTheme.typography.labelMedium)
+                    Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_match_pitch), style = MaterialTheme.typography.labelMedium)
                     if (isPitchMatched) {
                         Spacer(modifier = Modifier.width(0.dp))
                     }
@@ -862,14 +861,14 @@ fun SpeedSection(enabled: Boolean, onToggle: (Boolean) -> Unit, value: Float, on
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Speed", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_speed), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             Text(text = String.format(LocalLocale.current.platformLocale, "%.2fx", value), style = MaterialTheme.typography.labelLarge, color = if (enabled && interactionEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
         }
         Spacer(modifier = Modifier.height(12.dp))
         ResponsiveSlider(value = value, onValueChange = onChange, valueRange = 0.5f..2.0f, enabled = enabled && interactionEnabled)
         Spacer(modifier = Modifier.height(12.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-             Text(text = "0.5x", style = MaterialTheme.typography.labelSmall); Text(text = "Normal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline); Text(text = "2.0x", style = MaterialTheme.typography.labelSmall)
+             Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_0_5x), style = MaterialTheme.typography.labelSmall); Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_normal), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline); Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_2_0x), style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -892,7 +891,7 @@ fun ReverbSection(
 ) {
     SectionContainer {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Reverb", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_reverb), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             ExpressiveSwitch(checked = enabled, onCheckedChange = onToggle, enabled = interactionEnabled)
         }
         AnimatedVisibility(visible = enabled) {
@@ -926,7 +925,7 @@ fun ReverbSection(
                         value = presets[index],
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Preset") },
+                        label = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_preset)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                         modifier = Modifier.menuAnchor().fillMaxWidth(),
@@ -951,7 +950,7 @@ fun ReverbSection(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Intensity", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_intensity), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     Text(
                         text = String.format(LocalLocale.current.platformLocale, "%d%%", (intensityValue * 100).toInt()),
                         style = MaterialTheme.typography.labelLarge,
@@ -969,9 +968,9 @@ fun ReverbSection(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = "Subtle", style = MaterialTheme.typography.labelSmall)
-                    Text(text = "Balanced", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                    Text(text = "Lush", style = MaterialTheme.typography.labelSmall)
+                    Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_subtle), style = MaterialTheme.typography.labelSmall)
+                    Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_balanced), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_lush), style = MaterialTheme.typography.labelSmall)
                 }
             }
         }

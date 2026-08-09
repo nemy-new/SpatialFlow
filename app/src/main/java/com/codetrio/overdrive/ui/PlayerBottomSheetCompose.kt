@@ -705,7 +705,8 @@ fun Modifier.miniPlayerDismissHorizontalGesture(
 fun PlayerBottomSheetCompose(
     activity: MainActivity,
     viewModel: PlayerSharedViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isTablet: Boolean = false
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val context = LocalContext.current
@@ -833,9 +834,11 @@ fun PlayerBottomSheetCompose(
         
         // Zero-Recomposition logic: calculating layout targets inside derivedStateOf
         // This ensures the composable body doesn't re-run for every pixel of nav bar scroll
-        val sheetCollapsedTargetYState = remember(screenHeightPx, density) {
+        val sheetCollapsedTargetYState = remember(screenHeightPx, density, isTablet) {
             derivedStateOf {
-                val bottomNavHeightPx = if (dynamicBottomNavHeightState.value > 0f) {
+                val bottomNavHeightPx = if (isTablet) {
+                    0f
+                } else if (dynamicBottomNavHeightState.value > 0f) {
                     dynamicBottomNavHeightState.value
                 } else {
                     with(density) { 75.dp.toPx() }
@@ -843,13 +846,13 @@ fun PlayerBottomSheetCompose(
                 val miniPlayerHeightPx = with(density) { MiniPlayerHeight.toPx() }
                 
                 // Dynamically adjust gap: 12dp when BottomNav is visible, 8dp when hidden
-                val bottomNavVisibilityFraction = (bottomNavTranslationYState.value / (if (bottomNavHeightPx > 0) bottomNavHeightPx else 1f)).coerceIn(0f, 1f)
+                val bottomNavVisibilityFraction = if (isTablet) 0f else (bottomNavTranslationYState.value / (if (bottomNavHeightPx > 0) bottomNavHeightPx else 1f)).coerceIn(0f, 1f)
                 val currentBottomGapPx = with(density) { 
-                    lerp(12.dp, 8.dp, bottomNavVisibilityFraction).toPx() 
+                    if (isTablet) 8.dp.toPx() else lerp(12.dp, 8.dp, bottomNavVisibilityFraction).toPx() 
                 }
                 
                 // Ensure the mini player stops at the bottom margin and doesn't follow the nav bar into the abyss
-                val effectiveBottomNavHeight = (bottomNavHeightPx - bottomNavTranslationYState.value).coerceAtLeast(0f)
+                val effectiveBottomNavHeight = if (isTablet) 0f else (bottomNavHeightPx - bottomNavTranslationYState.value).coerceAtLeast(0f)
                 screenHeightPx - miniPlayerHeightPx - effectiveBottomNavHeight - currentBottomGapPx
             }
         }
@@ -1140,21 +1143,25 @@ fun PlayerBottomSheetCompose(
                     val xStartOffsetPx = with(density) { 16.dp.toPx() }
                     val yStartPx = with(density) { 16.dp.toPx() }
 
-                    val xEndPx = remember(isTablet, screenWidthPx, fullSizePx) {
+                    val dimens = com.codetrio.overdrive.ui.theme.LocalDimens.current
+                    val xEndPx = remember(isTablet, screenWidthPx, fullSizePx, density, dimens) {
                         if (isTablet) {
-                            (screenWidthPx / 4f) - (fullSizePx / 2f)
+                            val screenMarginPx = with(density) { dimens.screenMargin.toPx() }
+                            val availableWidthPx = screenWidthPx - (2 * screenMarginPx)
+                            val leftPaneWidthPx = availableWidthPx / 2f
+                            screenMarginPx + (leftPaneWidthPx - fullSizePx) / 2f
                         } else {
                             (screenWidthPx - fullSizePx) / 2f
                         }
                     }
 
-                    val yEndPx = remember(isTablet, statusBarTopPx, density, containerHeight, albumArtSizeDp, fullSizePx) {
+                    val yEndPx = remember(isTablet, statusBarTopPx, density, containerHeight, albumArtSizeDp, fullSizePx, screenHeight) {
                         if (isTablet) {
-                            val headerHeightPx = statusBarTopPx + with(density) { 68.dp.toPx() }
-                            val containerHeightPx = with(density) { containerHeight.toPx() }
-                            val availableHeightPx = containerHeightPx - headerHeightPx
-                            val centerY = headerHeightPx + (availableHeightPx / 2f)
-                            centerY - (fullSizePx / 2f)
+                            val controlsHeightDp = 300.dp
+                            val totalGroupHeightDp = albumArtSizeDp + controlsHeightDp
+                            val availableHeightDp = screenHeight.dp - with(density) { statusBarTopPx.toDp() }
+                            val tabletTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
+                            with(density) { tabletTopOffsetDp.toPx() }
                         } else {
                             val minTopOffsetDp = with(density) { statusBarTopPx.toDp() } + 68.dp
                             val topOffsetDp = ((containerHeight - albumArtSizeDp) / 2f - 220.dp).coerceAtLeast(minTopOffsetDp)

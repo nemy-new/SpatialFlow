@@ -397,7 +397,7 @@ private fun CoverArtCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Cover Art",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_cover_art),
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -428,7 +428,7 @@ private fun CoverArtCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Select a square image and fine-tune it so your cover art looks great across the app.",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_select_a_square_image_and_fine_tune_it_so_your_cover_art_looks_great_across_the_app),
                 color = Color.White.copy(alpha = 0.7f),
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
@@ -475,7 +475,7 @@ private fun ActionButtonsRow(
     ) {
         ExpressiveButton(
             onClick = onCancel,
-            text = "Cancel",
+            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_cancel),
             modifier = Modifier.weight(1f),
             containerColor = Color(0xFF2E313A),
             height = 64.dp,
@@ -575,7 +575,7 @@ private fun TagEditorScreen(
                         .verticalScroll(rememberScrollState())
                 ) {
                     Text(
-                        text = "Edit Details",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_edit_details),
                         style = MaterialTheme.typography.headlineSmall,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -616,7 +616,7 @@ private fun TagEditorScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Edit Song",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_edit_song),
                         style = MaterialTheme.typography.headlineMedium,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,

@@ -24,7 +24,7 @@ object BitmapResolver {
     ): Bitmap {
         val px = when {
             lowQuality   -> 4
-            kenBurnsMode -> 96
+            kenBurnsMode -> 256 // Increased from 96px for high-fidelity fluid blur
             else         -> 64
         }
 

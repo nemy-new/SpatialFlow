@@ -122,6 +122,8 @@ data class SongItem(
                         fileName = fileName.substring(0, fileName.length - 4)
                     } else if (fileName.lowercase().endsWith(".opus")) {
                         fileName = fileName.substring(0, fileName.length - 5)
+                    } else if (fileName.lowercase().endsWith(".webm")) {
+                        fileName = fileName.substring(0, fileName.length - 5)
                     }
                     if (fileName.contains(" - ")) {
                         val parts = fileName.split(" - ", limit = 2)
@@ -135,8 +137,9 @@ data class SongItem(
         }
 
         private fun cleanArtist(rawArtist: String?, path: String?): String {
-            var cleanArtist = rawArtist ?: "Unknown Artist"
-            if (cleanArtist.trim().isEmpty() || cleanArtist.equals("<unknown>", ignoreCase = true)) {
+            var cleanArtist = rawArtist?.trim() ?: "Unknown Artist"
+            val invalidArtists = setOf("曲", "楽曲", "動画", "ビデオ", "song", "video", "single", "album", "artist", "<unknown>", "unknown artist")
+            if (cleanArtist.isEmpty() || cleanArtist.lowercase() in invalidArtists) {
                 cleanArtist = "Unknown Artist"
             }
             if (path != null && cleanArtist == "Unknown Artist") {
@@ -147,6 +150,8 @@ data class SongItem(
                     } else if (fileName.lowercase().endsWith(".m4a")) {
                         fileName = fileName.substring(0, fileName.length - 4)
                     } else if (fileName.lowercase().endsWith(".opus")) {
+                        fileName = fileName.substring(0, fileName.length - 5)
+                    } else if (fileName.lowercase().endsWith(".webm")) {
                         fileName = fileName.substring(0, fileName.length - 5)
                     }
                     if (fileName.contains(" - ")) {
@@ -175,20 +180,24 @@ data class SongItem(
         fun enhanceThumbnailUrl(url: String): String {
             if (url.isEmpty()) return url
             
-            // Handle googleusercontent/ggpht dynamic image sizing parameters
+            // Handle googleusercontent/ggpht dynamic image sizing parameters (YouTube Music / Google Photos)
             if (url.contains("googleusercontent.com") || url.contains("ggpht.com")) {
+                // If it already has size parameters, replace them with high-res square ones
                 val regex = "(=[ws]\\d+.*)$".toRegex()
                 return if (regex.containsMatchIn(url)) {
-                    url.replace(regex, "=w1000-h1000-l90-rj")
+                    url.replace(regex, "=w1024-h1024-l90-rj")
                 } else {
-                    "$url=w1000-h1000-l90-rj"
+                    "$url=w1024-h1024-l90-rj"
                 }
             }
             
-            // Handle standard YouTube video thumbnails (fall back safely to hqdefault)
+            // Handle standard YouTube video thumbnails
             if (url.contains("ytimg.com") || url.contains("youtube.com/vi/")) {
-                if (url.contains("/default.jpg") || url.contains("/mqdefault.jpg") || url.contains("/hqdefault.jpg")) {
-                    return url.replace(Regex("/(default|mqdefault)\\.jpg$"), "/hqdefault.jpg")
+                // Try to get maxresdefault if possible, but hq720 or hqdefault are safer fallbacks
+                // Actually, maxresdefault is not always available. hqdefault is 480x360 (16:9).
+                // For a music player, we want the highest quality available.
+                if (url.contains("/default.jpg") || url.contains("/mqdefault.jpg") || url.contains("/hqdefault.jpg") || url.contains("/sddefault.jpg")) {
+                    return url.replace(Regex("/(default|mqdefault|hqdefault|sddefault)\\.jpg$"), "/maxresdefault.jpg")
                 }
             }
             

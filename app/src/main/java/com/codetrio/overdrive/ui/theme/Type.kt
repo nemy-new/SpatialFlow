@@ -38,6 +38,22 @@ val GoogleSansFlexNonRounded = FontFamily(
 )
 
 /**
+ * Google Sans Flex Font Family with weight 861, width 110, and ROND 0% (non-rounded)
+ * Used specifically for Immersion theme title and artist name.
+ */
+@OptIn(ExperimentalTextApi::class)
+val GoogleSansFlexImmersion = FontFamily(
+    Font(
+        resId = R.font.google_flex,
+        variationSettings = FontVariation.Settings(
+            FontVariation.Setting("wght", 861f),
+            FontVariation.Setting("wdth", 110f),
+            FontVariation.Setting("ROND", 0f)
+        )
+    )
+)
+
+/**
  * Global Typography with Google Sans Flex (Max Roundness)
  */
 val Typography = Typography(

@@ -191,7 +191,7 @@ object InnerTubeParser {
                 val pageType = browseEndpoint.path("browseEndpointContextSupportedConfigs.browseEndpointContextMusicConfig.pageType")?.asString ?: ""
 
                 when {
-                    pageType == "MUSIC_PAGE_TYPE_ARTIST" || browseId.startsWith("UC") || itemType.equals("Artist", ignoreCase = true) || subtitle.contains("Artist", ignoreCase = true) -> {
+                    pageType == "MUSIC_PAGE_TYPE_ARTIST" || browseId.startsWith("UC") || itemType.equals("Artist", ignoreCase = true) || subtitle.contains("subscriber", ignoreCase = true) -> {
                         onlineArtist = OnlineArtist(
                             browseId = browseId,
                             title = title,
@@ -315,7 +315,6 @@ object InnerTubeParser {
                         browseId.startsWith("UC") || 
                         browseId.startsWith("FEmusic_artist") ||
                         firstSubtitleRun?.equals("Artist", ignoreCase = true) == true ||
-                        subtitle.contains("Artist", ignoreCase = true) ||
                         subtitle.contains("subscriber", ignoreCase = true)
 
                 val isAlbum = pageType == "MUSIC_PAGE_TYPE_ALBUM" || 
@@ -909,8 +908,9 @@ object InnerTubeParser {
                 "contents.twoColumnBrowseResultsRenderer.secondaryContents.sectionListRenderer.contents.0.musicPlaylistShelfRenderer.contents"
             )?.asJsonArray
 
+            val primaryArtist = artists.firstOrNull()?.name
             val songs = songContents?.mapNotNull { item ->
-                parseAlbumSong(item.asJsonObject, thumbnail)
+                parseAlbumSong(item.asJsonObject, thumbnail, primaryArtist)
             } ?: emptyList()
 
             return AlbumPage(
@@ -930,7 +930,7 @@ object InnerTubeParser {
         }
     }
 
-    private fun parseAlbumSong(item: JsonObject, fallbackThumbnail: String?): OnlineSong? {
+    private fun parseAlbumSong(item: JsonObject, fallbackThumbnail: String?, fallbackArtist: String? = null): OnlineSong? {
         val renderer = item.getAsJsonObject("musicResponsiveListItemRenderer") ?: return null
         try {
             val flexColumns = renderer.getAsJsonArray("flexColumns")
@@ -944,7 +944,12 @@ object InnerTubeParser {
 
             val subtitleRuns = flexColumns.getOrNull(1)?.asJsonObject
                 ?.path("musicResponsiveListItemFlexColumnRenderer.text.runs")?.asJsonArray
-            val artist = subtitleRuns?.joinToString("") { it.asJsonObject.get("text")?.asString ?: "" } ?: ""
+            val artistStr = subtitleRuns?.joinToString("") { it.asJsonObject.get("text")?.asString ?: "" }?.trim() ?: ""
+            val artist = if (artistStr.isBlank() || artistStr.equals("Unknown Artist", ignoreCase = true)) {
+                fallbackArtist ?: "Unknown Artist"
+            } else {
+                artistStr
+            }
 
             val fixedColumns = renderer.getAsJsonArray("fixedColumns")
             val duration = fixedColumns?.getOrNull(0)?.asJsonObject
@@ -1369,10 +1374,20 @@ object InnerTubeParser {
         return null
     }
 
-    private fun getCleanArtist(subtitleText: String): String {
-        val ignoredTypes = setOf("song", "video", "single", "ep", "album", "artist", "playlist")
-        val parts = subtitleText.split(" • ", "   ").map { it.trim() }
-        val cleanParts = parts.filter { it.lowercase() !in ignoredTypes && it.isNotEmpty() && !it.matches(Regex("(\\d+:)?\\d+:\\d+")) }
+    fun getCleanArtist(subtitleText: String): String {
+        val ignoredTypes = setOf(
+            "song", "video", "single", "ep", "album", "artist", "playlist", "podcast", "episode",
+            "曲", "楽曲", "動画", "ビデオ", "シングル", "アルバム", "アーティスト", "プレイリスト", "ポッドキャスト", "エピソード",
+            "곡", "동영상", "싱글", "앨범", "아티스트", "재생목록",
+            "歌曲", "影片", "视频", "專輯", "专辑", "單曲", "单曲", "藝人", "艺人", "播放清單", "播放列表"
+        )
+        val parts = subtitleText.split(" • ", "   ", " / ", " | ").map { it.trim() }
+        val cleanParts = parts.filter { part ->
+            val lower = part.lowercase()
+            lower !in ignoredTypes &&
+            part.isNotEmpty() &&
+            !part.matches(Regex("(\\d+:)?\\d+:\\d+|\\d{4}|.*(subscriber|listener|登録者|リスナー|回視聴|views|フォロワー).*"))
+        }
         return cleanParts.firstOrNull() ?: "Unknown Artist"
     }
 

@@ -122,12 +122,12 @@ fun Modifier.animatedFluidBackground(
             val diagonal = kotlin.math.hypot(width, height)
 
             // Blob 1: Vibrant — primary punch
-            val blob1X = width * (0.30f + 0.22f * sin(timeSlow * 1.00f) + 0.06f * cos(timeFast * 0.73f))
-            val blob1Y = height * (0.25f + 0.15f * cos(timeSlow * 1.27f) + 0.05f * sin(timeFast * 0.91f))
-            val radius1 = diagonal * 0.65f // Increased radius for better blending
+            val blob1X = width * (0.35f + 0.25f * sin(timeSlow * 0.85f) + 0.10f * cos(timeFast * 0.65f))
+            val blob1Y = height * (0.30f + 0.20f * cos(timeSlow * 1.10f) + 0.08f * sin(timeFast * 0.80f))
+            val radius1 = diagonal * 0.85f // Very large for smooth blending
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(color1.copy(alpha = 0.45f), Color.Transparent),
+                    colors = listOf(color1.copy(alpha = 0.55f), Color.Transparent),
                     center = Offset(blob1X, blob1Y),
                     radius = radius1
                 ),
@@ -136,12 +136,12 @@ fun Modifier.animatedFluidBackground(
             )
 
             // Blob 2: Dark Vibrant — deep transition
-            val blob2X = width * (0.72f + 0.16f * cos(timeFast * 1.00f) + 0.07f * sin(timeSlow * 0.83f))
-            val blob2Y = height * (0.50f + 0.20f * sin(timeFast * 1.17f) + 0.04f * cos(timeSlow * 0.67f))
-            val radius2 = diagonal * 0.70f
+            val blob2X = width * (0.75f + 0.20f * cos(timeFast * 0.90f) + 0.12f * sin(timeSlow * 0.75f))
+            val blob2Y = height * (0.45f + 0.25f * sin(timeFast * 1.05f) + 0.09f * cos(timeSlow * 0.60f))
+            val radius2 = diagonal * 0.90f
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(color2.copy(alpha = 0.40f), Color.Transparent),
+                    colors = listOf(color2.copy(alpha = 0.50f), Color.Transparent),
                     center = Offset(blob2X, blob2Y),
                     radius = radius2
                 ),
@@ -150,12 +150,12 @@ fun Modifier.animatedFluidBackground(
             )
 
             // Blob 3: Dark Muted — shadow depth
-            val blob3X = width * (0.42f + 0.18f * sin(timeSlow * 0.71f) + 0.08f * cos(timeFast * 1.13f))
-            val blob3Y = height * (0.78f + 0.11f * cos(timeSlow * 1.43f) + 0.06f * sin(timeFast * 0.59f))
-            val radius3 = diagonal * 0.60f
+            val blob3X = width * (0.45f + 0.22f * sin(timeSlow * 0.65f) + 0.15f * cos(timeFast * 1.00f))
+            val blob3Y = height * (0.80f + 0.15f * cos(timeSlow * 1.30f) + 0.10f * sin(timeFast * 0.55f))
+            val radius3 = diagonal * 0.75f
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(color3.copy(alpha = 0.35f), Color.Transparent),
+                    colors = listOf(color3.copy(alpha = 0.45f), Color.Transparent),
                     center = Offset(blob3X, blob3Y),
                     radius = radius3
                 ),
@@ -163,19 +163,19 @@ fun Modifier.animatedFluidBackground(
                 radius = radius3
             )
 
-            // Subtle Vignette for deep moody corners
+            // Subtle Vignette for deep moody corners (Reduced for more vibrancy)
             drawRect(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f)),
+                    colors = listOf(Color.Transparent, PlayerPaletteState.darkMutedColor.value.copy(alpha = 0.35f)),
                     center = Offset(width / 2f, height / 2f),
-                    radius = diagonal * 0.85f
+                    radius = diagonal * 0.95f
                 ),
                 blendMode = androidx.compose.ui.graphics.BlendMode.Multiply
             )
 
-            // Efficient Grain/Noise overlay
+            // Efficient Grain/Noise overlay (Slightly increased for texture)
             drawRect(
-                color = Color.White.copy(alpha = 0.006f),
+                color = Color.White.copy(alpha = 0.008f),
                 blendMode = androidx.compose.ui.graphics.BlendMode.Overlay
             )
         }

@@ -526,6 +526,13 @@ class PlayerSharedViewModel @Inject constructor(
 
     private val _isPlayerExpanded = MutableStateFlow(false)
     val isPlayerExpanded: StateFlow<Boolean> = _isPlayerExpanded.asStateFlow()
+    
+    private val _currentLyricsOffsetMs = MutableStateFlow(0L)
+    val currentLyricsOffsetMs: StateFlow<Long> = _currentLyricsOffsetMs.asStateFlow()
+    
+    fun setLyricsOffset(offset: Long) {
+        _currentLyricsOffsetMs.value = offset
+    }
 
     fun setPlayerExpanded(expanded: Boolean) {
         _isPlayerExpanded.value = expanded
@@ -2162,6 +2169,27 @@ class PlayerSharedViewModel @Inject constructor(
         _currentSongIndex.value = findSongIndexById(_currentSong.value?.id ?: -1)
         audioService?.refreshNativeQueue()
     }
+
+    
+    // MV and Artwork states
+    private val _isMvFullscreen = MutableStateFlow(false)
+    val isMvFullscreen: StateFlow<Boolean> = _isMvFullscreen.asStateFlow()
+    fun setMvFullscreen(value: Boolean) { _isMvFullscreen.value = value }
+
+    private val _isInPipMode = MutableStateFlow(false)
+    val isInPipMode: StateFlow<Boolean> = _isInPipMode.asStateFlow()
+
+    private val _isMvMode = MutableStateFlow(false)
+    val isMvMode: StateFlow<Boolean> = _isMvMode.asStateFlow()
+
+    private val _musicVideoUrl = MutableStateFlow<String?>(null)
+    val musicVideoUrl: StateFlow<String?> = _musicVideoUrl.asStateFlow()
+
+    private val _mvSeekRequest = MutableStateFlow<Long?>(null)
+    val mvSeekRequest: StateFlow<Long?> = _mvSeekRequest.asStateFlow()
+    fun clearMvSeekRequest() { _mvSeekRequest.value = null }
+
+    val currentSongArtwork = MutableStateFlow<ByteArray?>(null)
 
     override fun onCleared() {
         super.onCleared()

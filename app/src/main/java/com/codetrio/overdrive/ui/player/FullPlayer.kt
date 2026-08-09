@@ -1,5 +1,10 @@
 package com.codetrio.overdrive.ui.player
 
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.QueueMusic
+
+
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -53,6 +58,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -446,6 +454,8 @@ fun FullPlayer(
 
         val dimens = com.codetrio.overdrive.ui.theme.LocalDimens.current
         val isTablet = configuration.screenWidthDp >= 600
+        var tabletRightPaneTab by remember { androidx.compose.runtime.mutableIntStateOf(1) } // 0: Queue, 1: Lyrics, 2: Related
+
 
         val rightPaneContent: @Composable () -> Unit = {
             // Metadata row: title/artist
@@ -808,54 +818,436 @@ fun FullPlayer(
                     .padding(horizontal = dimens.screenMargin, vertical = dimens.smallPadding),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header Row (Nav controls + collapse) - Symmetric centering
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onCollapse) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_keyboard_arrow_down),
-                            contentDescription = "Collapse Player",
-                            tint = contentColor.copy(alpha = 0.8f),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-
-                    if (!hasCanvas || isLyricsModeEnabled) {
-                        Text(
-                            text = "NOW PLAYING",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = contentSecondary
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.size(48.dp))
-                    }
-
-                    Spacer(modifier = Modifier.size(48.dp))
-                }
-
-                if (isTablet) {
+                if (!isTablet) {
+                    // Header Row (Nav controls + collapse) - Symmetric centering
                     Row(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                            contentAlignment = Alignment.Center
+                        IconButton(onClick = onCollapse) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_keyboard_arrow_down),
+                                contentDescription = "Collapse Player",
+                                tint = contentColor.copy(alpha = 0.8f),
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+    
+                        if (!hasCanvas || isLyricsModeEnabled) {
+                            Text(
+                                text = "NOW PLAYING",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = contentSecondary
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.size(48.dp))
+                        }
+    
+                        Spacer(modifier = Modifier.size(48.dp))
+                    }
+                }
+
+                val controlsHeightDp = 300.dp
+                val totalGroupHeightDp = albumArtSize + controlsHeightDp
+                val availableHeightDp = screenHeight - statusBarTopDp
+                val tabletTopOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
+                val rowTopAbsolute = statusBarTopDp + dimens.smallPadding
+                val topSpacerHeight = (tabletTopOffset - rowTopAbsolute).coerceAtLeast(0.dp)
+
+                if (isTablet) {
+                    Spacer(modifier = Modifier.height(topSpacerHeight))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimens.screenMargin),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        // Left pane: Artwork and Controls
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(totalGroupHeightDp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Box(modifier = Modifier.size(albumArtSize))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Left-aligned Metadata + Queue Button
+                            Row(
+                                modifier = Modifier.width(albumArtSize),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = uiState.currentSong?.title ?: "Unknown Title",
+                                        style = MaterialTheme.typography.headlineMediumEmphasized.copy(
+                                            fontFamily = if (playerTheme == "immersion") com.codetrio.overdrive.ui.theme.GoogleSansFlexImmersion else MaterialTheme.typography.headlineMediumEmphasized.fontFamily,
+                                            fontSize = 28.sp
+                                        ),
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        color = contentColor,
+                                        maxLines = 1,
+                                        modifier = Modifier.basicMarqueeWithFadedEdges()
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = uiState.currentSong?.artist ?: "Unknown Artist",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontFamily = if (playerTheme == "immersion") com.codetrio.overdrive.ui.theme.GoogleSansFlexImmersion else MaterialTheme.typography.bodyMedium.fontFamily,
+                                            fontSize = 18.sp,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                        ),
+                                        color = contentColor.copy(alpha = 0.75f),
+                                        maxLines = 1,
+                                        modifier = Modifier
+                                            .basicMarqueeWithFadedEdges()
+                                            .clickable {
+                                                val song = uiState.currentSong
+                                                if (song != null) {
+                                                    onArtistClick(song.artistId, song.artist)
+                                                }
+                                            }
+                                    )
+                                }
+                                
+                                androidx.compose.material3.IconButton(
+                                    onClick = { viewModel.setQueueExpanded(true) },
+                                    modifier = Modifier.padding(start = 16.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = androidx.compose.material.icons.Icons.Rounded.QueueMusic,
+                                        contentDescription = "Queue",
+                                        tint = contentColor.copy(alpha = 0.75f),
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Chips Row
+                            Box(modifier = Modifier.width(albumArtSize)) {
+                                Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .layout { measurable, constraints ->
+                        val pad = 20.dp.roundToPx()
+                        val placeable = measurable.measure(
+                            constraints.copy(
+                                maxWidth = constraints.maxWidth + 2 * pad
+                            )
+                        )
+                        layout(placeable.width - 2 * pad, placeable.height) {
+                            placeable.place(-pad, 0)
                         }
+                    }
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(12.dp))
+
+                SplitLikeDislikeChip(
+                    isLiked = uiState.isCurrentSongFavorite,
+                    isDisliked = uiState.isCurrentSongDisliked,
+                    likesCount = uiState.likesCount,
+                    onLikeClick = onFavoriteClick,
+                    onDislikeClick = onDislikeClick,
+                    contentColor = contentColor,
+                    accentColor = dynamicAccentColor,
+                    isDark = isDark
+                )
+
+                // Interactive Music Haptics Chip inside the same row
+                PillChip(
+                    icon = painterResource(id = R.drawable.ic_haptic),
+                    label = "Music Haptics",
+                    isSelected = uiState.isHapticsEnabled,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onHapticChipClick()
+                    },
+                    contentColor = contentColor,
+                    accentColor = dynamicAccentColor,
+                    isDark = isDark
+                )
+
+                // Interactive Lyrics Chip inside the same row
+                PillChip(
+                    icon = painterResource(id = R.drawable.ic_lyrics),
+                    label = "Lyrics",
+                    isSelected = isLyricsModeEnabled,
+                    onClick = {
+                        onLyricsModeChanged(true)
+                        if (currentSongId != null && !hasLyrics && !isLyricsLoading) {
+                            onFetchLyrics()
+                        }
+                    },
+                    contentColor = contentColor,
+                    accentColor = dynamicAccentColor,
+                    isDark = isDark
+                )
+
+
+                PillChip(
+                    icon = Icons.Rounded.PlaylistAdd,
+                    label = "Save",
+                    onClick = onSaveClick,
+                    contentColor = contentColor,
+                    accentColor = dynamicAccentColor,
+                    isDark = isDark
+                )
+
+                PillChip(
+                    icon = painterResource(id = R.drawable.ic_share),
+                    label = "Share",
+                    onClick = {
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, "Listening on OverDrive Check out : https://music.youtube.com/watch?v=${uiState.currentSong?.videoId}")
+                            type = "text/plain"
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share Track"))
+                    },
+                    contentColor = contentColor,
+                    accentColor = dynamicAccentColor,
+                    isDark = isDark
+                )
+
+                val realDownloaded = uiState.isCurrentSongDownloaded
+                val realDownloadProgress = uiState.currentSongDownloadProgress
+                val isDownloading = realDownloadProgress != null
+
+                val downloadLabel = when {
+                    realDownloaded -> "Downloaded"
+                    isDownloading -> "Downloading ${realDownloadProgress}%"
+                    else -> "Download"
+                }
+                val downloadIcon: Any = when {
+                    realDownloaded -> painterResource(id = R.drawable.ic_downloaded)
+                    else -> painterResource(id = R.drawable.ic_download)
+                }
+                PillChip(
+                    icon = downloadIcon,
+                    label = downloadLabel,
+                    isSelected = realDownloaded || isDownloading,
+                    progress = if (isDownloading) realDownloadProgress / 100f else null,
+                    onClick = {
+                        val currentSong = uiState.currentSong
+                        if (currentSong != null && !realDownloaded && !isDownloading) {
+                            com.codetrio.overdrive.util.SongDownloader.downloadSong(context, currentSong)
+                        }
+                    },
+                    contentColor = contentColor,
+                    accentColor = dynamicAccentColor,
+                    isDark = isDark
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Wavy Slider
+                            Box(modifier = Modifier.width(albumArtSize)) {
+                                WavySliderWithLabels(
+                currentPositionProvider = currentPositionProvider,
+                duration = uiState.duration,
+                isPlaying = uiState.isPlaying,
+                onSeekTo = onSeekTo,
+                dynamicAccentColor = dynamicAccentColor,
+                contentColor = contentColor,
+                contentSecondary = contentSecondary,
+                isDark = isDark,
+                playbackFormat = uiState.playbackFormat
+            )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            androidx.compose.material3.ButtonGroup(
+                                            modifier = Modifier
+                                                .width(albumArtSize)
+                                                .padding(horizontal = 16.dp),
+                                            expandedRatio = 0.3f,
+                                            overflowIndicator = {}
+                                        ) {
+                                            val scope = this
+                                            customItem(
+                                                buttonGroupContent = {
+                                                    val interactionSource = remember { MutableInteractionSource() }
+                                                    val isPressed by interactionSource.collectIsPressedAsState()
+                                                    val cornerRadius by animateDpAsState(
+                                                        targetValue = if (isPressed) 12.dp else 28.dp,
+                                                        animationSpec = spring(
+                                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                            stiffness = Spring.StiffnessMedium
+                                                        ),
+                                                        label = "PrevCorner"
+                                                    )
+                                                    androidx.compose.material3.Button(
+                                                        onClick = onPreviousClick,
+                                                        modifier = with(scope) {
+                                                            Modifier
+                                                                .animateWidth(interactionSource)
+                                                                .weight(1f)
+                                                                .height(76.dp)
+                                                        },
+                                                        interactionSource = interactionSource,
+                                                        shape = RoundedCornerShape(cornerRadius),
+                                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                            containerColor = contentColor.copy(alpha = if (isDark) 0.08f else 0.06f),
+                                                            contentColor = contentColor
+                                                        ),
+                                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier.fillMaxSize(),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(id = R.drawable.ic_skip_previous),
+                                                                contentDescription = "Previous Song",
+                                                                modifier = Modifier.size(36.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                menuContent = {}
+                                            )
+                                            customItem(
+                                                buttonGroupContent = {
+                                                    val interactionSource = remember { MutableInteractionSource() }
+                                                    val isPressed by interactionSource.collectIsPressedAsState()
+                                                    val cornerRadius by animateDpAsState(
+                                                        targetValue = if (isPressed) 12.dp else 28.dp,
+                                                        animationSpec = spring(
+                                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                            stiffness = Spring.StiffnessMedium
+                                                        ),
+                                                        label = "PlayCorner"
+                                                    )
+                                                    androidx.compose.material3.Button(
+                                                        onClick = onPlayPauseClick,
+                                                        modifier = with(scope) {
+                                                            Modifier
+                                                                .animateWidth(interactionSource)
+                                                                .weight(1.2f)
+                                                                .height(76.dp)
+                                                        },
+                                                        interactionSource = interactionSource,
+                                                        shape = RoundedCornerShape(cornerRadius),
+                                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                            containerColor = dynamicAccentColor,
+                                                            contentColor = if (isDark) Color(0xFF1C1B1F) else Color.White
+                                                        ),
+                                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier.fillMaxSize(),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(id = if (uiState.isPlaying) R.drawable.ic_pause else R.drawable.ic_play),
+                                                                contentDescription = if (uiState.isPlaying) "Pause" else "Play",
+                                                                modifier = Modifier.size(42.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                menuContent = {}
+                                            )
+                                            customItem(
+                                                buttonGroupContent = {
+                                                    val interactionSource = remember { MutableInteractionSource() }
+                                                    val isPressed by interactionSource.collectIsPressedAsState()
+                                                    val cornerRadius by animateDpAsState(
+                                                        targetValue = if (isPressed) 12.dp else 28.dp,
+                                                        animationSpec = spring(
+                                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                            stiffness = Spring.StiffnessMedium
+                                                        ),
+                                                        label = "NextCorner"
+                                                    )
+                                                    androidx.compose.material3.Button(
+                                                        onClick = onNextClick,
+                                                        modifier = with(scope) {
+                                                            Modifier
+                                                                .animateWidth(interactionSource)
+                                                                .weight(1f)
+                                                                .height(76.dp)
+                                                        },
+                                                        interactionSource = interactionSource,
+                                                        shape = RoundedCornerShape(cornerRadius),
+                                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                            containerColor = contentColor.copy(alpha = if (isDark) 0.08f else 0.06f),
+                                                            contentColor = contentColor
+                                                        ),
+                                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier.fillMaxSize(),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(id = R.drawable.ic_skip_next),
+                                                                contentDescription = "Next Song",
+                                                                modifier = Modifier.size(36.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                menuContent = {}
+                                            )
+                                        }
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+
+                        // Right pane: Dedicated to Lyrics
                         Column(
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(end = dimens.screenMargin)
+                                .clip(RoundedCornerShape(32.dp))
+                                .background(Color.Transparent)
                         ) {
-                            rightPaneContent()
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                val syncOffsetMs by viewModel.currentLyricsOffsetMs.collectAsStateWithLifecycle()
+                                FullScreenLyricsOverlay(
+                                    currentSong = uiState.currentSong,
+                                    syncedLyrics = syncedLyrics,
+                                    plainLyrics = plainLyrics,
+                                    isLoading = isLyricsLoading,
+                                    lyricsError = lyricsError,
+                                    currentPositionProvider = currentPositionProvider,
+                                    contentReady = true,
+                                    playerBackgroundColor = Color.Transparent, // Transparent so the rounded box shows
+                                    canvasArtwork = canvasArtwork,
+                                    contentColor = Color.White,
+                                    contentSecondary = Color.White.copy(alpha = 0.6f),
+                                    dynamicAccentColor = dynamicAccentColor,
+                                    onRetryLyrics = onRetryLyrics,
+                                    onFetchLyrics = onFetchLyrics,
+                                    onSeekTo = onSeekTo,
+                                    providerResults = providerResults,
+                                    selectedProvider = selectedProvider,
+                                    onProviderSelected = onProviderSelected,
+                                    syncOffsetMs = syncOffsetMs,
+                                    onSyncOffsetChange = { viewModel.setLyricsOffset(it) },
+                                    isPlaying = uiState.isPlaying,
+                                    onPlayPauseClick = onPlayPauseClick,
+                                    duration = uiState.duration.toLong(),
+                                    isEmbedded = true,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         }
                     }
                 } else {
@@ -873,7 +1265,8 @@ fun FullPlayer(
             }
         }
 
-        LyricsBottomSheet(
+        if (!isTablet) {
+            LyricsBottomSheet(
             visible = isLyricsModeEnabled,
             currentSong = uiState.currentSong,
             syncedLyrics = syncedLyrics,
@@ -897,11 +1290,15 @@ fun FullPlayer(
             onPlayPauseClick = onPlayPauseClick,
             duration = uiState.duration.toLong(),
             onCollapse = { viewModel.setLyricsModeEnabled(false) },
+            syncOffsetMs = 0L,
+            onSyncOffsetChange = {},
             modifier = Modifier.fillMaxSize()
         )
+        }
 
         // --- CUSTOM EMBEDDED SLIDING PLAY QUEUE ---
-        SlidingQueueDrawer(
+        if (true) {
+            SlidingQueueDrawer(
             isQueueExpanded = isQueueExpanded,
             onQueueExpandedChange = { viewModel.setQueueExpanded(it) },
             songList = songList,
@@ -921,6 +1318,8 @@ fun FullPlayer(
             isAutoplayEnabled = isAutoplayEnabled,
             onAutoplayToggle = onAutoplayToggle
         )
+
+                }
 
         // --- Standalone Sleep Timer Bottom Sheet ---
         if (showSleepTimerDialog) {

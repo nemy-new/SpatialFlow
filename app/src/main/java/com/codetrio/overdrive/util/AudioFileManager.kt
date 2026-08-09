@@ -61,7 +61,8 @@ object AudioFileManager {
         var finalFileName = fileName
         if (!finalFileName.endsWith(".m4a", ignoreCase = true) &&
             !finalFileName.endsWith(".mp3", ignoreCase = true) &&
-            !finalFileName.endsWith(".opus", ignoreCase = true)
+            !finalFileName.endsWith(".opus", ignoreCase = true) &&
+            !finalFileName.endsWith(".webm", ignoreCase = true)
         ) {
             finalFileName += ".m4a"
         }
@@ -125,6 +126,8 @@ object AudioFileManager {
             nameWithoutExtension = nameWithoutExtension.substring(0, nameWithoutExtension.length - 4)
         } else if (nameWithoutExtension.endsWith(".opus", ignoreCase = true)) {
             nameWithoutExtension = nameWithoutExtension.substring(0, nameWithoutExtension.length - 5)
+        } else if (nameWithoutExtension.endsWith(".webm", ignoreCase = true)) {
+            nameWithoutExtension = nameWithoutExtension.substring(0, nameWithoutExtension.length - 5)
         }
 
         // Split by " - " to get Title and Artist
@@ -144,6 +147,7 @@ object AudioFileManager {
             val mimeType = when {
                 sourceFile.name.endsWith(".mp3", ignoreCase = true) -> "audio/mpeg"
                 sourceFile.name.endsWith(".opus", ignoreCase = true) -> "audio/opus"
+                sourceFile.name.endsWith(".webm", ignoreCase = true) -> "audio/webm"
                 else -> "audio/mp4"
             }
             put(MediaStore.Audio.Media.MIME_TYPE, mimeType)

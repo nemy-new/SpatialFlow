@@ -104,7 +104,7 @@ fun TelegramJoinDialog(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "COMMUNITY",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_community),
                         color = Color(0xFF50B5FF),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -124,7 +124,7 @@ fun TelegramJoinDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "Join our Telegram Group",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_join_our_telegram_group),
                             fontWeight = FontWeight.ExtraBold,
                             style = MaterialTheme.typography.titleLarge,
                             color = Color.White,
@@ -134,7 +134,7 @@ fun TelegramJoinDialog(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Get the latest updates, request features, report bugs, and chat with our active developer community!",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_get_the_latest_updates_request_features_report_bugs_and_chat_with_our_active_developer_community),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFFBBE1FA), // Soft blue-grey text color for better contrast
                             lineHeight = 20.sp
@@ -199,7 +199,7 @@ fun TelegramJoinDialog(
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
                         Text(
-                            text = "Later",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_later),
                             color = Color.White.copy(alpha = 0.6f),
                             fontWeight = FontWeight.SemiBold
                         )
@@ -227,7 +227,7 @@ fun TelegramJoinDialog(
                             .padding(horizontal = 20.dp)
                     ) {
                         Text(
-                            text = "Join Group",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_join_group),
                             fontWeight = FontWeight.Bold
                         )
                     }

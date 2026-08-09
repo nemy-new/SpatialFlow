@@ -169,35 +169,7 @@ fun Modifier.sharedElementIfAvailable(key: String): Modifier {
     } else this
 }
 
-// ===== Explore Root (MVI Stateful Entry Point) =====
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class,
-    ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun ExploreRoot(
-    viewModel: ExploreViewModel,
-    playerSharedViewModel: PlayerSharedViewModel,
-    onNavigateToLibrary: () -> Unit = {}
-) {
-    val context = LocalContext.current
-
-    com.codetrio.overdrive.ui.ObserveAsEvents(viewModel.events) { event ->
-        when (event) {
-            is com.codetrio.overdrive.viewmodel.ExploreEvent.ShowSnackbar -> {
-                com.codetrio.overdrive.ui.SnackbarController.showMessage(event.message.asString(context))
-            }
-            is com.codetrio.overdrive.viewmodel.ExploreEvent.TriggerInstantPlayback -> {
-                // Instant playback signal handling
-            }
-        }
-    }
-
-    ExploreScreen(
-        viewModel = viewModel,
-        playerSharedViewModel = playerSharedViewModel,
-        onNavigateToLibrary = onNavigateToLibrary
-    )
-}
 
 // ===== Explore Screen =====
 
@@ -214,6 +186,50 @@ fun ExploreScreen(
     val context = LocalContext.current
     val mainActivity = context as? MainActivity
     val scope = rememberCoroutineScope()
+
+    com.codetrio.overdrive.ui.ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is com.codetrio.overdrive.viewmodel.ExploreEvent.ShowSnackbar -> {
+                com.codetrio.overdrive.ui.SnackbarController.showMessage(event.message.asString(context))
+            }
+            is com.codetrio.overdrive.viewmodel.ExploreEvent.TriggerInstantPlayback -> {
+                val prefs = context.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
+                val debugToastsEnabled = prefs.getBoolean("debug_toasts_enabled", false)
+
+                if (debugToastsEnabled) {
+                    android.widget.Toast.makeText(context, "TriggerInstantPlayback Received", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                val queue = viewModel.uiState.value.onlineQueue
+                val index = viewModel.uiState.value.currentOnlineIndex
+                if (debugToastsEnabled) {
+                    android.widget.Toast.makeText(context, "Queue size: ${queue.size}, index: $index", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                if (queue.isNotEmpty() && index in queue.indices) {
+                    val songItems = queue.map { s ->
+                        com.codetrio.overdrive.model.SongItem.createOnlineSong(
+                            videoId = s.videoId,
+                            title = s.title,
+                            artist = s.artist,
+                            streamUrl = "",
+                            durationMs = s.durationMs,
+                            thumbnailUrl = s.thumbnailUrl,
+                            artistId = s.artistId,
+                            animatedThumbnailUrl = s.animatedThumbnailUrl
+                        )
+                    }
+                    playerSharedViewModel.setSongList(songItems)
+                    playerSharedViewModel.playSongAtIndex(index)
+                    if (debugToastsEnabled) {
+                        android.widget.Toast.makeText(context, "Sent to PlayerSharedViewModel", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    if (debugToastsEnabled) {
+                        android.widget.Toast.makeText(context, "Queue empty or index invalid!", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
 
     val accountVM: AccountViewModel = viewModel()
     val userProfile by accountVM.userProfile.collectAsStateWithLifecycle()
@@ -262,48 +278,6 @@ fun ExploreScreen(
         emptyList()
     )
 
-    LaunchedEffect(Unit) {
-        viewModel.playbackTriggerEvent.collect {
-            val song = viewModel.currentOnlineSong.value
-            if (song != null) {
-                val videoId = song.videoId
-                val durationMs = song.durationMs
-                val onlineQueue = viewModel.onlineQueue.value
-                if (onlineQueue.isNotEmpty()) {
-                    val songItems = onlineQueue.map { os ->
-                        SongItem.createOnlineSong(
-                            os.videoId,
-                            os.title,
-                            os.artist,
-                            "",
-                            os.durationMs,
-                            os.thumbnailUrl,
-                            os.artistId
-                        )
-                    }
-                    val currentIdx = viewModel.currentOnlineIndex.value
-                    val queue = com.codetrio.overdrive.player.queue.StaticQueue(
-                        initialItems = songItems,
-                        preloadItem = songItems.getOrNull(currentIdx)
-                    )
-                    playerSharedViewModel.setQueue(queue, currentIdx)
-                } else {
-                    val songItem = SongItem.createOnlineSong(
-                        videoId,
-                        song.title,
-                        song.artist,
-                        "",
-                        durationMs,
-                        song.thumbnailUrl,
-                        song.artistId
-                    )
-                    // Seamlessly start an endless radio queue from this single song
-                    val queue = com.codetrio.overdrive.player.queue.YouTubeQueue.radio(songItem)
-                    playerSharedViewModel.setQueue(queue)
-                }
-            }
-        }
-    }
 
     LaunchedEffect(Unit) {
         playerSharedViewModel.currentSongIndex.collect { idx ->
@@ -509,8 +483,7 @@ fun ExploreScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (isLandscape) Modifier.padding(start = 88.dp) else Modifier)
-        ) {
+            ) {
             // ===== Main Content (Now encapsulates scrolling headers) =====
             Box(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
                 SharedTransitionLayout {
@@ -972,94 +945,6 @@ fun ExploreScreen(
                                                                     )
                                                                 ) {
 
-                                                                    item {
-                                                                        Box(
-                                                                            modifier = Modifier.fillMaxWidth(),
-                                                                            contentAlignment = Alignment.Center
-                                                                        ) {
-                                                                            Box(
-                                                                                modifier = if (isLandscape) Modifier.widthIn(
-                                                                                    max = 600.dp
-                                                                                ) else Modifier.fillMaxWidth()
-                                                                            ) {
-                                                                                WelcomeGreetingBanner(
-                                                                                    userName = userProfile?.name
-                                                                                )
-                                                                            }
-                                                                        }
-                                                                    }
- 
-                                                                    item {
-                                                                        Column(
-                                                                            modifier = Modifier
-                                                                                .fillMaxWidth()
-                                                                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                                                                        ) {
-                                                                            Text(
-                                                                                text = "Browse Categories",
-                                                                                style = MaterialTheme.typography.titleMedium,
-                                                                                fontWeight = FontWeight.Bold,
-                                                                                color = MaterialTheme.colorScheme.onSurface,
-                                                                                modifier = Modifier.padding(bottom = 12.dp)
-                                                                            )
- 
-                                                                            Row(
-                                                                                modifier = Modifier.fillMaxWidth(),
-                                                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                                                            ) {
-                                                                                CategoryCard(
-                                                                                    title = "New Releases",
-                                                                                    icon = Icons.Default.MusicNote,
-                                                                                    gradientColors = listOf(Color(0xFF2E1A47), Color(0xFF160B24)),
-                                                                                    onClick = {
-                                                                                        viewModel.loadMood("New Releases", "FEmusic_new_releases", null)
-                                                                                        
-                                                                                        
-                                                                                    },
-                                                                                    modifier = Modifier.weight(1f)
-                                                                                )
-                                                                                CategoryCard(
-                                                                                    title = "Charts",
-                                                                                    icon = Icons.Default.TrendingUp,
-                                                                                    gradientColors = listOf(Color(0xFF4C1D1D), Color(0xFF240E0E)),
-                                                                                    onClick = {
-                                                                                        viewModel.loadMood("Charts", "FEmusic_charts", null)
-                                                                                        
-                                                                                        
-                                                                                    },
-                                                                                    modifier = Modifier.weight(1f)
-                                                                                )
-                                                                            }
- 
-                                                                            Spacer(modifier = Modifier.height(12.dp))
- 
-                                                                            Row(
-                                                                                modifier = Modifier.fillMaxWidth(),
-                                                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                                                            ) {
-                                                                                CategoryCard(
-                                                                                    title = "Moods & Genres",
-                                                                                    icon = Icons.Default.Favorite,
-                                                                                    gradientColors = listOf(Color(0xFF0F3040), Color(0xFF081820)),
-                                                                                    onClick = {
-                                                                                        viewModel.loadGenres()
-                                                                                    },
-                                                                                    modifier = Modifier.weight(1f)
-                                                                                )
-                                                                                CategoryCard(
-                                                                                    title = "Podcasts",
-                                                                                    icon = Icons.Default.Mic,
-                                                                                    gradientColors = listOf(Color(0xFF4A1E30), Color(0xFF240F18)),
-                                                                                    onClick = {
-                                                                                        viewModel.loadMood("Podcasts", "FEmusic_podcasts", null)
-                                                                                        
-                                                                                        
-                                                                                    },
-                                                                                    modifier = Modifier.weight(1f)
-                                                                                )
-                                                                            }
-                                                                        }
-                                                                    }
                                                                     items(
                                                                         items = homeSections,
                                                                         key = { section -> "section-${section.title}" }
@@ -1180,8 +1065,7 @@ fun ExploreScreen(
                                                                                 16.dp
                                                                             )
                                                                         )
-                                                                        Text(
-                                                                            "Search for music",
+                                                                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_search_for_music),
                                                                             style = MaterialTheme.typography.titleMedium,
                                                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                                                         )
@@ -1191,7 +1075,7 @@ fun ExploreScreen(
                                                                             )
                                                                         )
                                                                         OutlinedButton(onClick = { viewModel.refreshHomeFeed() }) {
-                                                                            Text("Load Home Feed")
+                                                                            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_load_home_feed))
                                                                         }
                                                                     }
                                                                 }
@@ -1213,7 +1097,7 @@ fun ExploreScreen(
         error?.let { errorMsg ->
             Snackbar(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-                action = { TextButton(onClick = { viewModel.clearError() }) { Text("OK") } }
+                action = { TextButton(onClick = { viewModel.clearError() }) { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_ok)) } }
             ) { Text(errorMsg) }
         }
     }
@@ -1538,7 +1422,8 @@ fun SearchHeader(
         currentFilter: SearchFilter?,
         onFilterClick: (SearchFilter?) -> Unit,
         isLandscape: Boolean,
-        onClearSearch: () -> Unit
+        onClearSearch: () -> Unit,
+        headerTitle: String = "OverDrive"
     ) {
         // Use WindowInsets instead of hardcoded statusBarsPadding so it adapts to any device
         val voiceLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -1556,11 +1441,18 @@ fun SearchHeader(
         }
         val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
         val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+        val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
         // Auto request focus when search becomes active to open keyboard
         LaunchedEffect(isSearchActive) {
             if (isSearchActive) {
-                focusRequester.requestFocus()
+                kotlinx.coroutines.delay(100)
+                try {
+                    focusRequester.requestFocus()
+                    keyboardController?.show()
+                } catch (e: Exception) {
+                    // Ignore if not attached
+                }
             }
         }
 
@@ -1587,231 +1479,327 @@ fun SearchHeader(
                 top = if (isSearchActive) 0.dp else statusBarPadding.calculateTopPadding()
             )
         ) {
-            // Single SearchBar that handles both states
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = horizontalPad.coerceAtLeast(0.dp),
-                        vertical = verticalPad.coerceAtLeast(0.dp)
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SearchBar(
-                    inputField = {
-                        SearchBarDefaults.InputField(
-                            query = searchQuery,
-                            onQueryChange = onQueryChange,
-                            onSearch = onSearch,
-                            expanded = isSearchActive,
-                            onExpandedChange = onSearchActiveChange,
-                            modifier = Modifier.focusRequester(focusRequester),
-                            placeholder = {
-                                Text(
-                                    "Search Music",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyLarge
+            if (!isSearchActive) {
+                if (headerTitle.equals("Search", ignoreCase = true)) {
+                    Surface(
+                        onClick = { onSearchActiveChange(true) },
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                            .height(48.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = if (searchQuery.isNotBlank()) searchQuery else "曲、アーティスト、アルバムを検索...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (searchQuery.isNotBlank()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (searchQuery.isNotBlank()) {
+                                IconButton(
+                                    onClick = { onClearSearch() },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            val avatarSize = 28.dp
+                            IconButton(
+                                onClick = { onAccountVisibleChange(true) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                if (userProfile?.avatarUrl != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(userProfile.avatarUrl?.resize(80))
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Account",
+                                        modifier = Modifier.size(avatarSize).clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle,
+                                        contentDescription = "Account",
+                                        modifier = Modifier.size(avatarSize),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (searchQuery.isNotBlank()) searchQuery else headerTitle,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (searchQuery.isNotBlank()) {
+                                IconButton(onClick = { onClearSearch() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear Search",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { onSearchActiveChange(true) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(26.dp)
                                 )
-                            },
-                            leadingIcon = {
-                                when {
-                                    isSearchActive -> IconButton(onClick = {
+                            }
+                            val avatarSize = 32.dp
+                            IconButton(onClick = { onAccountVisibleChange(true) }) {
+                                if (userProfile?.avatarUrl != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(userProfile.avatarUrl?.resize(80))
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Account",
+                                        modifier = Modifier.size(avatarSize).clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle,
+                                        contentDescription = "Account",
+                                        modifier = Modifier.size(avatarSize),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = horizontalPad.coerceAtLeast(0.dp),
+                            vertical = verticalPad.coerceAtLeast(0.dp)
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SearchBar(
+                        inputField = {
+                            SearchBarDefaults.InputField(
+                                query = searchQuery,
+                                onQueryChange = onQueryChange,
+                                onSearch = onSearch,
+                                expanded = isSearchActive,
+                                onExpandedChange = onSearchActiveChange,
+                                modifier = Modifier.focusRequester(focusRequester),
+                                placeholder = {
+                                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_search_music),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                },
+                                leadingIcon = {
+                                    IconButton(onClick = {
                                         onSearchActiveChange(false); onClearSearch()
                                     }) {
                                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    searchQuery.isNotBlank() -> IconButton(onClick = { onClearSearch() }) {
-                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    else -> Icon(Icons.Default.Search, "Search",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            },
-                            trailingIcon = {
-                                when {
-                                    searchQuery.isNotBlank() -> IconButton(onClick = { onQueryChange("") }) {
-                                        Icon(Icons.Default.Close, "Clear",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    !isSearchActive -> {
-                                        // Avatar size uses a semantic token, not a hardcoded dp
-                                        val avatarSize = 32.dp
-                                        IconButton(onClick = { onAccountVisibleChange(true) }) {
-                                            if (userProfile?.avatarUrl != null) {
-                                                AsyncImage(
-                                                    model = ImageRequest.Builder(LocalContext.current)
-                                                        .data(userProfile.avatarUrl?.resize(80))
-                                                        .crossfade(true)
-                                                        .build(),
-                                                    contentDescription = "Account",
-                                                    modifier = Modifier.size(avatarSize).clip(CircleShape),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = Icons.Default.AccountCircle,
-                                                    contentDescription = "Account",
-                                                    modifier = Modifier.size(avatarSize),
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
+                                },
+                                trailingIcon = {
+                                    when {
+                                        searchQuery.isNotBlank() -> IconButton(onClick = { onQueryChange("") }) {
+                                            Icon(Icons.Default.Close, "Clear",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
-                                    }
-                                    isSearchActive -> {
-                                        IconButton(
-                                            onClick = {
-                                                val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                                    putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                                    putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak to search...")
-                                                }
-                                                try {
-                                                    voiceLauncher.launch(intent)
-                                                } catch (e: Exception) {
-                                                    com.codetrio.overdrive.ui.SnackbarController.showMessage("Voice search is not supported on this device")
-                                                }
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Mic,
-                                                contentDescription = "Voice Search",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                            colors = TextFieldDefaults.colors(
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                disabledIndicatorColor = Color.Transparent,
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent
-                            )
-                        )
-                    },
-                    expanded = isSearchActive,
-                    onExpandedChange = onSearchActiveChange,
-                    modifier = if (isSearchActive) {
-                        if (isLandscape) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth()
-                    } else {
-                        if (isLandscape) Modifier.widthIn(max = 500.dp).height(56.dp) 
-                        else Modifier.weight(1f).height(56.dp)
-                    },
-                    windowInsets = if (isSearchActive) SearchBarDefaults.windowInsets else WindowInsets(0, 0, 0, 0),
-                    colors = SearchBarDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        dividerColor = Color.Transparent
-                    )
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(bottom = 24.dp)
-                    ) {
-                        if (searchQuery.isBlank()) {
-                            if (searchHistory.isNotEmpty()) {
-                                item(key = "recent_header") {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "Recent Searches",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        TextButton(onClick = onClearSearchHistory) { Text("Clear all") }
-                                    }
-                                }
-                                items(searchHistory, key = { "hist_$it" }) { historyItem ->
-                                    ListItem(
-                                        headlineContent = { Text(historyItem) },
-                                        leadingContent = { Icon(Icons.Default.History, null) },
-                                        trailingContent = {
-                                            IconButton(onClick = { onRemoveFromSearchHistory(historyItem) }) {
-                                                Icon(Icons.Default.Close, "Remove",
-                                                    modifier = Modifier.size(18.dp))
-                                            }
-                                        },
-                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                        modifier = Modifier.clickable { onHistoryItemClick(historyItem) }
-                                    )
-                                }
-                            }
-
-                            if (userProfile != null && accountHistory.isNotEmpty()) {
-                                item(key = "yt_history_header") {
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = "Recently Played (YouTube Music)",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                    )
-                                }
-                                itemsIndexed(
-                                    items = accountHistory,
-                                    key = { _, song -> "yt_${song.videoId}" }
-                                ) { idx, song ->
-                                    ListItem(
-                                        headlineContent = {
-                                            Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        },
-                                        supportingContent = {
-                                            Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        },
-                                        leadingContent = {
-                                            AsyncImage(
-                                                model = ImageRequest.Builder(LocalContext.current)
-                                                    .data(song.thumbnailUrl?.resize(120))
-                                                    .crossfade(true)
-                                                    .build(),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(6.dp)),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        },
-                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                        modifier = Modifier.clickable {
-                                            onSearchActiveChange(false)
-                                            onAccountHistorySongClick(song, accountHistory, idx)
-                                        }
-                                    )
-                                }
-                            }
-                        } else {
-                            item(key = "suggestions_animated_content") {
-                                AnimatedContent(
-                                    targetState = Pair(isLoadingSuggestions, suggestions),
-                                    transitionSpec = {
-                                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                                    },
-                                    label = "suggestions_animation",
-                                    modifier = Modifier.fillMaxWidth()
-                                ) { (loading, sugs) ->
-                                    Column {
-                                        if (loading && sugs.isEmpty()) {
-                                            UnifiedShimmerProvider {
-                                                Column {
-                                                    repeat(5) { i ->
-                                                        SuggestionSkeletonLoader()
+                                        else -> {
+                                            IconButton(
+                                                onClick = {
+                                                    val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                                        putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                                        putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak to search...")
+                                                    }
+                                                    try {
+                                                        voiceLauncher.launch(intent)
+                                                    } catch (e: Exception) {
+                                                        com.codetrio.overdrive.ui.SnackbarController.showMessage("Voice search is not supported on this device")
                                                     }
                                                 }
-                                            }
-                                        } else {
-                                            sugs.forEach { suggestion ->
-                                                ListItem(
-                                                    headlineContent = { Text(suggestion) },
-                                                    leadingContent = { Icon(Icons.Default.Search, null) },
-                                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                                    modifier = Modifier.clickable { onSuggestionClick(suggestion) }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Mic,
+                                                    contentDescription = "Voice Search",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
+                                            }
+                                        }
+                                    }
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent,
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent
+                                )
+                            )
+                        },
+                        expanded = isSearchActive,
+                        onExpandedChange = onSearchActiveChange,
+                        modifier = if (isLandscape) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth(),
+                        windowInsets = SearchBarDefaults.windowInsets,
+                        colors = SearchBarDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            dividerColor = Color.Transparent
+                        )
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(bottom = 24.dp)
+                        ) {
+                            if (searchQuery.isBlank()) {
+                                if (searchHistory.isNotEmpty()) {
+                                    item(key = "recent_header") {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_recent_searches),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            TextButton(onClick = onClearSearchHistory) { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_clear_all)) }
+                                        }
+                                    }
+                                    items(searchHistory, key = { "hist_$it" }) { historyItem ->
+                                        ListItem(
+                                            headlineContent = { Text(historyItem) },
+                                            leadingContent = { Icon(Icons.Default.History, null) },
+                                            trailingContent = {
+                                                IconButton(onClick = { onRemoveFromSearchHistory(historyItem) }) {
+                                                    Icon(Icons.Default.Close, "Remove",
+                                                        modifier = Modifier.size(18.dp))
+                                                }
+                                            },
+                                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                            modifier = Modifier.clickable { onHistoryItemClick(historyItem) }
+                                        )
+                                    }
+                                }
+
+                                if (userProfile != null && accountHistory.isNotEmpty()) {
+                                    item(key = "yt_history_header") {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_recently_played_youtube_music),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                        )
+                                    }
+                                    itemsIndexed(
+                                        items = accountHistory,
+                                        key = { _, song -> "yt_${song.videoId}" }
+                                    ) { idx, song ->
+                                        ListItem(
+                                            headlineContent = {
+                                                Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            },
+                                            supportingContent = {
+                                                Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            },
+                                            leadingContent = {
+                                                AsyncImage(
+                                                    model = ImageRequest.Builder(LocalContext.current)
+                                                        .data(song.thumbnailUrl?.resize(120))
+                                                        .crossfade(true)
+                                                        .build(),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(6.dp)),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            },
+                                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                            modifier = Modifier.clickable {
+                                                onSearchActiveChange(false)
+                                                onAccountHistorySongClick(song, accountHistory, idx)
+                                            }
+                                        )
+                                    }
+                                }
+                            } else {
+                                item(key = "suggestions_animated_content") {
+                                    AnimatedContent(
+                                        targetState = Pair(isLoadingSuggestions, suggestions),
+                                        transitionSpec = {
+                                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                                        },
+                                        label = "suggestions_animation",
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) { (loading, sugs) ->
+                                        Column {
+                                            if (loading && sugs.isEmpty()) {
+                                                UnifiedShimmerProvider {
+                                                    Column {
+                                                        repeat(5) { i ->
+                                                            SuggestionSkeletonLoader()
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                sugs.forEach { suggestion ->
+                                                    ListItem(
+                                                        headlineContent = { Text(suggestion) },
+                                                        leadingContent = { Icon(Icons.Default.Search, null) },
+                                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                                        modifier = Modifier.clickable { onSuggestionClick(suggestion) }
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -1820,7 +1808,6 @@ fun SearchHeader(
                         }
                     }
                 }
-
             }
             // Mood chips — hidden during active search input
             if (!isSearchActive && searchQuery.isBlank() && searchResults.isEmpty() && homeMoods.isNotEmpty()) {
@@ -1970,7 +1957,7 @@ fun GenresScreen(
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Moods & Genres",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_moods_genres),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface

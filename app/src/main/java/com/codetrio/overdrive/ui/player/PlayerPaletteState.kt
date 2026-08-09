@@ -12,8 +12,9 @@ import androidx.compose.ui.graphics.Color
  * Mirrors MediaViewModelObject.palette* from the design spec.
  */
 object PlayerPaletteState {
-    // Spec §2.1: initialized to Color.Black; updated by LaunchedEffect in FullPlayer
-    val vibrantColor: MutableState<Color>      = mutableStateOf(Color.Black)
-    val darkVibrantColor: MutableState<Color>  = mutableStateOf(Color.Black)
-    val darkMutedColor: MutableState<Color>    = mutableStateOf(Color.Black)
+    // Spec §2.1: initialized to rich ambient color; updated by LaunchedEffect in FullPlayer
+    val vibrantColor: MutableState<Color>      = mutableStateOf(Color(0xFF2A3A30))
+    val darkVibrantColor: MutableState<Color>  = mutableStateOf(Color(0xFF1B2820))
+    val darkMutedColor: MutableState<Color>    = mutableStateOf(Color(0xFF141E18))
+    val accentColor: MutableState<Color>       = mutableStateOf(Color(0xFF3A86FF))
 }

@@ -364,7 +364,7 @@ package com.codetrio.overdrive.ui.onboarding
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Lets setup the everything for you",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_lets_setup_the_everything_for_you),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Normal,
                 fontSize = 18.sp,
@@ -405,7 +405,7 @@ package com.codetrio.overdrive.ui.onboarding
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Stream millions of tracks or play your local library, perfectly synced.",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_stream_millions_of_tracks_or_play_your_local_library_perfectly_synced),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Normal,
                 fontSize = 18.sp,
@@ -434,7 +434,7 @@ package com.codetrio.overdrive.ui.onboarding
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "Stream",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_stream),
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 32.sp,
@@ -447,7 +447,7 @@ package com.codetrio.overdrive.ui.onboarding
                     }
                 )
                 Text(
-                    text = "Discover",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_discover),
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 32.sp,
@@ -460,7 +460,7 @@ package com.codetrio.overdrive.ui.onboarding
                     }
                 )
                 Text(
-                    text = "Sing Along.",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sing_along),
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 32.sp,
@@ -475,7 +475,7 @@ package com.codetrio.overdrive.ui.onboarding
             }
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "Karaoke lyrics, powerful search, and offline downloads all in one place.",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_karaoke_lyrics_powerful_search_and_offline_downloads_all_in_one_place),
                 style = MaterialTheme.typography.bodyLarge,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
@@ -621,7 +621,11 @@ package com.codetrio.overdrive.ui.onboarding
                     tonalElevation = 0.dp,
                     windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp)
                 ) {
-                    listOf("Home" to Icons.Default.Home, "Search" to Icons.Default.Search, "Library" to Icons.Default.LibraryMusic).forEachIndexed { index, item ->
+                    listOf(
+                        androidx.compose.ui.res.stringResource(id = R.string.tab_explore) to Icons.Default.Home, 
+                        androidx.compose.ui.res.stringResource(id = R.string.tab_search) to Icons.Default.Search, 
+                        androidx.compose.ui.res.stringResource(id = R.string.tab_library) to Icons.Default.LibraryMusic
+                    ).forEachIndexed { index, item ->
                         val labelComposable: (@Composable () -> Unit)? = if (hideNavLabels) null else {
                             @Composable { Text(item.first) }
                         }
@@ -657,14 +661,14 @@ package com.codetrio.overdrive.ui.onboarding
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Hide Nav Labels",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_hide_nav_labels),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Remove text labels from the bottom navigation bar.",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_remove_text_labels_from_the_bottom_navigation_bar),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
@@ -697,14 +701,14 @@ package com.codetrio.overdrive.ui.onboarding
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Dynamic Navbar",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_dynamic_navbar),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Compact height with bold, elevated icons.",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_compact_height_with_bold_elevated_icons),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
@@ -763,14 +767,14 @@ package com.codetrio.overdrive.ui.onboarding
                         .fillMaxWidth()
                 ) {
                     Text(
-                        text = "Music Haptics",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_music_haptics),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Adjust the intensity of beat-synced vibrations.",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_adjust_the_intensity_of_beat_synced_vibrations),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     )
@@ -1012,7 +1016,7 @@ package com.codetrio.overdrive.ui.onboarding
                         Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Login Successful", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_login_successful), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     }
                     Spacer(modifier = Modifier.height(120.dp))
@@ -1035,7 +1039,7 @@ package com.codetrio.overdrive.ui.onboarding
                     Spacer(modifier = Modifier.height(20.dp))
         
                     Text(
-                        text = "Connect your account to sync playlists, liked songs, and preferences across all your devices.",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_connect_your_account_to_sync_playlists_liked_songs_and_preferences_across_all_your_devices),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 24.sp,
@@ -1067,7 +1071,7 @@ package com.codetrio.overdrive.ui.onboarding
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Continue with YouTube Music",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_continue_with_youtube_music),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -1090,7 +1094,7 @@ package com.codetrio.overdrive.ui.onboarding
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Text(
-                            text = "Continue as Guest",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_continue_as_guest),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -1153,7 +1157,7 @@ package com.codetrio.overdrive.ui.onboarding
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Setup Complete",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_setup_complete),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
@@ -1181,7 +1185,7 @@ package com.codetrio.overdrive.ui.onboarding
                 Spacer(modifier = Modifier.height(20.dp))
     
                 Text(
-                    text = "Your library is fully initialized and the engine is primed. It's time to immerse yourself in the ultimate auditory experience.",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_library_is_fully_initialized_and_the_engine_is_primed_it_s_time_to_immerse_yourself_in_the_ultimate_auditory_experience),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 24.sp,
@@ -1279,7 +1283,7 @@ package com.codetrio.overdrive.ui.onboarding
                     ) { targetPage ->
                         if (targetPage == 0) {
                             Text(
-                                text = "Let's Go!",
+                                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_let_s_go),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
@@ -1319,7 +1323,7 @@ package com.codetrio.overdrive.ui.onboarding
                         if (isFinish) {
                             androidx.compose.material3.ExtendedFloatingActionButton(
                                 onClick = onFinishClicked,
-                                text = { Text("Start Listening") },
+                                text = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_start_listening)) },
                                 icon = { Icon(Icons.Default.Check, contentDescription = "Finish") },
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,

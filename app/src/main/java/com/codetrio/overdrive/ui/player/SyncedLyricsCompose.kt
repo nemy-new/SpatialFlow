@@ -91,7 +91,7 @@ internal fun LyricsErrorState(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onRetry) {
-            Text(text = "Retry")
+            Text(text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_retry))
         }
     }
 }

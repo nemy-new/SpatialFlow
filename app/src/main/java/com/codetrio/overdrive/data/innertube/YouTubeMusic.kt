@@ -419,6 +419,18 @@ object YouTubeMusic {
             // Parse content sections (reuse home section parser)
             val homePage = InnerTubeParser.parseHomePage(response)
 
+            val updatedSections = homePage.sections.map { section ->
+                section.copy(
+                    items = section.items.map { item ->
+                        if (item is SearchItem.Song && (item.song.artist.isBlank() || item.song.artist.equals("Unknown Artist", ignoreCase = true) || item.song.artist.equals("<unknown>", ignoreCase = true))) {
+                            SearchItem.Song(item.song.copy(artist = title, artistId = browseId))
+                        } else {
+                            item
+                        }
+                    }
+                )
+            }
+
             ArtistPage(
                 artist = OnlineArtist(
                     browseId = browseId,
@@ -427,7 +439,7 @@ object YouTubeMusic {
                     subscriberCount = combinedSubCount.takeIf { it.isNotBlank() },
                     isSubscribed = isSubscribed
                 ),
-                sections = homePage.sections,
+                sections = updatedSections,
                 description = description
             )
         }
@@ -507,7 +519,7 @@ object YouTubeMusic {
                 songs.add(OnlineSong(
                     videoId = videoId,
                     title = songTitle,
-                    artist = artistText.trim(),
+                    artist = InnerTubeParser.getCleanArtist(artistText),
                     duration = duration,
                     durationMs = parseDuration(duration),
                     thumbnailUrl = songThumbnail
@@ -594,7 +606,7 @@ object YouTubeMusic {
                 songs.add(OnlineSong(
                     videoId = id,
                     title = titleText,
-                    artist = shortByline.trim(),
+                    artist = InnerTubeParser.getCleanArtist(shortByline),
                     duration = lengthText,
                     durationMs = parseDuration(lengthText),
                     thumbnailUrl = thumb

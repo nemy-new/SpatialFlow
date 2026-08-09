@@ -9,14 +9,14 @@ SpatialFlow
 </p><p align="center">
   <b>Hybrid Streaming • Material You • Dynamic Theming • Volume Normalization • Open Source</b>
 </p><p align="center">
-  <img src="https://img.shields.io/github/downloads/MythicalSHUB/SpatialFlow/total?color=5C7AEA&style=for-the-badge" />
-  <img src="https://img.shields.io/github/v/release/MythicalSHUB/SpatialFlow?color=4ADE80&style=for-the-badge" />
-  <img src="https://img.shields.io/github/actions/workflow/status/MythicalSHUB/SpatialFlow/release.yml?style=for-the-badge&label=BUILD" />
-  <img src="https://img.shields.io/github/issues/MythicalSHUB/SpatialFlow?color=EF4444&style=for-the-badge" />
+  <img src="https://img.shields.io/github/downloads/nemy-new/OverDrive/total?color=5C7AEA&style=for-the-badge" />
+  <img src="https://img.shields.io/github/v/release/nemy-new/OverDrive?color=4ADE80&style=for-the-badge" />
+  <img src="https://img.shields.io/github/actions/workflow/status/nemy-new/OverDrive/release.yml?style=for-the-badge&label=BUILD" />
+  <img src="https://img.shields.io/github/issues/nemy-new/OverDrive?color=EF4444&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" />
   <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" />
   <img src="https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" />
-  <img src="https://img.shields.io/github/license/MythicalSHUB/SpatialFlow?color=10B981&style=for-the-badge" />
+  <img src="https://img.shields.io/github/license/nemy-new/OverDrive?color=10B981&style=for-the-badge" />
 </p><p align="center">
   <a href="#features">Features</a> •
   <a href="#screenshots">Screenshots</a> •
@@ -212,11 +212,11 @@ Download APK
 
 Download the latest stable release directly from GitHub Releases:
 
-https://github.com/MythicalSHUB/SpatialFlow/releases
+https://github.com/nemy-new/OverDrive/releases
 
 Build From Source
 
-git clone https://github.com/MythicalSHUB/SpatialFlow.git
+git clone https://github.com/nemy-new/OverDrive.git
 
 cd SpatialFlow
 
@@ -308,7 +308,7 @@ Their work has greatly contributed to the Android open-source ecosystem.
 
 Developer
 
-Shubham Karande
+Nemy_new
 
 Android Developer focused on building modern, high-performance, and open-source mobile experiences.
 
@@ -333,7 +333,7 @@ License
 
 MIT License
 
-Copyright (c) 2026 Shubham Karande
+Copyright (c) 2026 Nemy_new
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software.
 

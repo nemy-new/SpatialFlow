@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -125,6 +126,10 @@ fun KaraokeLyricsView(
     modifier: Modifier = Modifier,
     footerContent: @Composable () -> Unit = {}
 ) {
+    val currentPositionProviderState by rememberUpdatedState(currentPositionProvider)
+    val isPlayingProviderState by rememberUpdatedState(isPlayingProvider)
+    val playbackSpeedProviderState by rememberUpdatedState(playbackSpeedProvider)
+
     val listState = rememberLazyListState()
     val view = LocalView.current
 
@@ -176,9 +181,9 @@ fun KaraokeLyricsView(
                 val deltaNanos = frameNanos - lastSystemNanos
                 lastSystemNanos = frameNanos
 
-                val isPlaying = isPlayingProvider()
-                val speed = playbackSpeedProvider()
-                val actualMs = currentPositionProvider().toFloat()
+                val isPlaying = isPlayingProviderState()
+                val speed = playbackSpeedProviderState()
+                val actualMs = currentPositionProviderState().toFloat()
 
                 if (isPlaying) {
                     val deltaMs = (deltaNanos / 1_000_000f) * speed
@@ -771,9 +776,9 @@ private fun KaraokeLineItem(
     val bgDimColor = contentColor.copy(alpha = 0.245f)
 
     val mainFontWeight = when {
-        isActive -> FontWeight.ExtraBold
-        distanceFromActive == 1 -> FontWeight.Bold
-        else -> FontWeight.Medium
+        isActive -> FontWeight.Black
+        distanceFromActive == 1 -> FontWeight.ExtraBold
+        else -> FontWeight.SemiBold
     }
 
     val mainTextStyle = MaterialTheme.typography.headlineMedium.copy(
@@ -889,7 +894,7 @@ private fun KaraokeLineItem(
     val bracketTextStyle = MaterialTheme.typography.bodyLarge.copy(
         fontFamily = GoogleSansFlexNonRounded,
         fontSize = 22.sp,
-        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+        fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.SemiBold,
         fontStyle = FontStyle.Italic,
         lineHeight = 30.sp,
         platformStyle = PlatformTextStyle(includeFontPadding = true)

@@ -1,9 +1,11 @@
+
 @file:Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS",
     "TYPE_MISMATCH_BASED_ON_JAVA_ANNOTATIONS"
 )
 
 package com.codetrio.overdrive.ui.library
 
+import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -227,39 +229,6 @@ fun LibraryScreen(
         }
     }
 
-    // Observe online playback trigger from ExploreViewModel for History/Account pages
-    LaunchedEffect(exploreViewModel) {
-        exploreViewModel?.playbackTriggerEvent?.collect {
-            val song = exploreViewModel.currentOnlineSong.value
-            if (song != null) {
-                val videoId = song.videoId
-                val durationMs = song.durationMs
-                val onlineQueue = exploreViewModel.onlineQueue.value
-                if (onlineQueue.isNotEmpty()) {
-                    val songItems = onlineQueue.map { os ->
-                        SongItem.createOnlineSong(
-                            os.videoId,
-                            os.title,
-                            os.artist,
-                            "", // Empty streamUrl permits automatic resolving pipeline promotion
-                            os.durationMs,
-                            os.thumbnailUrl,
-                            os.artistId
-                        )
-                    }
-                    viewModel.setSongList(songItems)
-                    val currentIdx = exploreViewModel.currentOnlineIndex.value
-                    viewModel.playSongAtIndex(currentIdx)
-                } else {
-                    val songItem = SongItem.createOnlineSong(
-                        videoId, song.title, song.artist, "", durationMs, song.thumbnailUrl, song.artistId
-                    )
-                    viewModel.playSong(songItem)
-                }
-            }
-        }
-    }
-
     val subscriptionChanged by exploreViewModel?.subscriptionChanged?.collectAsStateWithLifecycle(false) ?: remember { mutableStateOf(false) }
     LaunchedEffect(subscriptionChanged) {
         if (subscriptionChanged) {
@@ -313,7 +282,7 @@ fun LibraryScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Library",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_library),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -441,7 +410,7 @@ fun LibraryScreen(
                                 OutlinedTextField(
                                     value = searchQuery,
                                     onValueChange = { searchQuery = it },
-                                    placeholder = { Text("Search local songs...") },
+                                    placeholder = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_search_local_songs)) },
                                     leadingIcon = { Icon(Icons.Default.Search, null) },
                                     trailingIcon = {
                                         if (searchQuery.isNotEmpty()) {
@@ -1016,14 +985,14 @@ private fun UnifiedLibraryContent(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Access YouTube Music",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_access_youtube_music),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Sign in to access your online playlists, saved songs, listening history, and personalized recommendations.",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sign_in_to_access_your_online_playlists_saved_songs_listening_history_and_personalized_recommendations),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -1037,7 +1006,7 @@ private fun UnifiedLibraryContent(
                             .fillMaxWidth()
                             .height(48.dp)
                     ) {
-                        Text("Sign In", fontWeight = FontWeight.Bold)
+                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sign_in), fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1143,11 +1112,11 @@ private fun UnifiedLibraryContent(
 
     if (unifiedItems.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No items found in your library", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_items_found_in_your_library), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     } else {
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Adaptive(minSize = 160.dp),
             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 160.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -1269,12 +1238,12 @@ private fun PlaylistsTabContent(
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showCreatePlaylistDialog = false },
-            title = { Text("Create New Playlist", fontWeight = FontWeight.Bold) },
+            title = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_create_new_playlist), fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Playlist Name") },
+                    label = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_playlist_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1289,12 +1258,12 @@ private fun PlaylistsTabContent(
                     },
                     enabled = name.isNotBlank()
                 ) {
-                    Text("Create")
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_create))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCreatePlaylistDialog = false }) {
-                    Text("Cancel")
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_cancel))
                 }
             }
         )
@@ -1319,8 +1288,7 @@ private fun PlaylistsTabContent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "My Playlists",
+            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_my_playlists),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -1345,8 +1313,7 @@ private fun PlaylistsTabContent(
                 color = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        "+ Create a playlist to get started",
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_create_a_playlist_to_get_started),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -1397,8 +1364,7 @@ private fun PlaylistsTabContent(
         if (isLoggedIn) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                "YT Music Playlists",
+            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_yt_music_playlists),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -1413,11 +1379,11 @@ private fun PlaylistsTabContent(
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No online playlists found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_online_playlists_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(minSize = 160.dp),
                     contentPadding = PaddingValues(bottom = 160.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -1518,7 +1484,7 @@ private fun LocalPlaylistDetailsBottomSheet(
                     ) {
                         Icon(Icons.Default.PlayArrow, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Play All")
+                        Text(stringResource(R.string.action_play_all))
                     }
 
                     OutlinedButton(
@@ -1534,7 +1500,7 @@ private fun LocalPlaylistDetailsBottomSheet(
                     ) {
                         Icon(Icons.Default.Shuffle, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Shuffle")
+                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_shuffle))
                     }
                 }
 
@@ -1549,8 +1515,7 @@ private fun LocalPlaylistDetailsBottomSheet(
                         .height(200.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        "This playlist is empty",
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_this_playlist_is_empty),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -1740,8 +1705,7 @@ private fun PodcastsTabContent(nestedScrollConnection: androidx.compose.ui.input
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            "Your Subscribed Podcasts",
+        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_subscribed_podcasts),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
@@ -1769,8 +1733,7 @@ private fun PodcastsTabContent(nestedScrollConnection: androidx.compose.ui.input
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "No podcasts found",
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_podcasts_found),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -1779,7 +1742,7 @@ private fun PodcastsTabContent(nestedScrollConnection: androidx.compose.ui.input
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(bottom = 160.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -1820,8 +1783,7 @@ private fun SongsTabContent(nestedScrollConnection: androidx.compose.ui.input.ne
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            "Liked Songs (YT Music)",
+        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_liked_songs_yt_music),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
@@ -1836,7 +1798,7 @@ private fun SongsTabContent(nestedScrollConnection: androidx.compose.ui.input.ne
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No online songs found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_online_songs_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -1921,8 +1883,7 @@ private fun AlbumsTabContent(nestedScrollConnection: androidx.compose.ui.input.n
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            "YT Music Albums",
+        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_yt_music_albums),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
@@ -1937,11 +1898,11 @@ private fun AlbumsTabContent(nestedScrollConnection: androidx.compose.ui.input.n
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No online albums found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_online_albums_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(bottom = 160.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -2052,8 +2013,7 @@ private fun ArtistsTabContent(nestedScrollConnection: androidx.compose.ui.input.
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            "Followed Artists (YT Music)",
+        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_followed_artists_yt_music),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
@@ -2068,11 +2028,11 @@ private fun ArtistsTabContent(nestedScrollConnection: androidx.compose.ui.input.
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No online artists found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_online_artists_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(bottom = 160.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -2151,8 +2111,7 @@ private fun OnlineArtistCard(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            "Artist",
+        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_artist),
             style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -2189,13 +2148,13 @@ private fun RecapTabContent(
                     modifier = Modifier.size(64.dp)
                 )
                 Text(
-                    text = "Your Flow is warming up",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_flow_is_warming_up),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Start playing your favorite tracks, and your listening flow highlights will appear here!",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_start_playing_your_favorite_tracks_and_your_listening_flow_highlights_will_appear_here),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -2277,20 +2236,20 @@ private fun RecapTabContent(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "YOUR FLOW HIGHLIGHTS",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_flow_highlights),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                             letterSpacing = 2.sp
                         )
                         Text(
-                            text = "Your Personal Listening Recap",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_personal_listening_recap),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "A dynamic reflection of your musical journey on SpatialFlow.",
+                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_a_dynamic_reflection_of_your_musical_journey_on_spatialflow),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -2333,7 +2292,7 @@ private fun RecapTabContent(
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                             Text(
-                                text = "Total listen time",
+                                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_total_listen_time),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                             )
@@ -2385,7 +2344,7 @@ private fun RecapTabContent(
             // Top Songs Ranked Shelf
             item {
                 Text(
-                    text = "Top Played Songs",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_top_played_songs),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -2518,7 +2477,7 @@ private fun RecapTabContent(
                                     modifier = Modifier.wrapContentSize()
                                 ) {
                                     Text(
-                                        text = "YOUR #1 TRACK",
+                                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_1_track),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = badgeTextColor,
@@ -2619,7 +2578,7 @@ private fun RecapTabContent(
             if (data.topArtists.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Your Top Artists",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_top_artists),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onSurface,

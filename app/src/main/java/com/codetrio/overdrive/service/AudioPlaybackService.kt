@@ -47,14 +47,14 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.ReturnCode
+// import com.arthenica.ffmpegkit.FFmpegKit
+// import com.arthenica.ffmpegkit.ReturnCode
 import com.codetrio.overdrive.R
 import com.codetrio.overdrive.data.innertube.YouTubeMusic
 import com.codetrio.overdrive.data.innertube.OnlineSong
 import com.codetrio.overdrive.data.innertube.RelatedSongsResult
 import com.codetrio.overdrive.util.AudioFileManager
-import com.codetrio.overdrive.util.FFmpegCommandBuilder
+// import com.codetrio.overdrive.util.FFmpegCommandBuilder
 import com.codetrio.overdrive.util.SongDownloader
 import com.codetrio.overdrive.viewmodel.PlayerSharedViewModel
 import com.google.common.util.concurrent.Futures
@@ -1043,7 +1043,7 @@ class AudioPlaybackService : MediaSessionService() {
 
     fun set8DEnabled(enabled: Boolean) {
         this.is8DEnabled = enabled
-        if (!enabled) FFmpegKit.cancel()
+        // if (!enabled) FFmpegKit.cancel()
         viewModel?.let { vm ->
             applyEffects(enabled, vm.speed8D.value)
         }
@@ -1118,7 +1118,7 @@ class AudioPlaybackService : MediaSessionService() {
 
     fun applyEffects(enable8D: Boolean, speed8D: Float) {
         val uri = currentSourceUri ?: return
-        FFmpegKit.cancel()
+        // FFmpegKit.cancel()
         
         val scheme = uri.scheme
         val sourcePath = if (scheme == "http" || scheme == "https" || scheme == "innertube") {
@@ -1148,28 +1148,28 @@ class AudioPlaybackService : MediaSessionService() {
         isProcessing = true
         viewModel?.setIsProcessing(true)
         
-        val command = FFmpegCommandBuilder.build8D(sourcePath, outputFile.absolutePath, speed8D)
+        // val command = FFmpegCommandBuilder.build8D(sourcePath, outputFile.absolutePath, speed8D)
 
-        FFmpegKit.executeAsync(command, { session ->
-            if (ReturnCode.isSuccess(session.returnCode)) {
-                handler.post {
-                    if (uri == currentSourceUri) {
-                        on8DProcessingSuccess(outputFile.absolutePath, wasPlaying)
-                        finishProcessing(true)
-                    } else finishProcessing(false)
-                }
-            } else handler.post { finishProcessing(false) }
-        }, {}, { stats ->
-            stats?.let { s ->
-                handler.post {
-                    val dur = player.duration
-                    if (dur > 0) {
-                        val progress = min(99.0, (s.time * 100.0) / dur.toDouble()).toInt()
-                        viewModel?.setProcessingProgress(progress)
-                    }
-                }
-            }
-        })
+        // FFmpegKit.executeAsync(command, { session ->
+        //     if (ReturnCode.isSuccess(session.returnCode)) {
+        //         handler.post {
+        //             if (uri == currentSourceUri) {
+        //                 on8DProcessingSuccess(outputFile.absolutePath, wasPlaying)
+        //                 finishProcessing(true)
+        //             } else finishProcessing(false)
+        //         }
+        //     } else handler.post { finishProcessing(false) }
+        // }, {}, { stats ->
+        //     stats?.let { s ->
+        //         handler.post {
+        //             val dur = player.duration
+        //             if (dur > 0) {
+        //                 val progress = min(99.0, (s.time * 100.0) / dur.toDouble()).toInt()
+        //                 viewModel?.setProcessingProgress(progress)
+        //             }
+        //         }
+        //     }
+        // })
     }
 
     private fun on8DProcessingSuccess(path: String, autoPlay: Boolean = false) {
@@ -1212,9 +1212,9 @@ class AudioPlaybackService : MediaSessionService() {
         }
 
         // Guard FFmpeg cancel — only if 8D is actually running
-        if (is8DEnabled && FFmpegKit.listSessions().isNotEmpty()) {
-            FFmpegKit.cancel()
-        }
+        // if (is8DEnabled && FFmpegKit.listSessions().isNotEmpty()) {
+        //     FFmpegKit.cancel()
+        // }
 
         // Move cache cleanup OFF the critical path
         serviceScope.launch(Dispatchers.IO) { cleanCache() }
@@ -1441,6 +1441,13 @@ class AudioPlaybackService : MediaSessionService() {
         viewModel?.postIsProcessing(false)
         viewModel?.setProcessingProgress(if (success) 100 else 0)
 
+    }
+
+    fun cancel8DProcessing() {
+        isProcessing = false
+        // FFmpegKit.cancel()
+        viewModel?.setIsProcessing(false)
+        viewModel?.setProcessingProgress(0)
     }
 
     private fun setupMediaSession() {

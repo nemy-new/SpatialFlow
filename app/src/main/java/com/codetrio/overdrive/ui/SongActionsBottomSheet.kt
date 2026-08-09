@@ -403,7 +403,7 @@ fun DestructiveActionRow(
         ) {
             Icon(Icons.Default.PlaylistAdd, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
             Spacer(Modifier.width(8.dp))
-            Text("Add to Playlist", style = MaterialTheme.typography.labelLarge, fontFamily = GoogleSansFlex, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_add_to_playlist), style = MaterialTheme.typography.labelLarge, fontFamily = GoogleSansFlex, color = MaterialTheme.colorScheme.onSecondaryContainer)
         }
 
         // Delete Button
@@ -422,7 +422,7 @@ fun DestructiveActionRow(
         ) {
             Icon(Icons.Filled.DeleteOutline, null, tint = MaterialTheme.colorScheme.onErrorContainer)
             Spacer(Modifier.width(8.dp))
-            Text("Delete", style = MaterialTheme.typography.labelLarge, fontFamily = GoogleSansFlex, color = MaterialTheme.colorScheme.onErrorContainer)
+            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_delete), style = MaterialTheme.typography.labelLarge, fontFamily = GoogleSansFlex, color = MaterialTheme.colorScheme.onErrorContainer)
         }
     }
 }
@@ -437,8 +437,7 @@ fun LocalPlaylistPickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                "Add to Playlist",
+            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_add_to_playlist),
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge
             )
@@ -457,7 +456,7 @@ fun LocalPlaylistPickerDialog(
                 ) {
                     Icon(Icons.Default.Add, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Create New Playlist")
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_create_new_playlist))
                 }
 
                 if (playlists.isEmpty()) {
@@ -468,8 +467,7 @@ fun LocalPlaylistPickerDialog(
                             .padding(vertical = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            "No playlists yet",
+                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_playlists_yet),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -512,7 +510,7 @@ fun LocalPlaylistPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_cancel))
             }
         }
     )
@@ -527,8 +525,7 @@ fun CreateLocalPlaylistDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                "New Playlist",
+            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_new_playlist),
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge
             )
@@ -537,7 +534,7 @@ fun CreateLocalPlaylistDialog(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Playlist Name") },
+                label = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_playlist_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -551,12 +548,12 @@ fun CreateLocalPlaylistDialog(
                 },
                 enabled = name.isNotBlank()
             ) {
-                Text("Create")
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_create))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_cancel))
             }
         }
     )
@@ -735,7 +732,7 @@ fun ActionButtonRow1(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.PlayArrow, null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Play", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 20.sp, fontWeight = FontWeight.Medium, fontFamily = GoogleSansFlex)
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_play), color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 20.sp, fontWeight = FontWeight.Medium, fontFamily = GoogleSansFlex)
             }
         }
 
@@ -834,7 +831,7 @@ fun ActionButtonRow2(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Queue",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_queue),
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
@@ -881,7 +878,7 @@ fun ActionButtonRow2(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Next",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_next),
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
@@ -985,7 +982,7 @@ fun ExpressiveTabSwitcher(selectedTab: BottomSheetTab, onTabSelected: (BottomShe
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "OPTIONS",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_options),
                         color = if (selectedTab == BottomSheetTab.OPTIONS) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
@@ -1010,7 +1007,7 @@ fun ExpressiveTabSwitcher(selectedTab: BottomSheetTab, onTabSelected: (BottomShe
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "INFO",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_info),
                         color = if (selectedTab == BottomSheetTab.INFO) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,

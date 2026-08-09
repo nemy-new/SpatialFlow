@@ -72,7 +72,7 @@ fun CrashReportDialog(
         },
         title = {
             Text(
-                text = "App Crash Detected",
+                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_app_crash_detected),
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface
@@ -81,7 +81,7 @@ fun CrashReportDialog(
         text = {
             Column {
                 Text(
-                    text = "SpatialFlow crashed unexpectedly during your last session. Would you like to report this issue to help us fix it?",
+                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_spatialflow_crashed_unexpectedly_during_your_last_session_would_you_like_to_report_this_issue_to_help_us_fix_it),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -158,7 +158,7 @@ fun CrashReportDialog(
                             com.codetrio.overdrive.util.TelegramHelper.openTelegram(context = context, message = telegramMsg)
                         } catch (e: Exception) {
                             val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            val clip = android.content.ClipData.newPlainText("Crash Report", telegramMsg)
+                            val clip = android.content.ClipData.newPlainText(context.getString(com.codetrio.overdrive.R.string.text_crash_report), telegramMsg)
                             clipboardManager.setPrimaryClip(clip)
                             Toast.makeText(context, "Crash log copied. Paste in Telegram.", Toast.LENGTH_LONG).show()
                             com.codetrio.overdrive.util.TelegramHelper.openTelegram(context = context, domain = "SpatialFlow")
@@ -173,7 +173,7 @@ fun CrashReportDialog(
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Telegram")
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_telegram))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
@@ -190,7 +190,7 @@ fun CrashReportDialog(
                             |```
                         """.trimMargin()
 
-                        val githubUrl = "https://github.com/MythicalSHUB/SpatialFlow/issues/new" +
+                        val githubUrl = "https://github.com/nemy-new/OverDrive/issues/new" +
                                 "?title=" + Uri.encode("App Crash Report") +
                                 "&body=" + Uri.encode(issueBody)
 
@@ -215,13 +215,13 @@ fun CrashReportDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("GitHub")
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_github))
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_cancel))
             }
         }
     )

@@ -38,7 +38,7 @@ fun GoogleSignInScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Sign In with Google", fontWeight = FontWeight.Bold) },
+                title = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sign_in_with_google), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")

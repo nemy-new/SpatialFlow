@@ -9,6 +9,7 @@ import androidx.palette.graphics.Palette
 data class ExtractedPaletteColors(
     val dominant: Color,
     val vibrant: Color,
+    val darkVibrant: Color,
     val darkMuted: Color,
     val lightVibrant: Color,
     val accent: Color
@@ -17,6 +18,7 @@ data class ExtractedPaletteColors(
         val Default = ExtractedPaletteColors(
             dominant = Color(0xFF121212),
             vibrant = Color(0xFF8338EC),
+            darkVibrant = Color(0xFF4A148C),
             darkMuted = Color(0xFF0F0F1A),
             lightVibrant = Color(0xFFD8B4FE),
             accent = Color(0xFF3A86FF)
@@ -31,6 +33,11 @@ object PlayerColorExtractor {
 
     private val cache = LruCache<String, ExtractedPaletteColors>(30)
 
+    fun getCached(key: String?): ExtractedPaletteColors? {
+        if (key == null) return null
+        return cache.get(key)
+    }
+
     fun extractFromBitmap(key: String?, bitmap: Bitmap?): ExtractedPaletteColors {
         if (key != null) {
             cache.get(key)?.let { return it }
@@ -41,13 +48,15 @@ object PlayerColorExtractor {
 
         val dominantInt = palette.getDominantColor(0xFF121212.toInt())
         val vibrantInt = palette.getVibrantColor(palette.getLightVibrantColor(0xFF8338EC.toInt()))
-        val darkMutedInt = palette.getDarkMutedColor(palette.getDarkVibrantColor(0xFF0F0F1A.toInt()))
+        val darkVibrantInt = palette.getDarkVibrantColor(0xFF4A148C.toInt())
+        val darkMutedInt = palette.getDarkMutedColor(darkVibrantInt)
         val lightVibrantInt = palette.getLightVibrantColor(palette.getVibrantColor(0xFFD8B4FE.toInt()))
         val accentInt = palette.getVibrantColor(palette.getDominantColor(0xFF3A86FF.toInt()))
 
         val colors = ExtractedPaletteColors(
             dominant = Color(dominantInt),
             vibrant = Color(vibrantInt),
+            darkVibrant = Color(darkVibrantInt),
             darkMuted = Color(darkMutedInt),
             lightVibrant = Color(lightVibrantInt),
             accent = Color(accentInt)

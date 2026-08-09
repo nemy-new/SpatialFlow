@@ -22,6 +22,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -108,6 +109,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     private val _uiState = MutableStateFlow(ExploreUiState())
     val uiState: StateFlow<ExploreUiState> = _uiState.asStateFlow()
+
+    private val _focusSearchEvent = MutableSharedFlow<Unit>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val focusSearchEvent = _focusSearchEvent.asSharedFlow()
+
+    fun triggerSearchFocus() {
+        _focusSearchEvent.tryEmit(Unit)
+    }
 
     // Granular 4-way UI state flows for UI performance optimization
     val searchState: StateFlow<SearchUiState> = _uiState
@@ -257,8 +265,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // Shared event to signal that the host fragment should propagate current state to Player service INSTANTLY!
-    private val _playbackTriggerEvent = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 1)
-    val playbackTriggerEvent = _playbackTriggerEvent.asSharedFlow()
+
 
     private val _events = Channel<ExploreEvent>()
     val events: Flow<ExploreEvent> = _events.receiveAsFlow()
@@ -504,6 +511,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         loadHomeFeed()
     }
 
+    private fun List<HomeSection>.sortWithPersonalizedFirst(): List<HomeSection> {
+        return this.sortedByDescending { sec ->
+            val t = sec.title.lowercase()
+            t.contains("personalized") || t.contains("your personalized") || t.contains("おすすめ") || t.contains("あなた専用") || t.contains("ミックス")
+        }
+    }
+
     private suspend fun fetchMergedHomeFeed(): List<HomeSection> = coroutineScope {
         val sections = mutableListOf<HomeSection>()
         val mood = _uiState.value.currentMood
@@ -557,7 +571,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             })
         }.filter { it.items.isNotEmpty() }.toMutableList()
 
-        processedSections
+        processedSections.sortWithPersonalizedFirst()
     }
 
     fun loadHomeFeed() {
@@ -614,7 +628,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                             current.add(newSec)
                         }
                     }
-                    _uiState.update { it.copy(homeSections = current) }
+                    _uiState.update { it.copy(homeSections = current.sortWithPersonalizedFirst()) }
                     homeContinuationToken = page.continuation
                     prefetchThumbnails(page.sections.take(3).flatMap { it.items.take(4) })
                 }
@@ -659,6 +673,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
         // EXTREME LATENCY REMOVAL: Deleted explicit blocking network call! 
         // ExoPlayer uses ResolvingDataSource to resolve URIs asynchronously in the background AFTER opening the player instantly!
+        sendEvent(ExploreEvent.TriggerInstantPlayback)
     }
 
     /**
@@ -673,9 +688,6 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         }
         playOnlineSong(song)
 
-        // Fire-and-forget trigger informing ExploreFragment to hand over data to main player IMMEDIATELY without waiting.
-        _playbackTriggerEvent.tryEmit(Unit)
-
         // PREFETCH NEXT SONG TO WARM UP THE CACHE INSTANTLY!
         if (index + 1 < queue.size) {
             val nextSong = queue[index + 1]
@@ -686,7 +698,8 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun addToQueueNext(song: OnlineSong) {
         val currentQueue = _uiState.value.onlineQueue.toMutableList()
         val currentIndex = _uiState.value.currentOnlineIndex
-        currentQueue.add(currentIndex + 1, song)
+        val targetIndex = (currentIndex + 1).coerceIn(0, currentQueue.size)
+        currentQueue.add(targetIndex, song)
         _uiState.update { it.copy(onlineQueue = currentQueue) }
     }
 
