@@ -187,6 +187,7 @@ fun FullPlayerScreen(
         songList = songList,
         accentColor = accentColor,
         isLyricsModeEnabled = isLyricsModeEnabled,
+        isMvMode = isMvMode,
         syncedLyrics = syncedLyrics,
         plainLyrics = plainLyrics,
         isLyricsLoading = isLyricsLoading,
@@ -293,6 +294,7 @@ fun FullPlayer(
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
+    val isMvMode by viewModel.isMvMode.collectAsStateWithLifecycle()
     val canvasArtwork by viewModel.canvasArtwork.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE) }
@@ -446,6 +448,7 @@ fun FullPlayer(
         canvasArtwork = canvasArtwork,
         isPlaying = uiState.isPlaying,
         isLyricsModeEnabled = isLyricsModeEnabled,
+        isMvMode = isMvMode,
         modifier = modifier
             .fillMaxSize()
             .then(if (isQueueExpanded || isLyricsModeEnabled) Modifier else dragModifier)
@@ -606,12 +609,11 @@ fun FullPlayer(
                 )
 
                 val musicVideoUrl by viewModel.musicVideoUrl.collectAsStateWithLifecycle()
-                val isMvMode by viewModel.isMvMode.collectAsStateWithLifecycle()
                 
                 if (!musicVideoUrl.isNullOrBlank()) {
                     PillChip(
                         icon = Icons.Rounded.Visibility,
-                        label = "Video",
+                        label = "MV",
                         isSelected = isMvMode,
                         onClick = {
                             viewModel.toggleMvMode()
@@ -1064,12 +1066,11 @@ fun FullPlayer(
                 )
 
                 val musicVideoUrl by viewModel.musicVideoUrl.collectAsStateWithLifecycle()
-                val isMvMode by viewModel.isMvMode.collectAsStateWithLifecycle()
                 
                 if (!musicVideoUrl.isNullOrBlank()) {
                     PillChip(
                         icon = Icons.Rounded.Visibility,
-                        label = "Video",
+                        label = "MV",
                         isSelected = isMvMode,
                         onClick = {
                             viewModel.toggleMvMode()

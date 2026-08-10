@@ -275,7 +275,7 @@ fun AppleMusicBackground(
                             resizeMode  = AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH,
                             modifier    = Modifier.fillMaxSize()
                         )
-                    } else if (artworkUrl != null) {
+                    } else if (artworkUrl != null && !isMvMode) {
                         coil.compose.AsyncImage(
                             model = artworkUrl,
                             contentDescription = "Immersion Artwork",

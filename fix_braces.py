@@ -1,28 +1,23 @@
-import re
-
-file_path = "app/src/main/java/com/codetrio/overdrive/MainActivity.kt"
-with open(file_path, "r") as f:
+path2 = "app/src/main/java/com/codetrio/overdrive/ui/player/FullPlayer.kt"
+with open(path2, "r") as f:
     content = f.read()
 
-target = """                                )
-                            }
+target = """                                    isEmbedded = true,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
                         }
-                    }
-                ) { paddingValues ->"""
+                    }"""
 
-replacement = """                                )
-                            }
+replacement = """                                    isEmbedded = true,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
                         }
                         }
-                    }
-                ) { paddingValues ->"""
+                    }"""
 
-if target in content:
-    content = content.replace(target, replacement)
-    with open(file_path, "w") as f:
-        f.write(content)
-    print("Fixed braces")
-else:
-    print("Could not find target to fix braces")
+content = content.replace(target, replacement)
+
+with open(path2, "w") as f:
+    f.write(content)

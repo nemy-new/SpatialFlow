@@ -307,7 +307,7 @@ fun ArtworkPager(
                                     viewModel.playNextSong()
                                 }
                             },
-                            resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+                            resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .then(if (isTrueFullscreen) Modifier else Modifier.clip(RoundedCornerShape(12.dp)))
