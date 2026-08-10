@@ -9,7 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.codetrio.overdrive.viewmodel.PlayerSharedViewModel
-import com.codetrio.overdrive.ui.components.SettingsDetailTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,7 +17,16 @@ fun BottomNavCustomizeScreen(
     onBack: () -> Unit
 ) {
     Scaffold(
-        topBar = { SettingsDetailTopBar("Customize Bottom Nav", onBack) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Customize Bottom Nav") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
     ) { paddingValues ->
         Box(
             modifier = Modifier

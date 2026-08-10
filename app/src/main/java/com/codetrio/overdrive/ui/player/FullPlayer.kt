@@ -460,9 +460,7 @@ fun FullPlayer(
         val rightPaneContent: @Composable () -> Unit = {
             // Metadata row: title/artist
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                modifier = Modifier.width(albumArtSize),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(
@@ -499,23 +497,11 @@ fun FullPlayer(
             // Premium YT Music style horizontal control chips row
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .layout { measurable, constraints ->
-                        val pad = 20.dp.roundToPx()
-                        val placeable = measurable.measure(
-                            constraints.copy(
-                                maxWidth = constraints.maxWidth + 2 * pad
-                            )
-                        )
-                        layout(placeable.width - 2 * pad, placeable.height) {
-                            placeable.place(-pad, 0)
-                        }
-                    }
+                    .width(albumArtSize)
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Spacer(modifier = Modifier.width(12.dp))
 
                 SplitLikeDislikeChip(
                     isLiked = uiState.isCurrentSongFavorite,
@@ -548,7 +534,7 @@ fun FullPlayer(
                     label = "Lyrics",
                     isSelected = isLyricsModeEnabled,
                     onClick = {
-                        onLyricsModeChanged(true)
+                        onLyricsModeChanged(!isLyricsModeEnabled)
                         if (currentSongId != null && !hasLyrics && !isLyricsLoading) {
                             onFetchLyrics()
                         }
@@ -619,8 +605,9 @@ fun FullPlayer(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Premium Wavy Seek Bar (Isolated)
-            WavySliderWithLabels(
-                currentPositionProvider = currentPositionProvider,
+            Box(modifier = Modifier.width(albumArtSize)) {
+                WavySliderWithLabels(
+                    currentPositionProvider = currentPositionProvider,
                 duration = uiState.duration,
                 isPlaying = uiState.isPlaying,
                 onSeekTo = onSeekTo,
@@ -629,14 +616,13 @@ fun FullPlayer(
                 contentSecondary = contentSecondary,
                 isDark = isDark,
                 playbackFormat = uiState.playbackFormat
-            )
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             androidx.compose.material3.ButtonGroup(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.width(albumArtSize),
                 expandedRatio = 0.3f,
                 overflowIndicator = {}
             ) {
@@ -815,7 +801,7 @@ fun FullPlayer(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    .padding(horizontal = dimens.screenMargin, vertical = dimens.smallPadding),
+                    .padding(vertical = dimens.smallPadding),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (!isTablet) {
@@ -823,6 +809,7 @@ fun FullPlayer(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .padding(horizontal = dimens.screenMargin)
                             .height(56.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -983,7 +970,7 @@ fun FullPlayer(
                     label = "Lyrics",
                     isSelected = isLyricsModeEnabled,
                     onClick = {
-                        onLyricsModeChanged(true)
+                        onLyricsModeChanged(!isLyricsModeEnabled)
                         if (currentSongId != null && !hasLyrics && !isLyricsLoading) {
                             onFetchLyrics()
                         }
