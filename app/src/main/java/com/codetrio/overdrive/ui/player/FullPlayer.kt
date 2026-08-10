@@ -459,7 +459,7 @@ fun FullPlayer(
 
         val density = androidx.compose.ui.platform.LocalDensity.current
         val statusBarTopDp = with(density) { androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(this).toDp() }
-        val controlsHeightDp = 480.dp
+        val controlsHeightDp = 300.dp
         val totalGroupHeightDp = albumArtSize + controlsHeightDp
         val availableHeightDp = screenHeight - statusBarTopDp
         val topOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
@@ -489,7 +489,7 @@ fun FullPlayer(
                     Spacer(modifier = Modifier.height(56.dp))
                 }
 
-                val controlsHeightDp = 480.dp
+                val controlsHeightDp = 300.dp
                 val totalGroupHeightDp = albumArtSize + controlsHeightDp
                 val availableHeightDp = screenHeight - statusBarTopDp
                 val tabletTopOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
@@ -511,7 +511,7 @@ fun FullPlayer(
                 )
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Metadata row: title/artist
             Row(
@@ -555,7 +555,7 @@ fun FullPlayer(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Premium YT Music style horizontal control chips row
             Row(
@@ -680,7 +680,7 @@ fun FullPlayer(
                 Spacer(modifier = Modifier.width(12.dp))
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Premium Wavy Seek Bar (Isolated)
             Box(modifier = Modifier.width(albumArtSize)) {
@@ -1139,7 +1139,7 @@ fun FullPlayer(
             }
                             }
 
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
                             // Wavy Slider
                             Box(modifier = Modifier.width(albumArtSize)) {
@@ -1293,7 +1293,7 @@ fun FullPlayer(
                                                 menuContent = {}
                                             )
                                         }
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
 
                         // Right pane: Dedicated to Lyrics

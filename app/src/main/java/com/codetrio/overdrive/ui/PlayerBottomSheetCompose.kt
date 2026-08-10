@@ -1198,7 +1198,7 @@ fun PlayerBottomSheetCompose(
                             val tabletTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
                             with(density) { tabletTopOffsetDp.toPx() }
                         } else {
-                            val controlsHeightDp = 480.dp
+                            val controlsHeightDp = 300.dp
                             val totalGroupHeightDp = albumArtHeightDp + controlsHeightDp
                             val availableHeightDp = screenHeight.dp - with(density) { statusBarTopPx.toDp() }
                             val phoneTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
