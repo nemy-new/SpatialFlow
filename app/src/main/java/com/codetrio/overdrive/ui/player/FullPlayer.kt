@@ -187,7 +187,6 @@ fun FullPlayerScreen(
         songList = songList,
         accentColor = accentColor,
         isLyricsModeEnabled = isLyricsModeEnabled,
-        isMvMode = isMvMode,
         syncedLyrics = syncedLyrics,
         plainLyrics = plainLyrics,
         isLyricsLoading = isLyricsLoading,
@@ -460,7 +459,7 @@ fun FullPlayer(
 
         val density = androidx.compose.ui.platform.LocalDensity.current
         val statusBarTopDp = with(density) { androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(this).toDp() }
-        val controlsHeightDp = 420.dp
+        val controlsHeightDp = 480.dp
         val totalGroupHeightDp = albumArtSize + controlsHeightDp
         val availableHeightDp = screenHeight - statusBarTopDp
         val topOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
@@ -490,7 +489,7 @@ fun FullPlayer(
                     Spacer(modifier = Modifier.height(56.dp))
                 }
 
-                val controlsHeightDp = 420.dp
+                val controlsHeightDp = 480.dp
                 val totalGroupHeightDp = albumArtSize + controlsHeightDp
                 val availableHeightDp = screenHeight - statusBarTopDp
                 val tabletTopOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
@@ -512,7 +511,7 @@ fun FullPlayer(
                 )
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Metadata row: title/artist
             Row(
