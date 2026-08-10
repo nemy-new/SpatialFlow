@@ -498,11 +498,7 @@ fun VolumeSlider(
         val fraction = if (maxVolume > 0f) currentVolume / maxVolume else 0f
         var isDragging by remember { mutableStateOf(false) }
         
-        val trackHeight by androidx.compose.animation.core.animateDpAsState(
-            targetValue = if (isDragging) 32.dp else 24.dp,
-            animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy),
-            label = "volume_track_height"
-        )
+        val trackHeight = 24.dp
 
         Box(
             modifier = Modifier

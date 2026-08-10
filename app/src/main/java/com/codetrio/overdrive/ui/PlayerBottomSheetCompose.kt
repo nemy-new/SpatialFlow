@@ -785,8 +785,10 @@ fun PlayerBottomSheetCompose(
                 }
             )
         }
+        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+        val isTabletTopLevel = configuration.screenWidthDp >= 600
         val lyricsArtworkProgress by animateFloatAsState(
-            targetValue = if (isLyricsModeEnabled) 1f else 0f,
+            targetValue = if (isLyricsModeEnabled && !isTabletTopLevel) 1f else 0f,
             animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f),
             label = "LyricsArtworkSharedElement"
         )
@@ -1119,9 +1121,28 @@ fun PlayerBottomSheetCompose(
 
                     // Integrated shared artwork layer. In lyrics mode the same ArtworkPager
                     // moves into the app bar as a compact thumbnail instead of being hidden.
+                    val isMvMode by viewModel.isMvMode.collectAsStateWithLifecycle()
+                    val isMvFullscreen by viewModel.isMvFullscreen.collectAsStateWithLifecycle()
+                    val isInPipMode by viewModel.isInPipMode.collectAsStateWithLifecycle()
+                    val isTrueFullscreen = isMvFullscreen || isInPipMode
+
                     val screenWidth = LocalConfiguration.current.screenWidthDp
                     val screenHeight = LocalConfiguration.current.screenHeightDp
-                    val albumArtSizeDp = androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
+                    
+                    val targetAlbumArtWidthDp = if (isTrueFullscreen) screenWidth.dp else androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
+                    val targetAlbumArtHeightDp = if (isTrueFullscreen) screenHeight.dp else androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
+                    
+                    val albumArtWidthDp by androidx.compose.animation.core.animateDpAsState(
+                        targetValue = targetAlbumArtWidthDp,
+                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 380f),
+                        label = "AlbumArtWidth"
+                    )
+                    val albumArtHeightDp by androidx.compose.animation.core.animateDpAsState(
+                        targetValue = targetAlbumArtHeightDp,
+                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 380f),
+                        label = "AlbumArtHeight"
+                    )
+                    
                     val statusBarTopPx = WindowInsets.statusBars.getTop(density).toFloat()
 
                     val canvasArtwork by viewModel.canvasArtwork.collectAsStateWithLifecycle()
@@ -1133,9 +1154,10 @@ fun PlayerBottomSheetCompose(
                         (!canvasArtwork!!.preferredVerticalAnimationUrl.isNullOrBlank() || !canvasArtwork!!.preferredAnimationUrl.isNullOrBlank())
 
                     val miniSizePx = with(density) { 48.dp.toPx() }
-                    val fullSizePx = with(density) { albumArtSizeDp.toPx() }
+                    val fullWidthPx = with(density) { albumArtWidthDp.toPx() }
+                    val fullHeightPx = with(density) { albumArtHeightDp.toPx() }
                     val appBarThumbSizePx = with(density) { 44.dp.toPx() }
-                    val appBarScale = appBarThumbSizePx / fullSizePx
+                    val appBarScale = appBarThumbSizePx / fullWidthPx
                     val appBarX = with(density) { 22.dp.toPx() }
                     val appBarY = statusBarTopPx + with(density) { 18.dp.toPx() }
                     val isTablet = screenWidth >= 600
@@ -1144,30 +1166,50 @@ fun PlayerBottomSheetCompose(
                     val yStartPx = with(density) { 16.dp.toPx() }
 
                     val dimens = com.codetrio.overdrive.ui.theme.LocalDimens.current
-                    val xEndPx = remember(isTablet, screenWidthPx, fullSizePx, density, dimens) {
-                        if (isTablet) {
-                            val screenMarginPx = with(density) { dimens.screenMargin.toPx() }
-                            val availableWidthPx = screenWidthPx - (2 * screenMarginPx)
-                            val leftPaneWidthPx = availableWidthPx / 2f
-                            screenMarginPx + (leftPaneWidthPx - fullSizePx) / 2f
+                    val xEndPxTarget = remember(isTrueFullscreen, isTablet, isLyricsModeEnabled, screenWidthPx, fullWidthPx, density, dimens) {
+                        if (isTrueFullscreen) {
+                            0f
+                        } else if (isTablet) {
+                            if (isLyricsModeEnabled) {
+                                val screenMarginPx = with(density) { dimens.screenMargin.toPx() }
+                                val availableWidthPx = screenWidthPx - (2 * screenMarginPx)
+                                val leftPaneWidthPx = availableWidthPx / 2f
+                                screenMarginPx + (leftPaneWidthPx - fullWidthPx) / 2f
+                            } else {
+                                (screenWidthPx - fullWidthPx) / 2f
+                            }
                         } else {
-                            (screenWidthPx - fullSizePx) / 2f
+                            (screenWidthPx - fullWidthPx) / 2f
                         }
                     }
+                    val xEndPx by animateFloatAsState(
+                        targetValue = xEndPxTarget,
+                        animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f),
+                        label = "AlbumArtXPosition"
+                    )
 
-                    val yEndPx = remember(isTablet, statusBarTopPx, density, containerHeight, albumArtSizeDp, fullSizePx, screenHeight) {
-                        if (isTablet) {
+                    val yEndPxTarget = remember(isTrueFullscreen, isTablet, statusBarTopPx, density, containerHeight, albumArtHeightDp, fullHeightPx, screenHeight) {
+                        if (isTrueFullscreen) {
+                            0f
+                        } else if (isTablet) {
                             val controlsHeightDp = 300.dp
-                            val totalGroupHeightDp = albumArtSizeDp + controlsHeightDp
+                            val totalGroupHeightDp = albumArtHeightDp + controlsHeightDp
                             val availableHeightDp = screenHeight.dp - with(density) { statusBarTopPx.toDp() }
                             val tabletTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
                             with(density) { tabletTopOffsetDp.toPx() }
                         } else {
-                            val minTopOffsetDp = with(density) { statusBarTopPx.toDp() } + 68.dp
-                            val topOffsetDp = ((containerHeight - albumArtSizeDp) / 2f - 220.dp).coerceAtLeast(minTopOffsetDp)
-                            with(density) { topOffsetDp.toPx() }
+                            val controlsHeightDp = 420.dp
+                            val totalGroupHeightDp = albumArtHeightDp + controlsHeightDp
+                            val availableHeightDp = screenHeight.dp - with(density) { statusBarTopPx.toDp() }
+                            val phoneTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
+                            with(density) { phoneTopOffsetDp.toPx() }
                         }
                     }
+                    val yEndPx by animateFloatAsState(
+                        targetValue = yEndPxTarget,
+                        animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f),
+                        label = "AlbumArtYPosition"
+                    )
                     val targetAppBarCornerRadiusPx = with(density) { 10.dp.toPx() }
                     val targetAppBarShadowPx = with(density) { 6.dp.toPx() }
                     val targetExpandedCornerRadiusPx = with(density) { 28.dp.toPx() } // Increased for Apple Music aesthetic
@@ -1177,18 +1219,18 @@ fun PlayerBottomSheetCompose(
 
                     Box(
                         modifier = Modifier
-                            .size(albumArtSizeDp)
+                            .size(width = albumArtWidthDp, height = albumArtHeightDp)
                             .graphicsLayer {
                                 val t = playerContentExpansionFraction.value
                                 val lyricsT = lyricsArtworkProgress
 
-                                val normalScale = androidx.compose.ui.util.lerp(miniSizePx / fullSizePx, 1f, t)
+                                val normalScale = androidx.compose.ui.util.lerp(miniSizePx / fullWidthPx, 1f, t)
                                 val startPaddingPx = sheetVisualState.currentHorizontalPaddingStartPxProvider()
                                 val xStartPx = startPaddingPx + xStartOffsetPx
 
                                 val normalX = androidx.compose.ui.util.lerp(xStartPx, xEndPx, t)
                                 val normalY = androidx.compose.ui.util.lerp(yStartPx, yEndPx, t)
-                                val normalCornerRadius = androidx.compose.ui.util.lerp(fullSizePx / 2f, targetExpandedCornerRadiusPx, t)
+                                val normalCornerRadius = androidx.compose.ui.util.lerp(fullWidthPx / 2f, targetExpandedCornerRadiusPx, t)
                                 val normalShadow = androidx.compose.ui.util.lerp(0f, targetAppBarShadowPx, t)
 
                                 val dismissOffsetPx = offsetAnimatable.value * (1f - t)
@@ -1215,7 +1257,7 @@ fun PlayerBottomSheetCompose(
                                 }
                                 alpha = artworkAlpha * (1f - canvasHideT)
                             }
-                            .zIndex(if (isQueueExpanded) 1f else if (isLyricsModeEnabled || lyricsArtworkProgress > 0f) 6f else 3f)
+                            .zIndex(if (isQueueExpanded) 1f else if (isLyricsModeEnabled || lyricsArtworkProgress > 0f) 6f else if (playerTheme == "immersion" && !isMvMode && playerContentExpansionFraction.value > 0.5f) -1f else 3f)
                     ) {
                         ArtworkPager(
                             viewModel = viewModel,
@@ -1223,8 +1265,8 @@ fun PlayerBottomSheetCompose(
                             songList = songList,
                             currentSongIndex = uiState.currentSongIndex,
                             context = context,
-                            userScrollEnabled = playerContentExpansionFraction.value > 0.95f && !isLyricsModeEnabled && !isQueueExpanded,
-                            allowCanvas = playerContentExpansionFraction.value > 0.95f && !isLyricsModeEnabled && lyricsArtworkProgress == 0f,
+                            userScrollEnabled = playerContentExpansionFraction.value > 0.95f && (isTablet || !isLyricsModeEnabled) && !isQueueExpanded,
+                            allowCanvas = playerContentExpansionFraction.value > 0.95f && (isTablet || !isLyricsModeEnabled) && lyricsArtworkProgress == 0f,
                             modifier = Modifier.fillMaxSize()
                         )
                     }

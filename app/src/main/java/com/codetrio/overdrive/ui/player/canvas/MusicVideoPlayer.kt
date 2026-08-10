@@ -154,16 +154,16 @@ fun MusicVideoPlayer(
     LaunchedEffect(currentUrl, exoPlayer) {
         val normalized = currentUrl.trim()
         isVideoReady = false
-        val lowercaseUrl = normalized.lowercase(Locale.ROOT)
-        val mimeType = when {
-            lowercaseUrl.contains("m3u8") -> MimeTypes.APPLICATION_M3U8
-            lowercaseUrl.contains("mp4") -> MimeTypes.VIDEO_MP4
-            else -> MimeTypes.APPLICATION_M3U8
+        
+        val streamUrlToPlay = if (normalized.startsWith("innertube://")) {
+            val videoId = normalized.removePrefix("innertube://")
+            com.codetrio.overdrive.data.innertube.NewPipeStreamExtractor.getVideoStreamUrl(videoId) ?: return@LaunchedEffect
+        } else {
+            normalized
         }
 
         val mediaItem = MediaItem.Builder()
-            .setUri(normalized)
-            .setMimeType(mimeType)
+            .setUri(streamUrlToPlay)
             .build()
 
         exoPlayer.stop()

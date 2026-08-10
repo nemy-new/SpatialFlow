@@ -9,7 +9,6 @@ data class BottomNavTab(
             BottomNavTab("explore", true),
             BottomNavTab("search", true),
             BottomNavTab("library", true),
-            BottomNavTab("statistics", true),
             BottomNavTab("effects", true),
             BottomNavTab("settings", true)
         )

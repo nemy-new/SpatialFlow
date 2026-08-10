@@ -66,6 +66,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -325,13 +327,8 @@ class MainActivity : AppCompatActivity() {
                             containerColor = MaterialTheme.colorScheme.surfaceContainer
                         ) {
                             androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
-                            val items = listOf<Triple<String, String, Any>>(
-                                Triple("explore", "Home", Icons.Rounded.Home),
-                                Triple("search", "Search", Icons.Rounded.Search),
-                                Triple("library", "Library", R.drawable.ic_library_music),
-                                Triple("effects", "Effects", R.drawable.ic_equalizer),
-                                Triple("settings", "Settings", R.drawable.ic_settings)
-                            )
+                            val tabsState by rememberBottomNavTabs(LocalContext.current)
+                            val items = tabsState.filter { it.isVisible }.map { Triple(it.route, getNavLabelForRoute(it.route), getNavIconForRoute(it.route)) }
                             items.forEach { (route, label, iconData) ->
                                 val selected = currentDestination?.route == route
                                 androidx.compose.material3.NavigationRailItem(
@@ -449,13 +446,8 @@ class MainActivity : AppCompatActivity() {
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                             tonalElevation = navElevation
                         ) {
-                            val items = listOf<Triple<String, String, Any>>(
-                                Triple("explore", "Home", Icons.Rounded.Home),
-                                Triple("search", "Search", Icons.Rounded.Search),
-                                Triple("library", "Library", R.drawable.ic_library_music),
-                                Triple("effects", "Effects", R.drawable.ic_equalizer),
-                                Triple("settings", "Settings", R.drawable.ic_settings)
-                            )
+                            val tabsState by rememberBottomNavTabs(LocalContext.current)
+                            val items = tabsState.filter { it.isVisible }.map { Triple(it.route, getNavLabelForRoute(it.route), getNavIconForRoute(it.route)) }
                              items.forEach { (route, label, iconData) ->
                                 val selected = currentDestination?.route == route
                                 NavigationBarItem(
@@ -1192,5 +1184,47 @@ fun NavGraphBuilder.composableWithBlur(
                 content(backStackEntry)
             }
         }
+    }
+}
+
+@Composable
+fun rememberBottomNavTabs(context: android.content.Context): androidx.compose.runtime.State<List<com.codetrio.overdrive.model.BottomNavTab>> {
+    val prefs = remember { context.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE) }
+    val tabsState = remember { androidx.compose.runtime.mutableStateOf(com.codetrio.overdrive.model.BottomNavTab.parse(prefs.getString("bottom_nav_tabs", null))) }
+    
+    DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+            if (key == "bottom_nav_tabs") {
+                tabsState.value = com.codetrio.overdrive.model.BottomNavTab.parse(sharedPreferences.getString(key, null))
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    return tabsState
+}
+
+fun getNavIconForRoute(route: String): Any {
+    return when (route) {
+        "explore" -> androidx.compose.material.icons.Icons.Rounded.Home
+        "search" -> androidx.compose.material.icons.Icons.Rounded.Search
+        "library" -> com.codetrio.overdrive.R.drawable.ic_library_music
+        "statistics" -> androidx.compose.material.icons.Icons.Rounded.Home
+        "effects" -> com.codetrio.overdrive.R.drawable.ic_equalizer
+        "settings" -> com.codetrio.overdrive.R.drawable.ic_settings
+        else -> androidx.compose.material.icons.Icons.Rounded.Home
+    }
+}
+
+@androidx.compose.runtime.Composable
+fun getNavLabelForRoute(route: String): String {
+    return when (route) {
+        "explore" -> androidx.compose.ui.res.stringResource(R.string.tab_explore)
+        "search" -> androidx.compose.ui.res.stringResource(R.string.tab_search)
+        "library" -> androidx.compose.ui.res.stringResource(R.string.tab_library)
+        "statistics" -> androidx.compose.ui.res.stringResource(R.string.tab_statistics)
+        "effects" -> androidx.compose.ui.res.stringResource(R.string.tab_effects)
+        "settings" -> androidx.compose.ui.res.stringResource(R.string.tab_settings)
+        else -> route.replaceFirstChar { it.uppercase() }
     }
 }

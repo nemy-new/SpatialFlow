@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -301,10 +302,11 @@ fun FullPlayer(
     val hasCanvas = !isStatic && showAnimatedArt && canvasArtwork != null
 
     val isTextColorDark = !isDark && isStatic
-    val contentColor = if (isTextColorDark) Color(0xFF1C1B1F) else Color.White
-    val contentSecondary = if (isTextColorDark) Color(0xFF1C1B1F).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
+    val contentColor = if (playerTheme == "immersion") Color.White else (if (isTextColorDark) Color(0xFF1C1B1F) else Color.White)
+    val contentSecondary = if (playerTheme == "immersion") Color.White.copy(alpha = 0.75f) else (if (isTextColorDark) Color(0xFF1C1B1F).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f))
 
-    val dynamicAccentColor = remember(accentColor, isTextColorDark) {
+    val dynamicAccentColor = remember(accentColor, isTextColorDark, playerTheme) {
+        if (playerTheme == "immersion") return@remember Color.White
         val hsl = FloatArray(3)
         androidx.core.graphics.ColorUtils.colorToHSL(accentColor.toArgb(), hsl)
         if (hsl[1] < 0.08f) {
@@ -339,7 +341,15 @@ fun FullPlayer(
 
     val haptic = LocalHapticFeedback.current
     val hasLyrics = !syncedLyrics.isNullOrEmpty() || !plainLyrics.isNullOrBlank()
+    
     val currentSongId = uiState.currentSong?.id
+    
+    androidx.compose.runtime.LaunchedEffect(currentSongId, hasLyrics) {
+        val config = context.resources.configuration
+        if (config.screenWidthDp >= 600) {
+            onLyricsModeChanged(hasLyrics)
+        }
+    }
     
     // Sliding Queue Drawer State
     val isQueueExpanded by viewModel.isQueueExpanded.collectAsStateWithLifecycle()
@@ -447,17 +457,60 @@ fun FullPlayer(
 
         val density = androidx.compose.ui.platform.LocalDensity.current
         val statusBarTopDp = with(density) { androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(this).toDp() }
-        val minTopOffset = statusBarTopDp + 68.dp // Removed 16.dp extra gap
-
-        // Calculate top offset to perfectly match yEndPx in PlayerBottomSheetCompose
-        val topOffset = ((screenHeight - albumArtSize) / 2f - 220.dp).coerceAtLeast(minTopOffset)
+        val controlsHeightDp = 420.dp
+        val totalGroupHeightDp = albumArtSize + controlsHeightDp
+        val availableHeightDp = screenHeight - statusBarTopDp
+        val topOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
 
         val dimens = com.codetrio.overdrive.ui.theme.LocalDimens.current
         val isTablet = configuration.screenWidthDp >= 600
         var tabletRightPaneTab by remember { androidx.compose.runtime.mutableIntStateOf(1) } // 0: Queue, 1: Lyrics, 2: Related
 
 
-        val rightPaneContent: @Composable () -> Unit = {
+        
+
+        AnimatedVisibility(
+            visible = isTablet || !isLyricsModeEnabled,
+            enter = fadeIn(animationSpec = spring(dampingRatio = 0.88f, stiffness = Spring.StiffnessMediumLow)),
+            exit = fadeOut(animationSpec = spring(dampingRatio = 0.88f, stiffness = Spring.StiffnessMediumLow)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(vertical = dimens.smallPadding),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!isTablet) {
+                    Spacer(modifier = Modifier.height(56.dp))
+                }
+
+                val controlsHeightDp = 420.dp
+                val totalGroupHeightDp = albumArtSize + controlsHeightDp
+                val availableHeightDp = screenHeight - statusBarTopDp
+                val tabletTopOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
+                val rowTopAbsolute = statusBarTopDp + dimens.smallPadding
+                val topSpacerHeight = (tabletTopOffset - rowTopAbsolute).coerceAtLeast(0.dp)
+
+
+        @Composable
+        fun FullPlayerPhoneLayout() {
+            val rowTopAbsolute = statusBarTopDp + dimens.smallPadding + 56.dp
+            val phoneTopSpacerHeight = (topOffset - rowTopAbsolute).coerceAtLeast(0.dp)
+            Spacer(modifier = Modifier.height(phoneTopSpacerHeight))
+
+            // Album Art Container Placeholder (ArtworkPager is rendered at this absolute position)
+            Box(
+                modifier = Modifier.size(
+                    width = albumArtSize,
+                    height = if (playerTheme == "immersion") albumArtSize * 0.98f else albumArtSize
+                )
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
             // Metadata row: title/artist
             Row(
                 modifier = Modifier.width(albumArtSize),
@@ -468,7 +521,11 @@ fun FullPlayer(
                 ) {
                     Text(
                         text = uiState.currentSong?.title ?: "Unknown Title",
-                        style = MaterialTheme.typography.headlineMediumEmphasized,
+                        style = MaterialTheme.typography.headlineMediumEmphasized.copy(
+                            fontFamily = if (playerTheme == "immersion") com.codetrio.overdrive.ui.theme.GoogleSansFlexImmersion else MaterialTheme.typography.headlineMediumEmphasized.fontFamily,
+                            fontSize = if (playerTheme == "immersion") 32.sp else MaterialTheme.typography.headlineMediumEmphasized.fontSize,
+                            lineHeight = if (playerTheme == "immersion") 40.sp else MaterialTheme.typography.headlineMediumEmphasized.lineHeight
+                        ),
                         fontWeight = FontWeight.Bold,
                         color = contentColor,
                         maxLines = 1,
@@ -477,7 +534,11 @@ fun FullPlayer(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = uiState.currentSong?.artist ?: "Unknown Artist",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = if (playerTheme == "immersion") com.codetrio.overdrive.ui.theme.GoogleSansFlexImmersion else MaterialTheme.typography.bodyMedium.fontFamily,
+                            fontSize = if (playerTheme == "immersion") 20.sp else MaterialTheme.typography.bodyMedium.fontSize,
+                            fontWeight = if (playerTheme == "immersion") androidx.compose.ui.text.font.FontWeight.Medium else MaterialTheme.typography.bodyMedium.fontWeight
+                        ),
                         color = contentSecondary,
                         maxLines = 1,
                         modifier = Modifier
@@ -544,6 +605,22 @@ fun FullPlayer(
                     isDark = isDark
                 )
 
+                val musicVideoUrl by viewModel.musicVideoUrl.collectAsStateWithLifecycle()
+                val isMvMode by viewModel.isMvMode.collectAsStateWithLifecycle()
+                
+                if (!musicVideoUrl.isNullOrBlank()) {
+                    PillChip(
+                        icon = Icons.Rounded.Visibility,
+                        label = "Video",
+                        isSelected = isMvMode,
+                        onClick = {
+                            viewModel.toggleMvMode()
+                        },
+                        contentColor = contentColor,
+                        accentColor = dynamicAccentColor,
+                        isDark = isDark
+                    )
+                }
 
                 PillChip(
                     icon = Icons.Rounded.PlaylistAdd,
@@ -650,8 +727,8 @@ fun FullPlayer(
                             interactionSource = interactionSource,
                             shape = RoundedCornerShape(cornerRadius),
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = contentColor.copy(alpha = if (isDark) 0.08f else 0.06f),
-                                contentColor = contentColor
+                                containerColor = if (playerTheme == "immersion") Color.White.copy(alpha = 0.15f) else contentColor.copy(alpha = if (isDark) 0.08f else 0.06f),
+                                contentColor = if (playerTheme == "immersion") Color.White else contentColor
                             ),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                         ) {
@@ -692,8 +769,8 @@ fun FullPlayer(
                             interactionSource = interactionSource,
                             shape = RoundedCornerShape(cornerRadius),
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = dynamicAccentColor,
-                                contentColor = if (isDark) Color(0xFF1C1B1F) else Color.White
+                                containerColor = if (playerTheme == "immersion") Color.White.copy(alpha = 0.25f) else dynamicAccentColor,
+                                contentColor = if (playerTheme == "immersion") Color.White else (if (isDark) Color(0xFF1C1B1F) else Color.White)
                             ),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                         ) {
@@ -734,8 +811,8 @@ fun FullPlayer(
                             interactionSource = interactionSource,
                             shape = RoundedCornerShape(cornerRadius),
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = contentColor.copy(alpha = if (isDark) 0.08f else 0.06f),
-                                contentColor = contentColor
+                                containerColor = if (playerTheme == "immersion") Color.White.copy(alpha = 0.15f) else contentColor.copy(alpha = if (isDark) 0.08f else 0.06f),
+                                contentColor = if (playerTheme == "immersion") Color.White else contentColor
                             ),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                         ) {
@@ -755,6 +832,32 @@ fun FullPlayer(
                 )
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val appPrefs = LocalContext.current.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
+            var showVolumeSlider by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(appPrefs.getBoolean("show_volume_slider", true)) }
+            
+            androidx.compose.runtime.DisposableEffect(appPrefs) {
+                val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+                    if (key == "show_volume_slider") {
+                        showVolumeSlider = sharedPreferences.getBoolean(key, true)
+                    }
+                }
+                appPrefs.registerOnSharedPreferenceChangeListener(listener)
+                onDispose {
+                    appPrefs.unregisterOnSharedPreferenceChangeListener(listener)
+                }
+            }
+
+            if (showVolumeSlider) {
+                com.codetrio.overdrive.ui.player.VolumeSlider(
+                    modifier = Modifier.width(albumArtSize).padding(top = 16.dp),
+                    contentColor = contentColor,
+                    dynamicAccentColor = dynamicAccentColor
+                )
+            } else {
+                Spacer(modifier = Modifier.width(albumArtSize).padding(top = 16.dp).height(24.dp))
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
             // Swipe Up / Click Chevron Up Indicator to expand Queue
@@ -788,71 +891,51 @@ fun FullPlayer(
                         .graphicsLayer { rotationZ = 180f }
                 )
             }
+            
+            // Lyrics Bottom Sheet for Phone
+            Spacer(modifier = Modifier.weight(1f, fill = false))
+            LyricsBottomSheet(
+                visible = isLyricsModeEnabled,
+                currentSong = uiState.currentSong,
+                syncedLyrics = syncedLyrics,
+                plainLyrics = plainLyrics,
+                isLoading = isLyricsLoading,
+                lyricsError = lyricsError,
+                currentPositionProvider = currentPositionProvider,
+                contentReady = true,
+                playerBackgroundColor = playerBackgroundColor,
+                canvasArtwork = canvasArtwork,
+                contentColor = contentColor,
+                contentSecondary = contentSecondary,
+                dynamicAccentColor = dynamicAccentColor,
+                onRetryLyrics = onRetryLyrics,
+                onFetchLyrics = onFetchLyrics,
+                onSeekTo = onSeekTo,
+                providerResults = providerResults,
+                selectedProvider = selectedProvider,
+                onProviderSelected = onProviderSelected,
+                isPlaying = uiState.isPlaying,
+                onPlayPauseClick = onPlayPauseClick,
+                duration = uiState.duration.toLong(),
+                onCollapse = { viewModel.setLyricsModeEnabled(false) },
+                syncOffsetMs = 0L,
+                onSyncOffsetChange = {},
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
-        AnimatedVisibility(
-            visible = !isLyricsModeEnabled,
-            enter = fadeIn(animationSpec = spring(dampingRatio = 0.88f, stiffness = Spring.StiffnessMediumLow)),
-            exit = fadeOut(animationSpec = spring(dampingRatio = 0.88f, stiffness = Spring.StiffnessMediumLow)),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(vertical = dimens.smallPadding),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (!isTablet) {
-                    // Header Row (Nav controls + collapse) - Symmetric centering
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = dimens.screenMargin)
-                            .height(56.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = onCollapse) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_keyboard_arrow_down),
-                                contentDescription = "Collapse Player",
-                                tint = contentColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-    
-                        if (!hasCanvas || isLyricsModeEnabled) {
-                            Text(
-                                text = "NOW PLAYING",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = contentSecondary
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.size(48.dp))
-                        }
-    
-                        Spacer(modifier = Modifier.size(48.dp))
-                    }
-                }
-
-                val controlsHeightDp = 300.dp
-                val totalGroupHeightDp = albumArtSize + controlsHeightDp
-                val availableHeightDp = screenHeight - statusBarTopDp
-                val tabletTopOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
-                val rowTopAbsolute = statusBarTopDp + dimens.smallPadding
-                val topSpacerHeight = (tabletTopOffset - rowTopAbsolute).coerceAtLeast(0.dp)
-
-                if (isTablet) {
-                    Spacer(modifier = Modifier.height(topSpacerHeight))
+        @Composable
+        fun FullPlayerTabletLayout() {
+            Spacer(modifier = Modifier.height(topSpacerHeight))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = dimens.screenMargin),
                         verticalAlignment = Alignment.Top
                     ) {
+                        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+                        val availableWidthDp = configuration.screenWidthDp.dp - (dimens.screenMargin * 2)
+                        val rightPaneWidthDp = availableWidthDp / 2f
                         // Left pane: Artwork and Controls
                         Column(
                             modifier = Modifier
@@ -979,6 +1062,23 @@ fun FullPlayer(
                     accentColor = dynamicAccentColor,
                     isDark = isDark
                 )
+
+                val musicVideoUrl by viewModel.musicVideoUrl.collectAsStateWithLifecycle()
+                val isMvMode by viewModel.isMvMode.collectAsStateWithLifecycle()
+                
+                if (!musicVideoUrl.isNullOrBlank()) {
+                    PillChip(
+                        icon = Icons.Rounded.Visibility,
+                        label = "Video",
+                        isSelected = isMvMode,
+                        onClick = {
+                            viewModel.toggleMvMode()
+                        },
+                        contentColor = contentColor,
+                        accentColor = dynamicAccentColor,
+                        isDark = isDark
+                    )
+                }
 
 
                 PillChip(
@@ -1197,14 +1297,27 @@ fun FullPlayer(
                         }
 
                         // Right pane: Dedicated to Lyrics
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .padding(end = dimens.screenMargin)
-                                .clip(RoundedCornerShape(32.dp))
-                                .background(Color.Transparent)
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = isLyricsModeEnabled,
+                            enter = androidx.compose.animation.expandHorizontally(
+                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 380f)
+                            ) + androidx.compose.animation.fadeIn(
+                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 380f)
+                            ),
+                            exit = androidx.compose.animation.shrinkHorizontally(
+                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 380f)
+                            ) + androidx.compose.animation.fadeOut(
+                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 380f)
+                            )
                         ) {
+                            Column(
+                                modifier = Modifier
+                                    .requiredWidth(rightPaneWidthDp)
+                                    .height(totalGroupHeightDp)
+                                    .padding(end = dimens.screenMargin)
+                                    .clip(RoundedCornerShape(32.dp))
+                                    .background(Color.Transparent)
+                            ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 val syncOffsetMs by viewModel.currentLyricsOffsetMs.collectAsStateWithLifecycle()
                                 FullScreenLyricsOverlay(
@@ -1236,52 +1349,20 @@ fun FullPlayer(
                                 )
                             }
                         }
+                        }
                     }
+        }
+
+
+                if (isTablet) {
+                    FullPlayerTabletLayout()
                 } else {
-                    Spacer(modifier = Modifier.height(topOffset - (statusBarTopDp + 68.dp)))
-
-                    // Album Art Container Placeholder (ArtworkPager is rendered at this absolute position)
-                    Box(
-                        modifier = Modifier.size(albumArtSize)
-                    )
-
-                    Spacer(modifier = Modifier.height(28.dp))
-
-                    rightPaneContent()
+                    FullPlayerPhoneLayout()
                 }
-            }
+}
         }
 
-        if (!isTablet) {
-            LyricsBottomSheet(
-            visible = isLyricsModeEnabled,
-            currentSong = uiState.currentSong,
-            syncedLyrics = syncedLyrics,
-            plainLyrics = plainLyrics,
-            isLoading = isLyricsLoading,
-            lyricsError = lyricsError,
-            currentPositionProvider = currentPositionProvider,
-            contentReady = true,
-            playerBackgroundColor = playerBackgroundColor,
-            canvasArtwork = canvasArtwork,
-            contentColor = contentColor,
-            contentSecondary = contentSecondary,
-            dynamicAccentColor = dynamicAccentColor,
-            onRetryLyrics = onRetryLyrics,
-            onFetchLyrics = onFetchLyrics,
-            onSeekTo = onSeekTo,
-            providerResults = providerResults,
-            selectedProvider = selectedProvider,
-            onProviderSelected = onProviderSelected,
-            isPlaying = uiState.isPlaying,
-            onPlayPauseClick = onPlayPauseClick,
-            duration = uiState.duration.toLong(),
-            onCollapse = { viewModel.setLyricsModeEnabled(false) },
-            syncOffsetMs = 0L,
-            onSyncOffsetChange = {},
-            modifier = Modifier.fillMaxSize()
-        )
-        }
+        
 
         // --- CUSTOM EMBEDDED SLIDING PLAY QUEUE ---
         if (true) {

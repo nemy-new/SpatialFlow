@@ -2181,9 +2181,12 @@ class PlayerSharedViewModel @Inject constructor(
 
     private val _isMvMode = MutableStateFlow(false)
     val isMvMode: StateFlow<Boolean> = _isMvMode.asStateFlow()
+    fun setMvMode(enabled: Boolean) { _isMvMode.value = enabled }
+    fun toggleMvMode() { _isMvMode.value = !_isMvMode.value }
 
-    private val _musicVideoUrl = MutableStateFlow<String?>(null)
-    val musicVideoUrl: StateFlow<String?> = _musicVideoUrl.asStateFlow()
+    val musicVideoUrl: StateFlow<String?> = _currentSong.map { song -> 
+        if (!song?.videoId.isNullOrBlank()) "innertube://${song?.videoId}" else null 
+    }.stateIn(bgScope, SharingStarted.WhileSubscribed(), null)
 
     private val _mvSeekRequest = MutableStateFlow<Long?>(null)
     val mvSeekRequest: StateFlow<Long?> = _mvSeekRequest.asStateFlow()

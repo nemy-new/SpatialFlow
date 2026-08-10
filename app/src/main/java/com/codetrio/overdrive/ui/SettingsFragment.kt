@@ -1368,15 +1368,7 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
         )
     }
 
-    composableWithBlur(
-        route = SettingsRoute.Feedback.route,
-        enterTransition = enterAnim,
-        exitTransition = exitAnim,
-        popEnterTransition = popEnterAnim,
-        popExitTransition = popExitAnim
-    ) {
-        FeedbackScreen(navController = navController)
-    }
+
 
     composableWithBlur(
         route = SettingsRoute.WhatsNew.route,
@@ -1538,14 +1530,6 @@ private fun SettingsMainScreen(navController: androidx.navigation.NavController)
                 },
                 {
                     SettingsCategoryItem(
-                        title = stringResource(R.string.settings_cat_feedback),
-                        subtitle = stringResource(R.string.settings_cat_feedback_sub),
-                        icon = Icons.Rounded.BugReport,
-                        onClick = { navController.navigate(SettingsRoute.Feedback.route) }
-                    )
-                },
-                {
-                    SettingsCategoryItem(
                         title = stringResource(R.string.settings_cat_about),
                         subtitle = stringResource(R.string.settings_cat_about_sub),
                         icon = Icons.Rounded.Info,
@@ -1555,7 +1539,6 @@ private fun SettingsMainScreen(navController: androidx.navigation.NavController)
             )
         )
         
-        AppLogoSection(isLandscape = isLandscape)
     }
 }
 
@@ -3247,12 +3230,7 @@ private fun AboutScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            DonateCard(onOpenUrl)
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Credits Card
-            CreditsCard(onOpenUrl)
+
         }
     }
 }
@@ -3912,152 +3890,6 @@ private fun ImageCacheSizeRow(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun CreditsCard(onOpenUrl: (String) -> Unit) {
-    val context = LocalContext.current
-    Column {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(32.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                val morphState = rememberExpressiveShapeMorph(
-                    segmentDurationMillis = 1400,
-                    rotationDurationMillis = 12000
-                )
-
-                var isImageLoading by remember { mutableStateOf(true) }
-                val loadedProgress by animateFloatAsState(
-                    targetValue = if (isImageLoading) 0f else 1f,
-                    animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-                    label = "loadedProgress"
-                )
-
-                val imageMorph = remember { Morph(MaterialShapes.Cookie6Sided, MaterialShapes.Circle) }
-                val imageMaskShape = MorphShape(imageMorph, loadedProgress)
-
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(200.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(morphState.morphShape)
-                            .background(
-                                brush = Brush.sweepGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.secondary,
-                                        MaterialTheme.colorScheme.tertiary,
-                                        MaterialTheme.colorScheme.primary
-                                    )
-                                )
-                            )
-                    )
-                    
-                    // Inner separator circle
-                    Box(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                                shape = CircleShape
-                            )
-                    )
-
-                    // Static Profile Picture (No movement, morphs to circle when loaded)
-                    coil.compose.AsyncImage(
-                        model = "https://github.com/MythicalSHUB.png",
-                        contentDescription = "Shubham Karande",
-                        onState = { state ->
-                            if (state is coil.compose.AsyncImagePainter.State.Success) {
-                                isImageLoading = false
-                            }
-                        },
-                        modifier = Modifier
-                            .size(108.dp)
-                            .clip(imageMaskShape)
-                            .graphicsLayer {
-                                alpha = loadedProgress
-                            },
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
-
-                    // Shimmer loader placeholder
-                    if (loadedProgress < 1f) {
-                        val shimmerColors = listOf(
-                            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
-                            MaterialTheme.colorScheme.surfaceContainerHighest,
-                            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
-                        )
-
-                        val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
-                        val shimmerTranslateX by shimmerTransition.animateFloat(
-                            initialValue = -200f,
-                            targetValue = 200f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1200, easing = LinearEasing),
-                                repeatMode = RepeatMode.Restart
-                            ),
-                            label = "shimmerTranslateX"
-                        )
-
-                        val shimmerBrush = Brush.linearGradient(
-                            colors = shimmerColors,
-                            start = Offset(shimmerTranslateX - 80f, 0f),
-                            end = Offset(shimmerTranslateX + 80f, 160f)
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .size(108.dp)
-                                .graphicsLayer {
-                                    alpha = 1f - loadedProgress
-                                }
-                                .clip(imageMaskShape)
-                                .background(brush = shimmerBrush)
-                        )
-                    }
-                }
-                
-                Text(
-                    text = "Shubham Karande",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-                Text(
-                    text = "Android Developer",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                
-                Row(
-                    modifier = Modifier.padding(top = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    SocialIconButton(icon = R.drawable.ic_github, onClick = { onOpenUrl("https://github.com/MythicalSHUB") })
-                    SocialIconButton(icon = R.drawable.ic_telegram, onClick = { com.codetrio.overdrive.util.TelegramHelper.openTelegram(context, domain = "SpatialFlow") })
-                    SocialIconButton(icon = R.drawable.ic_kofi, onClick = { onOpenUrl("https://ko-fi.com/mythicalshub") })
-                    SocialIconButton(icon = R.drawable.ic_instagram, onClick = { onOpenUrl("https://instagram.com/mythicalshub") })
-                    SocialIconButton(icon = R.drawable.ic_youtube, onClick = { onOpenUrl("https://youtube.com/@8dmusic_s") })
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun SocialIconButton(icon: Int, onClick: () -> Unit) {
     IconButton(
         onClick = onClick,
@@ -4073,79 +3905,6 @@ private fun SocialIconButton(icon: Int, onClick: () -> Unit) {
         )
     }
 }
-
-@Composable
-private fun DonateCard(onOpenUrl: (String) -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, Color(0xFFFF5E5B).copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFF5E5B).copy(alpha = 0.1f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.White, CircleShape)
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    coil.compose.AsyncImage(
-                        model = "https://storage.ko-fi.com/cdn/brandasset/v2/kofi_symbol.png",
-                        contentDescription = "Ko-fi Symbol",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text(
-                        text = "Support SpatialFlow",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Buy me a coffee to support development!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Button(
-                onClick = { onOpenUrl("https://ko-fi.com/mythicalshub") },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFF5E5B),
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = "Donate",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-// SocialButton is replaced by ButtonGroup clickableItem
 
 // ── App Logo ────────────────────────────────────────────────────────────────
 
