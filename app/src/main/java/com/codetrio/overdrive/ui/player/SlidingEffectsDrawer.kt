@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -67,6 +69,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
@@ -199,7 +202,14 @@ fun SlidingEffectsDrawer(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
-                ) { /* Block clicks inside drawer from passing through */ },
+                ) { /* Block clicks inside drawer from passing through */ }
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures { change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: Float ->
+                        if (dragAmount > 8f) {
+                            onEffectsExpandedChange(false)
+                        }
+                    }
+                },
             shape = RoundedCornerShape(topStart = safeCornerRadius, topEnd = safeCornerRadius),
             color = effectsBgColor,
             border = BorderStroke(
@@ -241,7 +251,7 @@ fun SlidingEffectsDrawer(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "AUDIO EFFECTS",
+                                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_audio_effects),
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     fontWeight = FontWeight.ExtraBold,
                                     letterSpacing = 1.5.sp
@@ -307,7 +317,7 @@ fun SlidingEffectsDrawer(
                             EffectPodCard(
                                 pod = EffectPod.SPEED,
                                 iconRes = R.drawable.ic_timer,
-                                title = "Speed",
+                                title = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_speed),
                                 subtitle = "${String.format(LocalLocale.current.platformLocale, "%.2fx", playbackSpeed)}",
                                 isSelected = selectedPod == EffectPod.SPEED,
                                 isActive = playbackSpeed != 1.0f || isPitchMatched,
@@ -317,14 +327,14 @@ fun SlidingEffectsDrawer(
                                 modifier = Modifier.weight(1f)
                             )
                             val balanceSubtitle = when {
-                                abs(balancePosition) < 0.05f -> "Center"
-                                balancePosition < 0 -> "L +${(abs(balancePosition) * 10).toInt()}"
-                                else -> "R +${(balancePosition * 10).toInt()}"
+                                abs(balancePosition) < 0.05f -> androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_center)
+                                balancePosition < 0 -> "${androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_l_plus)}${(abs(balancePosition) * 10).toInt()}"
+                                else -> "${androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_r_plus)}${(balancePosition * 10).toInt()}"
                             }
                             EffectPodCard(
                                 pod = EffectPod.BALANCE,
                                 iconRes = R.drawable.ic_settings,
-                                title = "Balance",
+                                title = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_balance_effects),
                                 subtitle = balanceSubtitle,
                                 isSelected = selectedPod == EffectPod.BALANCE,
                                 isActive = abs(balancePosition) >= 0.05f,
@@ -334,12 +344,12 @@ fun SlidingEffectsDrawer(
                                 modifier = Modifier.weight(1f)
                             )
                             val eqPresetName = if (isEqualizerEnabled) {
-                                predefinedEqPresets.firstOrNull { it.bands == bands }?.name ?: "Custom"
-                            } else "Flat"
+                                predefinedEqPresets.firstOrNull { it.bands == bands }?.name ?: androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_custom)
+                            } else androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_flat_effects)
                             EffectPodCard(
                                 pod = EffectPod.PRESETS,
                                 iconRes = R.drawable.ic_music_note,
-                                title = "Presets",
+                                title = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_presets_effects),
                                 subtitle = eqPresetName,
                                 isSelected = selectedPod == EffectPod.PRESETS,
                                 isActive = isEqualizerEnabled,
@@ -358,8 +368,8 @@ fun SlidingEffectsDrawer(
                             EffectPodCard(
                                 pod = EffectPod.SPATIAL,
                                 iconRes = R.drawable.ic_headphones,
-                                title = "Spatial",
-                                subtitle = if (is8DEnabled) "360° Active" else "Standard",
+                                title = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_spatial_effects),
+                                subtitle = if (is8DEnabled) androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_360_active) else androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_standard_effects),
                                 isSelected = selectedPod == EffectPod.SPATIAL,
                                 isActive = is8DEnabled,
                                 onClick = { selectedPod = if (selectedPod == EffectPod.SPATIAL) null else EffectPod.SPATIAL },
@@ -370,8 +380,8 @@ fun SlidingEffectsDrawer(
                             EffectPodCard(
                                 pod = EffectPod.LOUDNESS,
                                 iconRes = R.drawable.ic_speaker,
-                                title = "Loudness",
-                                subtitle = if (isLoudnessEnabled) "+${(loudnessGain / 100).toInt()} dB" else "Normal",
+                                title = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_loudness_effects),
+                                subtitle = if (isLoudnessEnabled) "+${(loudnessGain / 100).toInt()} dB" else androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_normal),
                                 isSelected = selectedPod == EffectPod.LOUDNESS,
                                 isActive = isLoudnessEnabled,
                                 onClick = { selectedPod = if (selectedPod == EffectPod.LOUDNESS) null else EffectPod.LOUDNESS },
@@ -382,8 +392,8 @@ fun SlidingEffectsDrawer(
                             EffectPodCard(
                                 pod = EffectPod.EQUALIZER,
                                 iconRes = R.drawable.ic_equalizer,
-                                title = "Equalizer",
-                                subtitle = if (isEqualizerEnabled) "5-Band On" else "Bypass",
+                                title = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_equalizer),
+                                subtitle = if (isEqualizerEnabled) androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_5_band_on) else androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_bypass),
                                 isSelected = selectedPod == EffectPod.EQUALIZER,
                                 isActive = isEqualizerEnabled,
                                 onClick = { selectedPod = if (selectedPod == EffectPod.EQUALIZER) null else EffectPod.EQUALIZER },
@@ -729,9 +739,9 @@ private fun CompactBalanceDeck(
                 color = contentColor
             )
             val status = when {
-                abs(balancePosition) < 0.05f -> "Center"
-                balancePosition < 0 -> "Left ${abs(balancePosition).toInt()}"
-                else -> "Right ${balancePosition.toInt()}"
+                abs(balancePosition) < 0.05f -> androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_center)
+                balancePosition < 0 -> "${androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_left)} ${abs(balancePosition).toInt()}"
+                else -> "${androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_right)} ${balancePosition.toInt()}"
             }
             Text(
                 text = status,

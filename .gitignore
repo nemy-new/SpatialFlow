@@ -21,5 +21,12 @@ build_log.txt
 build_errors*.txt
 .agent/
 .idea/
+*.py
+*.sh
+TestGenAI.kt
+patch.txt
+tmp_aar/
+missing_strings*.xml
+test_gemini.gradle
 
 

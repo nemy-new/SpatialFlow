@@ -123,7 +123,7 @@ class AudioPlaybackService : MediaSessionService() {
     private var originalSourceUri: Uri? = null
     private var isProcessing = false
     private var isNextSongPreCached = false
-    private var currentSongName = "SpatialFlow"
+    private var currentSongName = "OverDrive"
     private var currentAlbumArt: Bitmap? = null
     private var is8DEnabled = false
     private var hasProcessed8D = false
@@ -214,7 +214,12 @@ class AudioPlaybackService : MediaSessionService() {
             } else {
                 handler.removeCallbacks(progressUpdateRunnable)
             }
-
+            com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                level = com.codetrio.overdrive.data.diagnostics.LogLevel.INFO,
+                tag = "PlaybackService",
+                message = if (isPlaying) "Playback active (Playing)" else "Playback paused",
+                details = "Pos=${player.currentPosition}ms, Buffered=${player.bufferedPosition}ms, Speed=${player.playbackParameters.speed}"
+            )
         }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -225,10 +230,53 @@ class AudioPlaybackService : MediaSessionService() {
             }
         }
 
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.updateAudioSink(
+                audioSessionId = audioSessionId
+            )
+        }
+
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+            super.onTracksChanged(tracks)
+            for (trackGroup in tracks.groups) {
+                if (trackGroup.type == androidx.media3.common.C.TRACK_TYPE_AUDIO && trackGroup.isSelected) {
+                    for (i in 0 until trackGroup.length) {
+                        if (trackGroup.isTrackSelected(i)) {
+                            val format = trackGroup.getTrackFormat(i)
+                            com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.updateStreamInfo(
+                                streamUrl = null,
+                                mimeType = format.sampleMimeType,
+                                codec = format.codecs,
+                                bitrate = if (format.bitrate > 0) format.bitrate else null,
+                                sampleRate = if (format.sampleRate > 0) format.sampleRate else null,
+                                channelCount = if (format.channelCount > 0) format.channelCount else null
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         @RequiresApi(Build.VERSION_CODES.O)
         override fun onPlaybackStateChanged(state: Int) {
             val isPlayingState = player.playWhenReady && state == Player.STATE_READY
             viewModel?.postIsPlaying(isPlayingState)
+
+            val stateName = when (state) {
+                Player.STATE_IDLE -> "IDLE"
+                Player.STATE_BUFFERING -> "BUFFERING"
+                Player.STATE_READY -> if (player.playWhenReady) "PLAYING" else "READY"
+                Player.STATE_ENDED -> "ENDED"
+                else -> "UNKNOWN($state)"
+            }
+            val bufferHealthMs = (player.bufferedPosition - player.currentPosition).coerceAtLeast(0L)
+            com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.updatePlaybackState(
+                stateName = stateName,
+                bufferHealthMs = bufferHealthMs,
+                bufferedPositionMs = player.bufferedPosition,
+                currentPositionMs = player.currentPosition,
+                durationMs = player.duration.coerceAtLeast(0L)
+            )
 
             if (state == Player.STATE_READY) {
                 viewModel?.setPlaybackReady(true)
@@ -251,8 +299,10 @@ class AudioPlaybackService : MediaSessionService() {
             // --- EXPIRED STREAM URL RECOVERY ---
             var currentCause: Throwable? = error.cause
             var isExpiredUrl = false
+            var responseCode: Int? = null
             while (currentCause != null) {
                 if (currentCause is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException) {
+                    responseCode = currentCause.responseCode
                     if (currentCause.responseCode == 403 || currentCause.responseCode == 404) {
                         isExpiredUrl = true
                         break
@@ -261,11 +311,22 @@ class AudioPlaybackService : MediaSessionService() {
                 currentCause = currentCause.cause
             }
 
+            com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.logError(
+                errorCodeName = error.errorCodeName,
+                errorMessage = error.message,
+                throwable = error,
+                httpStatusCode = responseCode
+            )
+
             if (isExpiredUrl) {
                 val currentPos = player.currentPosition
                 val originalUri = originalSourceUri
                 if (originalUri != null && originalUri.scheme == "innertube") {
                     Log.w(TAG, "Streaming URL expired (HTTP 403/404). Re-resolving seamlessly...")
+                    com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.logRecovery(
+                        action = "Seamless Re-resolution (HTTP $responseCode)",
+                        details = "Re-resolving stream URL for position ${currentPos}ms without interrupting UI"
+                    )
                     val wasPlaying = player.playWhenReady
                     if (wasPlaying) {
                         loadAndPlay(originalUri, currentPos)
@@ -277,6 +338,10 @@ class AudioPlaybackService : MediaSessionService() {
             }
             // ------------------------------------
 
+            com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.logRecovery(
+                action = "Auto-skip to next track",
+                details = "Unrecoverable playback error occurred. Skipping track..."
+            )
             viewModel?.setIsPlaying(false)
             
             // Auto-recovery: reset player and attempt to skip to next song
@@ -480,14 +545,16 @@ class AudioPlaybackService : MediaSessionService() {
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(this)
             .setDataSourceFactory(cacheDataSourceFactory)
 
+        val appPrefs = getSharedPreferences("AppSettings", MODE_PRIVATE)
+        val lowLatencyEnabled = appPrefs.getBoolean("pref_opt_low_latency_buffer", true)
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                50000,  // minBufferMs (Aggressively buffer 50s to prevent starvation)
-                60000,  // maxBufferMs (Allow up to 60s in memory)
-                250,    // bufferForPlaybackMs (Extreme Reactivity - start playing after 250ms)
-                1500    // bufferForPlaybackAfterRebufferMs (Recover quickly with 1.5s buffer)
+                if (lowLatencyEnabled) 20000 else 50000,  // minBufferMs
+                if (lowLatencyEnabled) 50000 else 60000,  // maxBufferMs
+                if (lowLatencyEnabled) 350 else 1000,     // bufferForPlaybackMs (instant start)
+                if (lowLatencyEnabled) 1500 else 2500     // bufferForPlaybackAfterRebufferMs
             )
-            .setPrioritizeTimeOverSizeThresholds(true) // Ensures playback starts instantly on low buffer
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         val playerInstance = ExoPlayer.Builder(this)
@@ -637,14 +704,29 @@ class AudioPlaybackService : MediaSessionService() {
      */
     private fun resolveAndLoad(uri: Uri) {
         originalSourceUri = uri
+        val currentSong = viewModel?.songList?.value?.find { it.videoId == uri.host } ?: viewModel?.currentSong?.value
+        
+        com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.startSession(
+            title = currentSong?.title ?: "Unknown Title",
+            artist = currentSong?.artist ?: "Unknown Artist",
+            songId = currentSong?.id?.toString(),
+            videoId = uri.host ?: currentSong?.videoId,
+            source = if (uri.scheme == "innertube") "YouTube Stream" else "Local / Direct File"
+        )
+
         if (uri.scheme == "innertube") {
             val videoId = uri.host ?: return
             
             // Check if local downloaded file exists
-            val currentSong = viewModel?.songList?.value?.find { it.videoId == videoId }
             val localUri = currentSong?.let { SongDownloader.getDownloadedSongUri(this, it) }
             if (localUri != null) {
                 Log.d(TAG, "Redirecting playback of $videoId to local offline file: $localUri")
+                com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                    level = com.codetrio.overdrive.data.diagnostics.LogLevel.SUCCESS,
+                    tag = "PlaybackService",
+                    message = "Redirected to local downloaded offline copy",
+                    details = "Path=$localUri"
+                )
                 resolveJob?.cancel()
                 resolveTargetSongId = null
                 loadAudioInternal(localUri)
@@ -657,6 +739,11 @@ class AudioPlaybackService : MediaSessionService() {
             
             resolveJob = serviceScope.launch {
                 Log.d(TAG, "Pre-resolving stream ahead of injector injection: $videoId")
+                com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                    level = com.codetrio.overdrive.data.diagnostics.LogLevel.INFO,
+                    tag = "PlaybackService",
+                    message = "Pre-resolving streaming URL for $videoId..."
+                )
                 
                 // Fetch stream URL only, don't wait for position yet
                 val streamResult = streamRepository.getStreamUrl(videoId)
@@ -666,6 +753,11 @@ class AudioPlaybackService : MediaSessionService() {
                 ensureActive()
                 if (resolveTargetSongId != videoId) {
                     Log.d(TAG, "Stale resolution for $videoId discarded (target changed to $resolveTargetSongId)")
+                    com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                        level = com.codetrio.overdrive.data.diagnostics.LogLevel.WARN,
+                        tag = "PlaybackService",
+                        message = "Resolution aborted: Target changed to $resolveTargetSongId before completion"
+                    )
                     return@launch
                 }
                 
@@ -695,6 +787,11 @@ class AudioPlaybackService : MediaSessionService() {
                     }
                 } else {
                     Log.e(TAG, "Failed resolving upfront for: $videoId")
+                    com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                        level = com.codetrio.overdrive.data.diagnostics.LogLevel.ERROR,
+                        tag = "PlaybackService",
+                        message = "Failed to resolve stream URL upfront for: $videoId. Auto-skipping..."
+                    )
                     // Auto-skip on resolution failure
                     viewModel?.playNextSong(true)
                 }
@@ -982,7 +1079,7 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     fun setSongMetadata(songName: String?, albumArt: Bitmap?) {
-        this.currentSongName = songName ?: "SpatialFlow"
+        this.currentSongName = songName ?: "OverDrive"
         this.currentAlbumArt = albumArt?.let { 
             val size = min(it.width, it.height)
             Bitmap.createBitmap(it, (it.width - size) / 2, (it.height - size) / 2, size, size).scale(512, 512, true)
@@ -1416,7 +1513,9 @@ class AudioPlaybackService : MediaSessionService() {
                     }
 
                     // Predictive Pre-Caching at 80% playback progression (shuffle-aware)
-                    if (player.isPlaying && dur > 0 && !isNextSongPreCached && (pos.toFloat() / dur.toFloat() >= 0.8f)) {
+                    val appPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+                    val isPrecacheOpt = appPrefs.getBoolean("pref_opt_predictive_precaching", true)
+                    if (isPrecacheOpt && player.isPlaying && dur > 0 && !isNextSongPreCached && (pos.toFloat() / dur.toFloat() >= 0.8f)) {
                         isNextSongPreCached = true
                         viewModel?.let { vm ->
                             val songs = vm.songList.value
@@ -1428,7 +1527,20 @@ class AudioPlaybackService : MediaSessionService() {
                         }
                     }
                 }
-                handler.postDelayed(this, 250)
+                val appPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+                val dynamicPolling = appPrefs.getBoolean("pref_opt_dynamic_audio_polling", true)
+                val nextDelay = if (dynamicPolling) {
+                    if (viewModel != null) {
+                        val isExpanded = viewModel?.isPlayerExpanded?.value == true
+                        val isLyrics = viewModel?.isLyricsModeEnabled?.value == true
+                        if (isExpanded || isLyrics) 200L else 350L
+                    } else {
+                        500L
+                    }
+                } else {
+                    250L
+                }
+                handler.postDelayed(this, nextDelay)
             }
         }
         handler.post(progressUpdateRunnable)
@@ -1995,7 +2107,7 @@ class AudioPlaybackService : MediaSessionService() {
             // The small icon is set on the provider instance in setupMediaSession
             notificationBuilder.setContentTitle(currentSongName)
             notificationBuilder.setContentText(if (is8DEnabled) "🎧 8D Audio" else "Normal Playback")
-            notificationBuilder.setSubText("SpatialFlow")
+            notificationBuilder.setSubText("OverDrive")
             notificationBuilder.setChannelId("audio_playback_channel")
             notificationBuilder.setOngoing(isPlaying)
             notificationBuilder.setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)

@@ -5,8 +5,10 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import java.io.File
 import java.io.Serializable
+import androidx.compose.runtime.Immutable
 import androidx.core.net.toUri
 
+@Immutable
 data class SongItem(
     @JvmField val id: Long,
     @JvmField val title: String,

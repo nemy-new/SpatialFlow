@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -79,6 +80,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.Morph
@@ -118,6 +120,7 @@ internal fun FullScreenLyricsOverlay(
     duration: Long,
     onCollapse: (() -> Unit)? = null,
     isEmbedded: Boolean = false,
+    onToggleTranslation: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val consumeClicks = remember { MutableInteractionSource() }
@@ -155,44 +158,112 @@ internal fun FullScreenLyricsOverlay(
                 .navigationBarsPadding()
                 .padding(vertical = 12.dp)
         ) {
-            // Centered Title Header Layout
+            // Top Bar Layout (Album Art + Song Title + Artist on Left, Actions on Right)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(horizontal = 20.dp),
+                    .height(64.dp)
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!isEmbedded) {
+                // Top-Left Album Art + Song Title + Artist (Clickable to collapse to normal player)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(
+                            enabled = onCollapse != null,
+                            onClick = { onCollapse?.invoke() }
+                        )
+                        .padding(vertical = 4.dp, horizontal = 6.dp)
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable(
-                                enabled = onCollapse != null,
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { onCollapse?.invoke() }
-                            )
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(8.dp))
                     ) {
-                        currentSong?.thumbnailUrl?.let { url ->
+                        if (currentSong?.thumbnailUrl != null) {
                             coil.compose.AsyncImage(
                                 model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
-                                    .data(url)
+                                    .data(currentSong.thumbnailUrl)
                                     .crossfade(true)
                                     .build(),
                                 contentDescription = "Return to Player",
                                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
+                        } else {
+                            Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.2f)))
                         }
                     }
-                } else {
-                    Spacer(modifier = Modifier.size(48.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = currentSong?.title ?: "",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = contentColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = currentSong?.artist ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = contentColor.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val prefs = remember { androidx.preference.PreferenceManager.getDefaultSharedPreferences(context) }
+                var isTranslationEnabled by remember { mutableStateOf(prefs.getBoolean("enable_lyrics_translation", false)) }
+                val translationEngine = prefs.getString("lyrics_translation_engine", "gemini_api")
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isTranslationEnabled && translationEngine == "aicore",
+                    enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandHorizontally(),
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkHorizontally()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Rounded.Translate,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "AI翻訳オン",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+
+                IconButton(onClick = {
+                    isTranslationEnabled = !isTranslationEnabled
+                    onToggleTranslation()
+                }) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Rounded.Translate,
+                        contentDescription = "Toggle Lyrics Translation",
+                        tint = if (isTranslationEnabled) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.8f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
 
                 IconButton(onClick = { showProvidersSheet = true }) {
                     Icon(

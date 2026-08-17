@@ -40,7 +40,7 @@ object CrashHandler {
         val timestamp = dateFormat.format(Date())
 
         val report = """
-            |--- SPATIALFLOW CRASH REPORT ---
+            |--- OVERDRIVE CRASH REPORT ---
             |Timestamp: $timestamp
             |Thread: ${thread.name} (ID: ${thread.id})
             |App Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})

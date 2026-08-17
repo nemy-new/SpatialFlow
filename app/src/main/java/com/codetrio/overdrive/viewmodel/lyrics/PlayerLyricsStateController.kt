@@ -8,9 +8,15 @@ import com.codetrio.overdrive.data.lyrics.LyricsRepository
 import com.codetrio.overdrive.data.lyrics.LyricsResult
 import com.codetrio.overdrive.data.lyrics.LyricsState
 import com.codetrio.overdrive.model.SongItem
+import com.codetrio.overdrive.data.lyrics.LyricsTranslator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import androidx.preference.PreferenceManager
+import java.util.Locale
 
 /**
  * Handles lyrics state, fetch, and retry flows for player view models.
@@ -18,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class PlayerLyricsStateController(private val logTag: String) {
     private var activeLyricsTrackKey: String? = null
+    private val scope = CoroutineScope(Dispatchers.Main)
 
     private val _syncedLyrics = MutableStateFlow<List<LyricLine>?>(null)
     val syncedLyrics: StateFlow<List<LyricLine>?> = _syncedLyrics.asStateFlow()
@@ -99,6 +106,7 @@ class PlayerLyricsStateController(private val logTag: String) {
             song.duration,
             song.path,
             createCallback(
+                context = context,
                 requestTrackKey = trackKey,
                 keepExistingLyricsOnNotFound = true,
                 instrumentalMessage = "Instrumental track - no vocals",
@@ -132,6 +140,7 @@ class PlayerLyricsStateController(private val logTag: String) {
             song.duration,
             song.path,
             createCallback(
+                context = context,
                 requestTrackKey = trackKey,
                 keepExistingLyricsOnNotFound = false,
                 instrumentalMessage = "Instrumental track",
@@ -145,7 +154,11 @@ class PlayerLyricsStateController(private val logTag: String) {
         val result = _providerResults.value[providerName]
         if (result != null && result.hasLyrics()) {
             _selectedProvider.value = providerName
-            applyLyricsResult(result)
+            if (context != null) {
+                applyLyricsResult(result, context)
+            } else {
+                applyLyricsResult(result, null)
+            }
             _lyricsState.value = LyricsState.SUCCESS
             _error.value = null
         } else if (context != null && song != null) {
@@ -192,6 +205,7 @@ class PlayerLyricsStateController(private val logTag: String) {
     }
 
     private fun createCallback(
+        context: Context,
         requestTrackKey: String?,
         keepExistingLyricsOnNotFound: Boolean,
         instrumentalMessage: String,
@@ -202,7 +216,7 @@ class PlayerLyricsStateController(private val logTag: String) {
                 if (!isActiveLyricsRequest(requestTrackKey)) return
 
                 if (_selectedProvider.value == null) {
-                    applyLyricsResult(result)
+                    applyLyricsResult(result, context)
                     _lyricsState.value = LyricsState.SUCCESS
                     _isLoading.value = false
                     _error.value = null
@@ -218,6 +232,9 @@ class PlayerLyricsStateController(private val logTag: String) {
                     _syncedLyrics.value = lines
                     _plainLyrics.value = null
                     _lyricsState.value = LyricsState.SUCCESS
+                    
+                    triggerTranslationIfEnabled(lines, context)
+                    
                     if (logUpgrades) {
                         _statusMessage.value = "Upgraded to synced lyrics from ${betterResult.providerName}"
                         Log.d(logTag, "Lyrics upgraded to synced from ${betterResult.providerName}")
@@ -269,7 +286,7 @@ class PlayerLyricsStateController(private val logTag: String) {
                 if (_selectedProvider.value == null) {
                     val best = determineBestResult(currentMap)
                     if (best != null && best.hasLyrics()) {
-                        applyLyricsResult(best)
+                        applyLyricsResult(best, context)
                         _lyricsState.value = LyricsState.SUCCESS
                         _error.value = null
                     } else if (best != null && best.isInstrumental) {
@@ -287,14 +304,57 @@ class PlayerLyricsStateController(private val logTag: String) {
         return activeLyricsTrackKey != null && activeLyricsTrackKey == requestTrackKey
     }
 
-    private fun applyLyricsResult(result: LyricsResult) {
+    private fun applyLyricsResult(result: LyricsResult, context: Context?) {
         if (!result.syncedLyrics.isNullOrEmpty()) {
             val lines = LrcParser.parse(result.syncedLyrics)
             _syncedLyrics.value = lines
             _plainLyrics.value = null
+            
+            if (context != null) {
+                triggerTranslationIfEnabled(lines, context)
+            }
         } else if (!result.plainLyrics.isNullOrEmpty()) {
             _syncedLyrics.value = null
             _plainLyrics.value = result.plainLyrics
+        }
+    }
+    
+    fun toggleTranslation(context: Context) {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val current = prefs.getBoolean("enable_lyrics_translation", false)
+        val newValue = !current
+        prefs.edit().putBoolean("enable_lyrics_translation", newValue).apply()
+        
+        val lines = _syncedLyrics.value
+        if (newValue) {
+            if (!lines.isNullOrEmpty()) {
+                triggerTranslationIfEnabled(lines, context)
+            }
+        } else {
+            if (!lines.isNullOrEmpty()) {
+                _syncedLyrics.value = lines.map { it.copy(translatedContent = null) }
+            }
+        }
+    }
+
+    private fun triggerTranslationIfEnabled(lines: List<LyricLine>, context: Context) {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val enableTranslation = prefs.getBoolean("enable_lyrics_translation", false)
+        
+        if (enableTranslation && lines.isNotEmpty()) {
+            val targetLang = prefs.getString("lyrics_translation_language", Locale.getDefault().language) ?: Locale.getDefault().language
+            val engine = prefs.getString("lyrics_translation_engine", "mlkit") ?: "mlkit"
+            
+            scope.launch {
+                val translatedLines = LyricsTranslator.translateLyrics(lines, targetLang, engine) { progress ->
+                    _statusMessage.value = progress
+                }
+                
+                // Update state if we're still on the same track
+                if (translatedLines.any { it.translatedContent != null }) {
+                    _syncedLyrics.value = translatedLines
+                }
+            }
         }
     }
 

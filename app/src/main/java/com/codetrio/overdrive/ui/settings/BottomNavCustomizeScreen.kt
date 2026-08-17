@@ -14,7 +14,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.codetrio.overdrive.R
 import com.codetrio.overdrive.model.BottomNavTab
 import com.codetrio.overdrive.viewmodel.PlayerSharedViewModel
 import java.util.Collections
@@ -35,10 +37,10 @@ fun BottomNavCustomizeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Customize Bottom Nav") },
+                title = { Text(stringResource(R.string.setting_customize_bottom_nav)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.text_back))
                     }
                 }
             )
@@ -52,7 +54,7 @@ fun BottomNavCustomizeScreen(
         ) {
             item {
                 Text(
-                    text = "Reorder or hide tabs in the bottom navigation bar.",
+                    text = stringResource(R.string.setting_customize_bottom_nav_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp)
@@ -61,12 +63,12 @@ fun BottomNavCustomizeScreen(
             
             itemsIndexed(currentTabs) { index, tab ->
                 val tabName = when (tab.route) {
-                    "explore" -> "Home"
-                    "search" -> "Search"
-                    "library" -> "Library"
-                    "statistics" -> "Stats"
-                    "effects" -> "Effects"
-                    "settings" -> "Settings"
+                    "explore" -> stringResource(R.string.tab_explore)
+                    "search" -> stringResource(R.string.tab_search)
+                    "library" -> stringResource(R.string.tab_library)
+                    "statistics" -> stringResource(R.string.tab_statistics)
+                    "effects" -> stringResource(R.string.tab_effects)
+                    "settings" -> stringResource(R.string.tab_settings)
                     else -> tab.route.replaceFirstChar { it.uppercase() }
                 }
 
@@ -83,6 +85,7 @@ fun BottomNavCustomizeScreen(
                     )
                     
                     // Visible toggle
+                    val minOneTabMsg = stringResource(R.string.tab_at_least_one)
                     Switch(
                         checked = tab.isVisible,
                         onCheckedChange = { isVisible ->
@@ -90,7 +93,7 @@ fun BottomNavCustomizeScreen(
                             newTabs[index] = tab.copy(isVisible = isVisible)
                             // ensure at least one is visible
                             if (newTabs.none { it.isVisible }) {
-                                Toast.makeText(context, "At least one tab must be visible", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, minOneTabMsg, Toast.LENGTH_SHORT).show()
                             } else {
                                 currentTabs = newTabs
                                 prefs.edit().putString("bottom_nav_tabs", BottomNavTab.serialize(newTabs)).apply()

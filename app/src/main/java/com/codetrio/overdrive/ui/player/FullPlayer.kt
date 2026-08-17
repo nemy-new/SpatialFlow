@@ -119,6 +119,7 @@ fun FullPlayerScreen(
     val selectedProvider by viewModel.selectedProvider.collectAsStateWithLifecycle()
     val currentPositionState = viewModel.currentPosition.collectAsStateWithLifecycle()
     val isAutoplayEnabled by viewModel.isAutoplayEnabled.collectAsStateWithLifecycle()
+    val videoAspectRatio by viewModel.videoAspectRatio.collectAsStateWithLifecycle()
 
     // Handle back button when lyrics mode is enabled
     BackHandler(enabled = isLyricsModeEnabled) {
@@ -193,6 +194,7 @@ fun FullPlayerScreen(
         lyricsError = lyricsError,
         providerResults = providerResults,
         selectedProvider = selectedProvider,
+        videoAspectRatio = videoAspectRatio,
         onProviderSelected = { viewModel.selectLyricsProvider(it) },
         currentPositionProvider = { currentPositionState.value },
         isAutoplayEnabled = isAutoplayEnabled,
@@ -288,6 +290,7 @@ fun FullPlayer(
     onProviderSelected: (String) -> Unit,
     isAutoplayEnabled: Boolean,
     onAutoplayToggle: (Boolean) -> Unit,
+    videoAspectRatio: Float,
     onArtistClick: (String?, String) -> Unit = { _, _ -> },
     dragModifier: Modifier = Modifier,
     modifier: Modifier = Modifier
@@ -297,6 +300,25 @@ fun FullPlayer(
     val canvasArtwork by viewModel.canvasArtwork.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE) }
+    var showVolumeSlider by remember { mutableStateOf(prefs.getBoolean("show_volume_slider", true)) }
+    var showMusicHapticsOption by remember { mutableStateOf(prefs.getBoolean("show_music_haptics_option", false)) }
+    val isEffectsExpanded by viewModel.isEffectsExpanded.collectAsStateWithLifecycle()
+    var showStatsForNerdsDialog by remember { mutableStateOf(false) }
+    
+    DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+            if (key == "show_volume_slider") {
+                showVolumeSlider = sharedPreferences.getBoolean(key, true)
+            } else if (key == "show_music_haptics_option") {
+                showMusicHapticsOption = sharedPreferences.getBoolean(key, false)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
+    
     val showAnimatedArt = prefs.getBoolean("show_animated_art", true)
     val playerTheme = prefs.getString("player_theme", "fluid") ?: "fluid"
     val isStatic = playerTheme == "static"
@@ -359,8 +381,10 @@ fun FullPlayer(
     val currentSongIndex by viewModel.currentSongIndex.collectAsStateWithLifecycle()
 
     // Unify BackHandler to collapse the sliding Queue drawer first
-    BackHandler(enabled = isLyricsModeEnabled || isQueueExpanded) {
-        if (isLyricsModeEnabled) {
+    BackHandler(enabled = isLyricsModeEnabled || isQueueExpanded || isEffectsExpanded) {
+        if (isEffectsExpanded) {
+            viewModel.setEffectsExpanded(false)
+        } else if (isLyricsModeEnabled) {
             onLyricsModeChanged(false)
         } else if (isQueueExpanded) {
             viewModel.setQueueExpanded(false)
@@ -459,10 +483,13 @@ fun FullPlayer(
 
         val density = androidx.compose.ui.platform.LocalDensity.current
         val statusBarTopDp = with(density) { androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(this).toDp() }
-        val controlsHeightDp = 300.dp
-        val totalGroupHeightDp = albumArtSize + controlsHeightDp
-        val availableHeightDp = screenHeight - statusBarTopDp
-        val topOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
+        val controlsAreaHeightDp = 400.dp
+        val availableTopSpaceDp = screenHeight - statusBarTopDp - controlsAreaHeightDp
+        val squareTopOffsetDp = statusBarTopDp + ((availableTopSpaceDp - albumArtSize) / 2f).coerceAtLeast(16.dp)
+        val squareCenterYDp = squareTopOffsetDp + (albumArtSize / 2f)
+        val albumArtHeight = if (isMvMode) albumArtSize / videoAspectRatio else albumArtSize
+        val topOffset = squareCenterYDp - (albumArtHeight / 2f)
+        val totalGroupHeightDp = albumArtHeight + 340.dp
 
         val dimens = com.codetrio.overdrive.ui.theme.LocalDimens.current
         val isTablet = configuration.screenWidthDp >= 600
@@ -489,10 +516,12 @@ fun FullPlayer(
                     Spacer(modifier = Modifier.height(56.dp))
                 }
 
-                val controlsHeightDp = 300.dp
-                val totalGroupHeightDp = albumArtSize + controlsHeightDp
-                val availableHeightDp = screenHeight - statusBarTopDp
-                val tabletTopOffset = statusBarTopDp + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
+                val controlsAreaHeightDp = 400.dp
+                val availableTopSpaceDp = screenHeight - statusBarTopDp - controlsAreaHeightDp
+                val squareTopOffsetDp = statusBarTopDp + ((availableTopSpaceDp - albumArtSize) / 2f).coerceAtLeast(16.dp)
+                val squareCenterYDp = squareTopOffsetDp + (albumArtSize / 2f)
+                val albumArtHeight = if (isMvMode) albumArtSize / videoAspectRatio else albumArtSize
+                val tabletTopOffset = squareCenterYDp - (albumArtHeight / 2f)
                 val rowTopAbsolute = statusBarTopDp + dimens.smallPadding
                 val topSpacerHeight = (tabletTopOffset - rowTopAbsolute).coerceAtLeast(0.dp)
 
@@ -507,11 +536,11 @@ fun FullPlayer(
             Box(
                 modifier = Modifier.size(
                     width = albumArtSize,
-                    height = if (playerTheme == "immersion") albumArtSize * 0.98f else albumArtSize
+                    height = if (playerTheme == "immersion" && !isMvMode) albumArtSize * 0.98f else albumArtHeight
                 )
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
             // Metadata row: title/artist
             Row(
@@ -555,7 +584,7 @@ fun FullPlayer(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Premium YT Music style horizontal control chips row
             Row(
@@ -578,14 +607,36 @@ fun FullPlayer(
                 )
 
                 // Interactive Music Haptics Chip inside the same row
+                if (showMusicHapticsOption) {
+                    PillChip(
+                        icon = painterResource(id = R.drawable.ic_haptic),
+                        label = "Music Haptics",
+                        isSelected = uiState.isHapticsEnabled,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onHapticChipClick()
+                        },
+                        contentColor = contentColor,
+                        accentColor = dynamicAccentColor,
+                        isDark = isDark
+                    )
+                }
+
+                // Audio Effects Chip
                 PillChip(
-                    icon = painterResource(id = R.drawable.ic_haptic),
-                    label = "Music Haptics",
-                    isSelected = uiState.isHapticsEnabled,
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onHapticChipClick()
-                    },
+                    icon = painterResource(id = R.drawable.ic_equalizer),
+                    label = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_audio_effects),
+                    onClick = { viewModel.setEffectsExpanded(true) },
+                    contentColor = contentColor,
+                    accentColor = dynamicAccentColor,
+                    isDark = isDark
+                )
+
+                // Stats for Nerds / Playback Diagnostics Chip
+                PillChip(
+                    icon = painterResource(id = R.drawable.ic_stats),
+                    label = "Stats",
+                    onClick = { showStatsForNerdsDialog = true },
                     contentColor = contentColor,
                     accentColor = dynamicAccentColor,
                     isDark = isDark
@@ -608,8 +659,9 @@ fun FullPlayer(
                 )
 
                 val musicVideoUrl by viewModel.musicVideoUrl.collectAsStateWithLifecycle()
+                val hasMusicVideo by viewModel.hasMusicVideo.collectAsStateWithLifecycle()
                 
-                if (!musicVideoUrl.isNullOrBlank()) {
+                if (!musicVideoUrl.isNullOrBlank() && hasMusicVideo) {
                     PillChip(
                         icon = Icons.Rounded.Visibility,
                         label = "MV",
@@ -835,20 +887,7 @@ fun FullPlayer(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val appPrefs = LocalContext.current.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
-            var showVolumeSlider by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(appPrefs.getBoolean("show_volume_slider", true)) }
-            
-            androidx.compose.runtime.DisposableEffect(appPrefs) {
-                val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
-                    if (key == "show_volume_slider") {
-                        showVolumeSlider = sharedPreferences.getBoolean(key, true)
-                    }
-                }
-                appPrefs.registerOnSharedPreferenceChangeListener(listener)
-                onDispose {
-                    appPrefs.unregisterOnSharedPreferenceChangeListener(listener)
-                }
-            }
+            // Moved to top level
 
             if (showVolumeSlider) {
                 com.codetrio.overdrive.ui.player.VolumeSlider(
@@ -892,37 +931,6 @@ fun FullPlayer(
                         .graphicsLayer { rotationZ = 180f }
                 )
             }
-            
-            // Lyrics Bottom Sheet for Phone
-            Spacer(modifier = Modifier.weight(1f, fill = false))
-            LyricsBottomSheet(
-                visible = isLyricsModeEnabled,
-                currentSong = uiState.currentSong,
-                syncedLyrics = syncedLyrics,
-                plainLyrics = plainLyrics,
-                isLoading = isLyricsLoading,
-                lyricsError = lyricsError,
-                currentPositionProvider = currentPositionProvider,
-                contentReady = true,
-                playerBackgroundColor = playerBackgroundColor,
-                canvasArtwork = canvasArtwork,
-                contentColor = contentColor,
-                contentSecondary = contentSecondary,
-                dynamicAccentColor = dynamicAccentColor,
-                onRetryLyrics = onRetryLyrics,
-                onFetchLyrics = onFetchLyrics,
-                onSeekTo = onSeekTo,
-                providerResults = providerResults,
-                selectedProvider = selectedProvider,
-                onProviderSelected = onProviderSelected,
-                isPlaying = uiState.isPlaying,
-                onPlayPauseClick = onPlayPauseClick,
-                duration = uiState.duration.toLong(),
-                onCollapse = { viewModel.setLyricsModeEnabled(false) },
-                syncOffsetMs = 0L,
-                onSyncOffsetChange = {},
-                modifier = Modifier.fillMaxSize()
-            )
         }
 
         @Composable
@@ -945,7 +953,7 @@ fun FullPlayer(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Box(modifier = Modifier.size(albumArtSize))
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(48.dp))
                             
                             // Left-aligned Metadata + Queue Button
                             Row(
@@ -1035,14 +1043,36 @@ fun FullPlayer(
                 )
 
                 // Interactive Music Haptics Chip inside the same row
+                if (showMusicHapticsOption) {
+                    PillChip(
+                        icon = painterResource(id = R.drawable.ic_haptic),
+                        label = "Music Haptics",
+                        isSelected = uiState.isHapticsEnabled,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onHapticChipClick()
+                        },
+                        contentColor = contentColor,
+                        accentColor = dynamicAccentColor,
+                        isDark = isDark
+                    )
+                }
+
+                // Audio Effects Chip
                 PillChip(
-                    icon = painterResource(id = R.drawable.ic_haptic),
-                    label = "Music Haptics",
-                    isSelected = uiState.isHapticsEnabled,
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onHapticChipClick()
-                    },
+                    icon = painterResource(id = R.drawable.ic_equalizer),
+                    label = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_audio_effects),
+                    onClick = { viewModel.setEffectsExpanded(true) },
+                    contentColor = contentColor,
+                    accentColor = dynamicAccentColor,
+                    isDark = isDark
+                )
+
+                // Stats for Nerds / Playback Diagnostics Chip (Tablet)
+                PillChip(
+                    icon = painterResource(id = R.drawable.ic_stats),
+                    label = "Stats",
+                    onClick = { showStatsForNerdsDialog = true },
                     contentColor = contentColor,
                     accentColor = dynamicAccentColor,
                     isDark = isDark
@@ -1065,8 +1095,9 @@ fun FullPlayer(
                 )
 
                 val musicVideoUrl by viewModel.musicVideoUrl.collectAsStateWithLifecycle()
+                val hasMusicVideo by viewModel.hasMusicVideo.collectAsStateWithLifecycle()
                 
-                if (!musicVideoUrl.isNullOrBlank()) {
+                if (!musicVideoUrl.isNullOrBlank() && hasMusicVideo) {
                     PillChip(
                         icon = Icons.Rounded.Visibility,
                         label = "MV",
@@ -1344,7 +1375,9 @@ fun FullPlayer(
                                     isPlaying = uiState.isPlaying,
                                     onPlayPauseClick = onPlayPauseClick,
                                     duration = uiState.duration.toLong(),
+                                    onCollapse = { viewModel.setLyricsModeEnabled(false) },
                                     isEmbedded = true,
+                                    onToggleTranslation = { viewModel.toggleLyricsTranslation() },
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
@@ -1359,10 +1392,42 @@ fun FullPlayer(
                 } else {
                     FullPlayerPhoneLayout()
                 }
-}
+            }
         }
 
+        if (!isTablet) {
+            LyricsBottomSheet(
+                visible = isLyricsModeEnabled,
+                currentSong = uiState.currentSong,
+                syncedLyrics = syncedLyrics,
+                plainLyrics = plainLyrics,
+                isLoading = isLyricsLoading,
+                lyricsError = lyricsError,
+                currentPositionProvider = currentPositionProvider,
+                contentReady = true,
+                playerBackgroundColor = playerBackgroundColor,
+                canvasArtwork = canvasArtwork,
+                contentColor = contentColor,
+                contentSecondary = contentSecondary,
+                dynamicAccentColor = dynamicAccentColor,
+                onRetryLyrics = onRetryLyrics,
+                onFetchLyrics = onFetchLyrics,
+                onSeekTo = onSeekTo,
+                providerResults = providerResults,
+                selectedProvider = selectedProvider,
+                onProviderSelected = onProviderSelected,
+                isPlaying = uiState.isPlaying,
+                onPlayPauseClick = onPlayPauseClick,
+                duration = uiState.duration.toLong(),
+                onCollapse = { viewModel.setLyricsModeEnabled(false) },
+                onToggleTranslation = { viewModel.toggleLyricsTranslation() },
+                syncOffsetMs = 0L,
+                onSyncOffsetChange = {},
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         
+
 
         // --- CUSTOM EMBEDDED SLIDING PLAY QUEUE ---
         if (true) {
@@ -1405,6 +1470,15 @@ fun FullPlayer(
                     if (enable) viewModel.setSleepTimerMode(PlayerSharedViewModel.SleepTimerMode.END_OF_SONG)
                     else viewModel.cancelSleepTimer()
                 }
+            )
+        }
+
+
+        // --- STATS FOR NERDS DIAGNOSTICS DIALOG ---
+        if (showStatsForNerdsDialog) {
+            StatsForNerdsDialog(
+                onDismissRequest = { showStatsForNerdsDialog = false },
+                accentColor = dynamicAccentColor
             )
         }
     }

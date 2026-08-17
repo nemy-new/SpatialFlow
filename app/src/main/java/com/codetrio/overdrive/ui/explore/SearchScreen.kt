@@ -306,14 +306,23 @@ fun SearchScreen(
                                                 isCurrentlyPlaying = item.song?.videoId == currentOnlineSong?.videoId,
                                                 onPlayClick = {
                                                     item.song?.let { song ->
-                                                        viewModel.playOnlineSongWithQueue(song, emptyList(), 0)
+                                                        val allSearchSongs = searchResults.filterIsInstance<SearchItem.Song>().map { it.song }
+                                                        val targetQueue = if (allSearchSongs.isNotEmpty()) allSearchSongs else listOf(song)
+                                                        val targetIndex = targetQueue.indexOfFirst { it.videoId == song.videoId }.coerceAtLeast(0)
+                                                        viewModel.playOnlineSongWithQueue(song, targetQueue, targetIndex)
                                                     } ?: viewModel.startRadioForItem(item)
                                                 },
                                                 onSaveClick = { viewModel.saveItemToLibrary(item) },
                                                 onMoreClick = { item.song?.let { selectedSongForMenu = it } },
                                                 onClick = {
                                                     when {
-                                                        item.song != null -> viewModel.playOnlineSongWithQueue(item.song, emptyList(), 0)
+                                                        item.song != null -> {
+                                                            val song = item.song
+                                                            val allSearchSongs = searchResults.filterIsInstance<SearchItem.Song>().map { it.song }
+                                                            val targetQueue = if (allSearchSongs.isNotEmpty()) allSearchSongs else listOf(song)
+                                                            val targetIndex = targetQueue.indexOfFirst { it.videoId == song.videoId }.coerceAtLeast(0)
+                                                            viewModel.playOnlineSongWithQueue(song, targetQueue, targetIndex)
+                                                        }
                                                         item.album != null -> viewModel.loadAlbum(item.album.browseId)
                                                         item.artist != null -> viewModel.loadArtist(item.artist.browseId, item.artist.thumbnailUrl)
                                                         item.playlist != null -> viewModel.loadPlaylist(item.playlist.playlistId)
@@ -353,7 +362,12 @@ fun SearchScreen(
                                                 },
                                                 onClick = {
                                                     when (item) {
-                                                        is SearchItem.Song -> viewModel.playOnlineSongWithQueue(item.song, emptyList(), 0)
+                                                        is SearchItem.Song -> {
+                                                            val allSearchSongs = searchResults.filterIsInstance<SearchItem.Song>().map { it.song }
+                                                            val targetQueue = if (allSearchSongs.isNotEmpty()) allSearchSongs else listOf(item.song)
+                                                            val targetIndex = targetQueue.indexOfFirst { it.videoId == item.song.videoId }.coerceAtLeast(0)
+                                                            viewModel.playOnlineSongWithQueue(item.song, targetQueue, targetIndex)
+                                                        }
                                                         is SearchItem.Album -> viewModel.loadAlbum(item.album.browseId)
                                                         is SearchItem.Artist -> viewModel.loadArtist(item.artist.browseId, item.artist.thumbnailUrl)
                                                         is SearchItem.Playlist -> viewModel.loadPlaylist(item.playlist.playlistId)

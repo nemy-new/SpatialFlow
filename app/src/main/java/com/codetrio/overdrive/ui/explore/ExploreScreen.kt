@@ -187,50 +187,6 @@ fun ExploreScreen(
     val mainActivity = context as? MainActivity
     val scope = rememberCoroutineScope()
 
-    com.codetrio.overdrive.ui.ObserveAsEvents(viewModel.events) { event ->
-        when (event) {
-            is com.codetrio.overdrive.viewmodel.ExploreEvent.ShowSnackbar -> {
-                com.codetrio.overdrive.ui.SnackbarController.showMessage(event.message.asString(context))
-            }
-            is com.codetrio.overdrive.viewmodel.ExploreEvent.TriggerInstantPlayback -> {
-                val prefs = context.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
-                val debugToastsEnabled = prefs.getBoolean("debug_toasts_enabled", false)
-
-                if (debugToastsEnabled) {
-                    android.widget.Toast.makeText(context, "TriggerInstantPlayback Received", android.widget.Toast.LENGTH_SHORT).show()
-                }
-                val queue = viewModel.uiState.value.onlineQueue
-                val index = viewModel.uiState.value.currentOnlineIndex
-                if (debugToastsEnabled) {
-                    android.widget.Toast.makeText(context, "Queue size: ${queue.size}, index: $index", android.widget.Toast.LENGTH_SHORT).show()
-                }
-                if (queue.isNotEmpty() && index in queue.indices) {
-                    val songItems = queue.map { s ->
-                        com.codetrio.overdrive.model.SongItem.createOnlineSong(
-                            videoId = s.videoId,
-                            title = s.title,
-                            artist = s.artist,
-                            streamUrl = "",
-                            durationMs = s.durationMs,
-                            thumbnailUrl = s.thumbnailUrl,
-                            artistId = s.artistId,
-                            animatedThumbnailUrl = s.animatedThumbnailUrl
-                        )
-                    }
-                    playerSharedViewModel.setSongList(songItems)
-                    playerSharedViewModel.playSongAtIndex(index)
-                    if (debugToastsEnabled) {
-                        android.widget.Toast.makeText(context, "Sent to PlayerSharedViewModel", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    if (debugToastsEnabled) {
-                        android.widget.Toast.makeText(context, "Queue empty or index invalid!", android.widget.Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
-        }
-    }
-
     val accountVM: AccountViewModel = viewModel()
     val userProfile by accountVM.userProfile.collectAsStateWithLifecycle()
     val accountHistory by accountVM.history.collectAsStateWithLifecycle()
@@ -291,6 +247,12 @@ fun ExploreScreen(
     }
 
     val homeListState = rememberLazyListState()
+    
+    LaunchedEffect(viewModel.scrollToTopEvent) {
+        viewModel.scrollToTopEvent.collect {
+            homeListState.animateScrollToItem(0)
+        }
+    }
     val searchListState = rememberLazyListState()
 
     val isPlayerExpanded by playerSharedViewModel.isPlayerExpanded.collectAsStateWithLifecycle()
@@ -795,7 +757,10 @@ fun ExploreScreen(
                                                                         isCurrentlyPlaying = item.song?.videoId == currentOnlineSong?.videoId,
                                                                         onPlayClick = {
                                                                             item.song?.let { song ->
-                                                                                viewModel.playOnlineSongWithQueue(song, emptyList(), 0)
+                                                                                val allSearchSongs = searchResults.filterIsInstance<SearchItem.Song>().map { it.song }
+                                                                                val targetQueue = if (allSearchSongs.isNotEmpty()) allSearchSongs else listOf(song)
+                                                                                val targetIndex = targetQueue.indexOfFirst { it.videoId == song.videoId }.coerceAtLeast(0)
+                                                                                viewModel.playOnlineSongWithQueue(song, targetQueue, targetIndex)
                                                                             } ?: viewModel.startRadioForItem(item)
                                                                         },
                                                                         onSaveClick = {
@@ -806,7 +771,13 @@ fun ExploreScreen(
                                                                         },
                                                                         onClick = {
                                                                             when {
-                                                                                item.song != null -> viewModel.playOnlineSongWithQueue(item.song, emptyList(), 0)
+                                                                                item.song != null -> {
+                                                                                    val song = item.song
+                                                                                    val allSearchSongs = searchResults.filterIsInstance<SearchItem.Song>().map { it.song }
+                                                                                    val targetQueue = if (allSearchSongs.isNotEmpty()) allSearchSongs else listOf(song)
+                                                                                    val targetIndex = targetQueue.indexOfFirst { it.videoId == song.videoId }.coerceAtLeast(0)
+                                                                                    viewModel.playOnlineSongWithQueue(song, targetQueue, targetIndex)
+                                                                                }
                                                                                 item.album != null -> viewModel.loadAlbum(item.album.browseId)
                                                                                 item.artist != null -> viewModel.loadArtist(item.artist.browseId, item.artist.thumbnailUrl)
                                                                                 item.playlist != null -> viewModel.loadPlaylist(item.playlist.playlistId)
@@ -847,11 +818,10 @@ fun ExploreScreen(
                                                                         onClick = {
                                                                             when (item) {
                                                                                 is SearchItem.Song -> {
-                                                                                    viewModel.playOnlineSongWithQueue(
-                                                                                        item.song,
-                                                                                        emptyList(),
-                                                                                        0
-                                                                                    )
+                                                                                    val allSearchSongs = searchResults.filterIsInstance<SearchItem.Song>().map { it.song }
+                                                                                    val targetQueue = if (allSearchSongs.isNotEmpty()) allSearchSongs else listOf(item.song)
+                                                                                    val targetIndex = targetQueue.indexOfFirst { it.videoId == item.song.videoId }.coerceAtLeast(0)
+                                                                                    viewModel.playOnlineSongWithQueue(item.song, targetQueue, targetIndex)
                                                                                 }
                                                                                 is SearchItem.Album -> viewModel.loadAlbum(item.album.browseId)
                                                                                 is SearchItem.Artist -> viewModel.loadArtist(
@@ -1286,7 +1256,7 @@ fun SongCreditsScreen(song: OnlineSong, onBack: () -> Unit) {
 
                             CreditsTextSection(
                                 title = "Produced by",
-                                content = listOf(if (contributors.size > 1) contributors.last() else "SpatialFlow Engine")
+                                content = listOf(if (contributors.size > 1) contributors.last() else "OverDrive Engine")
                             )
 
                             CreditsTextSection(
@@ -1356,7 +1326,7 @@ fun SongCreditsScreen(song: OnlineSong, onBack: () -> Unit) {
 
                             CreditsTextSection(
                                 title = "Produced by",
-                                content = listOf(if (contributors.size > 1) contributors.last() else "SpatialFlow Engine")
+                                content = listOf(if (contributors.size > 1) contributors.last() else "OverDrive Engine")
                             )
 
                             CreditsTextSection(

@@ -21,7 +21,6 @@
     <string name="stats_plays_count">%d plays</string>
 
     <!-- Common UI -->
-    <string name="error_telegram">Could not open Telegram</string>
     <string name="external_track">External Track</string>
     <string name="external_source">External Source</string>
     <string name="sign_in_required_title">Sign in Required</string>
@@ -33,6 +32,7 @@
     <string name="action_close">Close</string>
     <string name="action_save">Save</string>
     <string name="action_delete">Delete</string>
+    <string name="action_copy">Copy Log</string>
 
     <!-- Settings Title & Main Categories -->
     <string name="settings_title">Settings</string>
@@ -55,10 +55,10 @@
 
     <!-- Language Settings -->
     <string name="setting_app_language">App Language</string>
-    <string name="setting_app_language_desc">Select language (Japanese / English)</string>
+    <string name="setting_app_language_desc">Select display language</string>
     <string name="lang_system">System Default</string>
     <string name="lang_english">English</string>
-    <string name="lang_japanese">日本語 (Japanese)</string>
+    <string name="lang_japanese">Japanese</string>
 
     <!-- Settings Headers -->
     <string name="settings_header_general">General</string>
@@ -143,7 +143,7 @@
     <string name="text_5_band_studio_equalizer">5-Band Studio Equalizer</string>
     <string name="text_8d_audio">8D Audio</string>
     <string name="text_8d_only_works_on_local_downloaded_songs">8D only works on Local/Downloaded Songs</string>
-    <string name="text_a_dynamic_reflection_of_your_musical_journey_on_spatialflow">A dynamic reflection of your musical journey on SpatialFlow.</string>
+    <string name="text_a_dynamic_reflection_of_your_musical_journey_on_spatialflow">A dynamic reflection of your musical journey on OverDrive.</string>
     <string name="text_audio_effects">Audio Effects</string>
     <string name="text_access_youtube_music">Access YouTube Music</string>
     <string name="text_account_settings">Account Settings</string>
@@ -230,8 +230,6 @@
     <string name="text_inspect_background_security_context">Inspect background security context</string>
     <string name="text_intensity">Intensity</string>
     <string name="text_join_group">Join Group</string>
-    <string name="text_join_telegram_community">Join Telegram Community</string>
-    <string name="text_join_our_telegram_group">Join our Telegram Group</string>
     <string name="text_karaoke_lyrics_powerful_search_and_offline_downloads_all_in_one_place">Karaoke lyrics, powerful search, and offline downloads all in one place.</string>
     <string name="text_l">L</string>
     <string name="text_lyrics">LYRICS</string>
@@ -284,7 +282,7 @@
     <string name="text_position">Position</string>
     <string name="text_preset">Preset</string>
     <string name="text_preset_name">Preset Name</string>
-    <string name="text_profile_spatialflow_user">Profile: SpatialFlow User</string>
+    <string name="text_profile_spatialflow_user">Profile: OverDrive User</string>
     <string name="text_providers">Providers</string>
     <string name="text_pure_amoled_black">Pure AMOLED Black</string>
     <string name="text_queue">Queue</string>
@@ -297,7 +295,6 @@
     <string name="text_refind_re_search_all_providers">Refind &amp; Re-search All Providers</string>
     <string name="text_remove">Remove</string>
     <string name="text_remove_text_labels_from_the_bottom_navigation_bar">Remove text labels from the bottom navigation bar.</string>
-    <string name="text_report_bug_via_telegram">Report Bug via Telegram</string>
     <string name="text_report_a_bug">Report a Bug</string>
     <string name="text_request_feature">Request Feature</string>
     <string name="text_reset_all">Reset All</string>
@@ -320,7 +317,6 @@
     <string name="text_settings">Settings</string>
     <string name="text_setup_complete">Setup Complete</string>
     <string name="text_share">Share</string>
-    <string name="text_share_pre_filled_device_and_app_details_directly_to_telegram">Share pre-filled device and app details directly to Telegram</string>
     <string name="text_share_raw_debug_logs_to_attach_to_an_issue">Share raw debug logs to attach to an issue</string>
     <string name="text_show_m3e_expressive_volume_slider_below_playback_controls">Show M3E expressive volume slider below playback controls</string>
     <string name="text_show_looping_video_canvas_on_player_screen_if_available">Show looping video canvas on player screen if available</string>
@@ -338,7 +334,7 @@
     <string name="text_snap_to_center">Snap to Center</string>
     <string name="text_songs_you_listen_to_from_your_account_will_appear_here">Songs you listen to from your account will appear here.</string>
     <string name="text_spatial_360_rotating_audio_effect_for_an_immersive_sound_stage_experience">Spatial 360° rotating audio effect for an immersive sound stage experience.</string>
-    <string name="text_spatialflow_crashed_unexpectedly_during_your_last_session_would_you_like_to_report_this_issue_to_help_us_fix_it">SpatialFlow crashed unexpectedly during your last session. Would you like to report this issue to help us fix it?</string>
+    <string name="text_spatialflow_crashed_unexpectedly_during_your_last_session_would_you_like_to_report_this_issue_to_help_us_fix_it">OverDrive crashed unexpectedly during your last session. Would you like to report this issue to help us fix it?</string>
     <string name="text_speed">Speed</string>
     <string name="text_start_listening">Start Listening</string>
     <string name="text_start_playing_your_favorite_tracks_and_your_listening_flow_highlights_will_appear_here">Start playing your favorite tracks, and your listening flow highlights will appear here!</string>
@@ -353,13 +349,12 @@
     <string name="text_studio_eq_profiles">Studio EQ Profiles</string>
     <string name="text_subtle">Subtle</string>
     <string name="text_suggest_a_new_feature_for_overdrive">Suggest a new feature for OverDrive</string>
-    <string name="text_support_spatialflow">Support SpatialFlow</string>
+    <string name="text_support_spatialflow">Support OverDrive</string>
     <string name="text_sync_control">Sync Control</string>
     <string name="text_sync_playlists">Sync Playlists</string>
     <string name="text_sync_playlists_and_favorites_with_server">Sync playlists and favorites with server</string>
     <string name="text_tab_switch_blur">Tab Switch Blur</string>
     <string name="text_target_loudness">Target Loudness</string>
-    <string name="text_telegram">Telegram</string>
     <string name="text_this_playlist_is_empty">This playlist is empty</string>
     <string name="text_top_played_songs">Top Played Songs</string>
     <string name="text_top_songs">Top songs</string>
@@ -394,4 +389,215 @@
     <string name="setting_customize_bottom_nav_desc">Change visible tabs and their order</string>
     <string name="customize_bottom_nav_title">Bottom Navigation</string>
     <string name="error_need_at_least_one_tab">At least one tab must be visible</string>
+    <!-- ML Kit Lyrics Translation -->
+    <string name="ml_model_checking">Checking translation model status...</string>
+    <string name="ml_model_downloaded">Language Model: Downloaded (~30MB)</string>
+    <string name="ml_model_downloading">Downloading language model... (~30MB)</string>
+    <string name="ml_model_not_downloaded">Language Model: Not downloaded (~30MB)</string>
+    <string name="ml_model_download_btn">Download Model</string>
+    <string name="ml_model_error">Error: %s</string>
+    <string name="ml_model_engine_title">Translation Engine</string>
+    <string name="ml_model_engine_mlkit">ML Kit (Standard, Fast, Offline)</string>
+    <string name="ml_model_engine_aicore">Android AICore (High Quality, Natural, Offline)</string>
+    <string name="ml_model_engine_desc">ML Kit provides fast word-based machine translation. Android AICore uses on-device Gemini Nano to provide context-aware, highly natural translations.</string>
+    <string name="ml_model_aicore_unsupported">Android AICore is not supported on this device.</string>
+    <string name="ml_model_aicore_checking">Checking AICore availability...</string>
+
+
+    <string name="pref_lyrics_translation_title">Auto-Translate Lyrics</string>
+    <string name="pref_lyrics_translation_desc">Translate lyrics on-device using ML Kit. First use requires downloading a 30MB language model.</string>
+    <string name="pref_lyrics_target_lang_title">Translation Target Language</string>
+    <string name="pref_lyrics_target_lang_desc">The language to translate lyrics into.</string>
+
+    <string name="settings_sleep_timer">Sleep Timer</string>
+    <string name="settings_streaming_quality">Streaming Quality</string>
+    <string name="settings_volume_normalization">Volume Normalization</string>
+    <string name="settings_volume_normalization_desc">Normalize audio volume across tracks</string>
+    <string name="settings_haptics">Haptics</string>
+    <string name="settings_granular_interactions">Granular Interactions</string>
+    <string name="settings_whats_new">What\'s New</string>
+    <string name="settings_no_releases_found">No releases found</string>
+    <string name="settings_about">About</string>
+    <string name="settings_updates">Updates</string>
+    <string name="settings_max_title_size">Max Title Size</string>
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_feedback_bug_reports">Feedback &amp; Bug Reports</string>
+    <string name="settings_report_request">Report &amp; Request</string>
+    <string name="settings_report_a_bug">Report a Bug</string>
+    <string name="settings_open_github_desc">Open GitHub to report a bug</string>
+    <string name="settings_bug_report">Bug Report</string>
+    <string name="settings_request_feature">Request Feature</string>
+    <string name="settings_suggest_feature_desc">Suggest a new feature for OverDrive</string>
+    <string name="settings_debug_information">Debug Information</string>
+    <string name="settings_copy_debug_info">Copy Debug Information</string>
+    <string name="settings_copy_debug_desc">Copy device &amp; app version to clipboard</string>
+    <string name="settings_debug_info">Debug Info</string>
+    <string name="settings_export_logs">Export Logs</string>
+    <string name="settings_share_logs_desc">Share raw debug logs to attach to an issue</string>
+    <string name="settings_simulate_crash">Simulate Crash</string>
+    <string name="settings_force_crash_desc">Force a runtime exception to test crash report dialog</string>
+    <string name="settings_database_scanning">Database &amp; Scanning</string>
+    <string name="settings_full_library_rescan">Full Library Rescan</string>
+    <string name="settings_scan_local_desc">Scan device for local audio files</string>
+    <string name="settings_rebuild_database">Rebuild Database</string>
+    <string name="settings_rebuild_db_desc">Clear and rebuild media library database</string>
+    <string name="settings_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_export_settings">Export Settings</string>
+    <string name="settings_export_desc">Save settings and library state to file</string>
+    <string name="settings_import_settings">Import Settings</string>
+    <string name="settings_restore_desc">Restore settings from a previous backup</string>
+    <string name="account_sync_title">Account &amp; Sync</string>
+    <string name="yt_music_account">YouTube Music Account</string>
+    <string name="logged_in_yt">Logged in via YouTube Music</string>
+    <string name="guest_mode">Guest Mode</string>
+    <string name="profile_spatialflow">OverDrive Profile</string>
+    <string name="accessing_personalized">Accessing personalized content</string>
+    <string name="no_account_linked">No account linked</string>
+    <string name="log_out">Log Out</string>
+    <string name="log_in">Log In</string>
+    <string name="data_saving">Data Saving</string>
+    <string name="sync_privacy">Sync &amp; Privacy</string>
+    <string name="data_saver_title">Data Saver Mode</string>
+    <string name="data_saver_desc">Reduce audio quality on mobile networks</string>
+    <string name="pause_history_title">Pause Watch History</string>
+    <string name="pause_history_desc">Don\'t save playback history to YouTube</string>
+    <string name="manual_sync_title">Manual Sync</string>
+    <string name="manual_sync_desc">Force sync playlists and library</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_visual_effects">Visual Effects</string>
+    <string name="settings_animated_album_art">Animated Album Art</string>
+    <string name="settings_show_looping_video_desc">Show looping video behind album art</string>
+    <string name="settings_navigation_bar">Navigation Bar</string>
+    <string name="settings_playback">Playback</string>
+    <string name="settings_crossfade">Crossfade</string>
+    <string name="settings_audio_focus">Audio Focus</string>
+    <string name="settings_queue_autoplay">Queue Autoplay</string>
+    <string name="settings_volume_controls">Volume Controls</string>
+    <string name="settings_music_management">Music Management</string>
+    <string name="settings_audio_filtering">Audio Filtering</string>
+    <string name="settings_hidden_folders">Hidden Folders</string>
+    <string name="settings_no_folders_blacklisted">No folders are currently blacklisted</string>
+    <string name="settings_downloads">Downloads</string>
+
+    <string name="text_balance_effects">Balance</string>
+    <string name="text_presets_effects">Presets</string>
+    <string name="text_spatial_effects">Spatial</string>
+    <string name="text_loudness_effects">Loudness</string>
+    <string name="text_flat_effects">Flat</string>
+    <string name="text_360_active">360° Active</string>
+    <string name="text_standard_effects">Standard</string>
+    <string name="text_5_band_on">5-Band On</string>
+    <string name="text_bypass">Bypass</string>
+    <string name="text_l_plus">L +</string>
+    <string name="text_r_plus">R +</string>
+
+    <string name="developer_mode_enabled">Developer mode has been enabled!</string>
+    <string name="developer_steps_away">You are now %1$d steps away from being a developer.</string>
+    <string name="settings_developer_options">Developer Options</string>
+    <string name="settings_developer_options_desc">Advanced debugging and settings</string>
+    <string name="developer_playback_diagnostics">Playback Diagnostics</string>
+    <string name="developer_playback_logs">Playback Logs</string>
+    <string name="developer_playback_logs_desc">Detailed stream resolution, buffer metrics and error stack traces</string>
+    <string name="developer_performance">Performance &amp; Optimization</string>
+    <string name="developer_performance_desc">120Hz VSync sync, dynamic polling, buffer tuning and GPU layers</string>
+    <string name="developer_controls">Developer Controls</string>
+    <string name="developer_disable">Disable Developer Options</string>
+    <string name="developer_disable_desc">Turn off developer mode</string>
+    <string name="developer_performance_tuning">Performance &amp; Tuning</string>
+
+    <string name="pref_perf_title">Performance &amp; Optimization</string>
+    <string name="pref_perf_subtitle">Performance Tuning</string>
+    <string name="pref_perf_active_title">High Performance Engine Active</string>
+    <string name="pref_perf_active_desc">All options are enabled by default for maximum fluidity, 120Hz refresh rates, and sub-second playback start.</string>
+    <string name="pref_perf_sec_rendering">Rendering &amp; Animation</string>
+    <string name="pref_opt_120fps_sync_title">120Hz VSync Frame Sync</string>
+    <string name="pref_opt_120fps_sync_sub">Ultra-precise frame synchronization</string>
+    <string name="pref_opt_120fps_sync_desc">Synchronizes karaoke lyric animations and visualizers directly to hardware display refresh rates (60/90/120Hz) with zero frame drops.</string>
+    <string name="pref_opt_gpu_layer_title">GPU Hardware Layer Acceleration</string>
+    <string name="pref_opt_gpu_layer_sub">GPU draw-phase transform</string>
+    <string name="pref_opt_gpu_layer_desc">Offloads player sheet expansion and blur transforms directly to the GPU layer without triggering full-screen Compose layout remeasures.</string>
+    <string name="pref_perf_sec_audio">Audio Engine &amp; Power</string>
+    <string name="pref_opt_dynamic_polling_title">Dynamic Audio Polling</string>
+    <string name="pref_opt_dynamic_polling_sub">Adaptive update frequency</string>
+    <string name="pref_opt_dynamic_polling_desc">Updates playback position at 200ms when player is visible for a smooth seekbar, and scales back to 500ms in background to save battery.</string>
+    <string name="pref_opt_low_latency_title">Low-Latency Buffer Tuning</string>
+    <string name="pref_opt_low_latency_sub">Instant playback start</string>
+    <string name="pref_opt_low_latency_desc">Tunes ExoPlayer buffer allocation for instant playback start under 1 second while maintaining a 50s buffer ceiling to prevent audio stutters.</string>
+    <string name="pref_opt_predictive_precache_title">Predictive Chunk Pre-Caching</string>
+    <string name="pref_opt_predictive_precache_sub">Background pre-fetch</string>
+    <string name="pref_opt_predictive_precache_desc">Asynchronously pre-caches the first 512KB of upcoming songs at 80% playback progression for gapless, instant song transitions.</string>
+    <string name="pref_perf_sec_memory">Memory &amp; Caching</string>
+    <string name="pref_opt_thumbnail_downsampling_title">Thumbnail Downsampling &amp; RGB_565</string>
+    <string name="pref_opt_thumbnail_downsampling_sub">Halve Bitmap RAM &amp; eliminate GC jank</string>
+    <string name="pref_opt_thumbnail_downsampling_desc">Downsamples high-res artwork to exact container bounds and enables 16-bit RGB_565 for thumbnails, halving Bitmap RAM and eliminating GC pauses.</string>
+    <string name="pref_perf_reset_toast">All performance optimizations enabled (Default)</string>
+
+    <string name="logs_title">Playback Logs</string>
+    <string name="logs_subtitle">Diagnostics &amp; Stream History</string>
+    <string name="logs_all">All</string>
+    <string name="logs_errors">Errors Only</string>
+    <string name="logs_online">Online / YouTube</string>
+    <string name="logs_empty">No playback events recorded yet.</string>
+    <string name="logs_clear">Clear Logs</string>
+    <string name="logs_copy_all">Copy All Logs</string>
+    <string name="logs_copied">Copied all logs to clipboard</string>
+    <string name="logs_cleared">Logs cleared</string>
+
+    <!-- Granular Haptics -->
+    <string name="haptics_play_pause">Haptics on Play/Pause</string>
+    <string name="haptics_play_pause_desc">Vibrate when playing or pausing audio</string>
+    <string name="haptics_queue_reorder">Haptics on Queue Reordering</string>
+    <string name="haptics_queue_reorder_desc">Vibrate when dragging items in the queue</string>
+    <string name="haptics_favorite">Haptics on Heart/Favorite</string>
+    <string name="haptics_favorite_desc">Vibrate when liking a song</string>
+    <string name="tab_at_least_one">At least one tab must be visible</string>
+    <string name="text_back">Back</string>
+    <string name="text_off">Off</string>
+
+    <!-- Audio & Playback Options -->
+    <string name="setting_audio_focus_desc_enabled">Stop or pause playback when another app plays audio</string>
+    <string name="setting_audio_focus_desc_disabled">Do not stop or pause playback when another app plays audio</string>
+    <string name="quality_high">High</string>
+    <string name="quality_normal">Normal</string>
+    <string name="quality_data_saver">Data Saver</string>
+    <string name="loudness_quiet">Quiet</string>
+    <string name="loudness_normal">Normal</string>
+    <string name="loudness_loud">Loud</string>
+    <string name="setting_sleep_timer_end_song">Stop at end of current song</string>
+    <string name="setting_sleep_timer_end_queue">Stop at end of queue</string>
+    <string name="setting_sleep_timer_remaining">%d min remaining</string>
+
+    <!-- Library & Cache Management -->
+    <string name="setting_ignore_short_audio">Ignore Short Audio (Voice Notes)</string>
+    <string name="setting_ignore_short_audio_desc">Hide voice notes and short recordings from library</string>
+    <string name="setting_min_duration_threshold">Minimum Duration Threshold</string>
+    <string name="setting_ignore_tracks_under_sec">Ignore tracks under %d seconds</string>
+    <string name="setting_add_hidden_folder">Add Hidden Folder</string>
+    <string name="setting_download_location">Download Location</string>
+    <string name="setting_not_set">Not Set</string>
+    <string name="setting_max_cache_size">Max %s Size</string>
+    <string name="setting_unlimited">Unlimited</string>
+    <string name="setting_max_label">Max: %s</string>
+    <string name="setting_song_cache">Song Cache</string>
+    <string name="setting_image_cache">Image Cache</string>
+
+    <!-- Appearance & Visual Effects -->
+    <string name="setting_pure_black">Pure AMOLED Black</string>
+    <string name="setting_pure_black_desc">Pitch black background in dark mode to save battery</string>
+    <string name="setting_force_high_refresh_rate">Force high refresh rate</string>
+    <string name="setting_max_supported_fps">Max supported: %d Hz</string>
+    <string name="setting_not_supported_on_device">Not supported on this device</string>
+    <string name="setting_dynamic_colors">Dynamic colors</string>
+    <string name="setting_dynamic_colors_desc">Extract theme colors from the currently playing album art</string>
+    <string name="setting_tab_switch_blur">Tab Switch Blur</string>
+    <string name="setting_tab_switch_blur_desc">Blur on Explore/Library/Effects/Settings tab swaps (GPU-heavy)</string>
+    <string name="setting_dynamic_nav_style_desc">Compact height with bold, elevated icons</string>
+
+    <!-- YouTube Dialog -->
+    <string name="yt_login_title">Log In to YouTube Music</string>
+    <string name="yt_login_desc">Sign in to access your real playlists, library, and personalized interests.</string>
+
+    <!-- What's New -->
+    <string name="whats_new_no_releases">No releases found.</string>
+    <string name="whats_new_version_series">Version %s Series</string>
 </resources>

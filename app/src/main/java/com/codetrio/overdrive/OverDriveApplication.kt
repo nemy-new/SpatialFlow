@@ -59,7 +59,7 @@ class OverDriveApplication : Application(), ImageLoaderFactory {
             .crossfade(true)
             .crossfade(300) // Expressive 300ms transition fade-in
             .allowHardware(true) // Offload rendering directly to GPU hardware buffers for zero UI thread lag
-            .allowRgb565(false) // Disable 16-bit compression to ensure pure ARGB_8888 color resolution on premium displays
+            .allowRgb565(getSharedPreferences("AppSettings", MODE_PRIVATE).getBoolean("pref_opt_thumbnail_downsampling", true))
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .networkCachePolicy(CachePolicy.ENABLED)

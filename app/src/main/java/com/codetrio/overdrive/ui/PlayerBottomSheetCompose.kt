@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,7 +46,6 @@ import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -92,11 +93,14 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.zIndex
+import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.codetrio.overdrive.MainActivity
 import com.codetrio.overdrive.R
 import com.codetrio.overdrive.model.SongItem
 import com.codetrio.overdrive.ui.player.ArtworkPager
+import com.codetrio.overdrive.ui.player.SlidingEffectsDrawer
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.codetrio.overdrive.ui.player.FullPlayerScreen
 import com.codetrio.overdrive.ui.player.PlayerUiState
 import com.codetrio.overdrive.viewmodel.PlayerSharedViewModel
@@ -716,6 +720,7 @@ fun PlayerBottomSheetCompose(
         
         // Playback state observers combined into stable UI model
         val currentSong by viewModel.currentSong.collectAsStateWithLifecycle()
+        val videoAspectRatio by viewModel.videoAspectRatio.collectAsStateWithLifecycle()
         val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
         val duration by viewModel.duration.collectAsStateWithLifecycle()
         val isProcessing by viewModel.isProcessing.collectAsStateWithLifecycle()
@@ -723,7 +728,8 @@ fun PlayerBottomSheetCompose(
         val isHapticsEnabled by viewModel.isHapticsEnabled.collectAsStateWithLifecycle()
         val miniPlayerBlendColor by viewModel.miniPlayerBlendColor.collectAsStateWithLifecycle()
         val isCurrentSongFavorite by viewModel.isCurrentSongFavoriteFlow.collectAsStateWithLifecycle()
-        val repeatMode by viewModel.repeatMode.collectAsStateWithLifecycle()
+        val isEffectsExpanded by viewModel.isEffectsExpanded.collectAsStateWithLifecycle()
+    val repeatMode by viewModel.repeatMode.collectAsStateWithLifecycle()
         val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsStateWithLifecycle()
         val playerBackgroundColor by viewModel.playerBackgroundColor.collectAsStateWithLifecycle()
         val likesCount by viewModel.likesCountFlow.collectAsStateWithLifecycle()
@@ -833,17 +839,19 @@ fun PlayerBottomSheetCompose(
         val screenHeightPx = with(density) { containerHeight.toPx() }
         val bottomNavTranslationYState = viewModel.bottomNavTranslationY.collectAsStateWithLifecycle()
         val dynamicBottomNavHeightState = viewModel.bottomNavHeight.collectAsStateWithLifecycle()
+        val navBarsBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val defaultNavHeightPx = with(density) { (80.dp + navBarsBottomPadding + 16.dp).toPx() }
         
         // Zero-Recomposition logic: calculating layout targets inside derivedStateOf
         // This ensures the composable body doesn't re-run for every pixel of nav bar scroll
-        val sheetCollapsedTargetYState = remember(screenHeightPx, density, isTablet) {
+        val sheetCollapsedTargetYState = remember(screenHeightPx, density, isTablet, defaultNavHeightPx) {
             derivedStateOf {
                 val bottomNavHeightPx = if (isTablet) {
                     0f
                 } else if (dynamicBottomNavHeightState.value > 0f) {
                     dynamicBottomNavHeightState.value
                 } else {
-                    with(density) { 75.dp.toPx() }
+                    defaultNavHeightPx
                 }
                 val miniPlayerHeightPx = with(density) { MiniPlayerHeight.toPx() }
                 
@@ -884,10 +892,18 @@ fun PlayerBottomSheetCompose(
             snapshotFlow { sheetCollapsedTargetYState.value }.collect { targetY ->
                 if (currentSheetContentState == PlayerSheetState.COLLAPSED && 
                     !isDragging && 
-                    !currentSheetTranslationY.isRunning && 
                     currentSheetTranslationY.value != screenHeightPx
                 ) {
-                    currentSheetTranslationY.snapTo(targetY)
+                    if (currentSheetTranslationY.isRunning) {
+                        launch {
+                            currentSheetTranslationY.animateTo(
+                                targetValue = targetY,
+                                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+                            )
+                        }
+                    } else {
+                        currentSheetTranslationY.snapTo(targetY)
+                    }
                 }
             }
         }
@@ -906,6 +922,10 @@ fun PlayerBottomSheetCompose(
                         targetValue = sheetCollapsedTargetYState.value,
                         animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
                     )
+                    // Ensure it snaps to the latest layout height in case bottomNav was measured late
+                    if (currentSheetTranslationY.value != sheetCollapsedTargetYState.value) {
+                        currentSheetTranslationY.snapTo(sheetCollapsedTargetYState.value)
+                    }
                     currentSheetContentState = PlayerSheetState.COLLAPSED
                 }
             }
@@ -926,21 +946,14 @@ fun PlayerBottomSheetCompose(
 
         // Resolves sheet animations
         suspend fun animatePlayerSheet(targetExpanded: Boolean, initialVelocity: Float = 0f) {
-            val expectedBottomNavHeight = if (dynamicBottomNavHeightState.value > 0f) {
-                dynamicBottomNavHeightState.value
-            } else {
-                with(density) { 75.dp.toPx() }
-            }
-            val expectedBottomGapPx = with(density) { 12.dp.toPx() }
-            val miniPlayerHeightPx = with(density) { MiniPlayerHeight.toPx() }
             val destY = if (targetExpanded) {
                 0f
             } else {
-                screenHeightPx - miniPlayerHeightPx - expectedBottomNavHeight - expectedBottomGapPx
+                sheetCollapsedTargetYState.value
             }
             val destFraction = if (targetExpanded) 1f else 0f
             
-            val collapsedY = screenHeightPx - miniPlayerHeightPx - expectedBottomNavHeight - expectedBottomGapPx
+            val collapsedY = sheetCollapsedTargetYState.value
             val totalDistance = collapsedY
             val initialFractionVelocity = if (totalDistance > 0f) {
                 -initialVelocity / totalDistance
@@ -1130,7 +1143,14 @@ fun PlayerBottomSheetCompose(
                     val screenHeight = LocalConfiguration.current.screenHeightDp
                     
                     val targetAlbumArtWidthDp = if (isTrueFullscreen) screenWidth.dp else androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
-                    val targetAlbumArtHeightDp = if (isTrueFullscreen) screenHeight.dp else androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
+                    val baseAlbumArtHeightDp = androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
+                    val targetAlbumArtHeightDp = if (isTrueFullscreen) {
+                        screenHeight.dp
+                    } else if (isMvMode) {
+                        baseAlbumArtHeightDp / videoAspectRatio
+                    } else {
+                        baseAlbumArtHeightDp
+                    }
                     
                     val albumArtWidthDp by androidx.compose.animation.core.animateDpAsState(
                         targetValue = targetAlbumArtWidthDp,
@@ -1188,20 +1208,24 @@ fun PlayerBottomSheetCompose(
                         label = "AlbumArtXPosition"
                     )
 
-                    val yEndPxTarget = remember(isTrueFullscreen, isTablet, statusBarTopPx, density, containerHeight, albumArtHeightDp, fullHeightPx, screenHeight) {
+                    val yEndPxTarget = remember(isTrueFullscreen, isTablet, statusBarTopPx, density, containerHeight, albumArtHeightDp, fullHeightPx, screenHeight, screenWidth, isMvMode, videoAspectRatio) {
                         if (isTrueFullscreen) {
                             0f
                         } else if (isTablet) {
-                            val controlsHeightDp = 300.dp
+                            val baseControlsHeightDp = 340.dp
+                            val controlsHeightDp = baseControlsHeightDp
                             val totalGroupHeightDp = albumArtHeightDp + controlsHeightDp
                             val availableHeightDp = screenHeight.dp - with(density) { statusBarTopPx.toDp() }
                             val tabletTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
                             with(density) { tabletTopOffsetDp.toPx() }
                         } else {
-                            val controlsHeightDp = 300.dp
-                            val totalGroupHeightDp = albumArtHeightDp + controlsHeightDp
-                            val availableHeightDp = screenHeight.dp - with(density) { statusBarTopPx.toDp() }
-                            val phoneTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
+                            val baseAlbumArtHeightDp = androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
+                            val controlsAreaHeightDp = 400.dp
+                            val availableTopSpaceDp = screenHeight.dp - with(density) { statusBarTopPx.toDp() } - controlsAreaHeightDp
+                            val squareTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableTopSpaceDp - baseAlbumArtHeightDp) / 2f).coerceAtLeast(16.dp)
+                            val squareCenterYDp = squareTopOffsetDp + (baseAlbumArtHeightDp / 2f)
+                            val albumArtHeightDp = if (isMvMode) baseAlbumArtHeightDp / videoAspectRatio else baseAlbumArtHeightDp
+                            val phoneTopOffsetDp = squareCenterYDp - (albumArtHeightDp / 2f)
                             with(density) { phoneTopOffsetDp.toPx() }
                         }
                     }
@@ -1258,6 +1282,15 @@ fun PlayerBottomSheetCompose(
                                 alpha = artworkAlpha * (1f - canvasHideT)
                             }
                             .zIndex(if (isQueueExpanded) 1f else if (isLyricsModeEnabled || lyricsArtworkProgress > 0f) 6f else if (playerTheme == "immersion" && !isMvMode && playerContentExpansionFraction.value > 0.5f) -1f else 3f)
+                            .then(
+                                if (isLyricsModeEnabled) {
+                                    Modifier.clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { viewModel.setLyricsModeEnabled(false) }
+                                    )
+                                } else Modifier
+                            )
                     ) {
                         ArtworkPager(
                             viewModel = viewModel,
@@ -1270,11 +1303,26 @@ fun PlayerBottomSheetCompose(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+
+                    // --- Sliding Effects Drawer ---
+                    val dynamicAccentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                    
+                    Box(modifier = Modifier.fillMaxSize().zIndex(4f)) {
+                        SlidingEffectsDrawer(
+                            isEffectsExpanded = isEffectsExpanded,
+                            onEffectsExpandedChange = { viewModel.setEffectsExpanded(it) },
+                            viewModel = viewModel,
+                            playerBackgroundColor = playerBackgroundColor,
+                            dynamicAccentColor = dynamicAccentColor,
+                            isDark = androidx.compose.foundation.isSystemInDarkTheme()
+                        )
+                    }
                 }
             }
         }
 
         // Global Dynamic Snackbar
+
         val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
         
         LaunchedEffect(Unit) {
@@ -1303,7 +1351,7 @@ fun PlayerBottomSheetCompose(
                         val bottomNavHeightPx = if (dynamicBottomNavHeightState.value > 0f) {
                             dynamicBottomNavHeightState.value
                         } else {
-                            with(density) { 75.dp.toPx() }
+                            defaultNavHeightPx
                         }
                         val bottomNavVisibilityFraction = (bottomNavTranslationYState.value / (if (bottomNavHeightPx > 0) bottomNavHeightPx else 1f)).coerceIn(0f, 1f)
                         val currentBottomGapPx = with(density) { 

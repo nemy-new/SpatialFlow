@@ -2,6 +2,7 @@ package com.codetrio.overdrive.ui.player
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -988,6 +989,33 @@ private fun KaraokeLineItem(
                     }
                 }
             }
+        }
+        
+        // ── Translated Text Box (Apple Music Style Subtext - Smooth & Jitter-Free) ──
+        if (line.translatedContent != null) {
+            val translationTextStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontFamily = GoogleSansFlexNonRounded,
+                fontSize = 17.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 23.sp,
+                platformStyle = PlatformTextStyle(includeFontPadding = true)
+            )
+            val targetColor = if (isActive) litColor.copy(alpha = 0.92f) else dimColor.copy(alpha = 0.65f)
+            val animatedColor by animateColorAsState(
+                targetValue = targetColor,
+                animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                label = "translatedTextColor"
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = line.translatedContent!!,
+                style = translationTextStyle,
+                color = animatedColor,
+                softWrap = true,
+                maxLines = Int.MAX_VALUE,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

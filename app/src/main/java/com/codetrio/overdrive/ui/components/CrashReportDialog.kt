@@ -153,27 +153,13 @@ fun CrashReportDialog(
             ) {
                 TextButton(
                     onClick = {
-                        val telegramMsg = "SPATIALFLOW CRASH REPORT\n\n$crashLog"
-                        try {
-                            com.codetrio.overdrive.util.TelegramHelper.openTelegram(context = context, message = telegramMsg)
-                        } catch (e: Exception) {
-                            val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            val clip = android.content.ClipData.newPlainText(context.getString(com.codetrio.overdrive.R.string.text_crash_report), telegramMsg)
-                            clipboardManager.setPrimaryClip(clip)
-                            Toast.makeText(context, "Crash log copied. Paste in Telegram.", Toast.LENGTH_LONG).show()
-                            com.codetrio.overdrive.util.TelegramHelper.openTelegram(context = context, domain = "SpatialFlow")
-                        }
-                        onReport()
+                        val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText(context.getString(com.codetrio.overdrive.R.string.text_crash_report), crashLog)
+                        clipboardManager.setPrimaryClip(clip)
+                        Toast.makeText(context, "Crash log copied to clipboard", Toast.LENGTH_SHORT).show()
                     }
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_telegram),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_telegram))
+                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_copy))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(

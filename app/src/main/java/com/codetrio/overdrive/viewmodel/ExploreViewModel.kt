@@ -117,6 +117,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         _focusSearchEvent.tryEmit(Unit)
     }
 
+    private val _scrollToTopEvent = MutableSharedFlow<Unit>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val scrollToTopEvent = _scrollToTopEvent.asSharedFlow()
+
+    fun triggerScrollToTop() {
+        _scrollToTopEvent.tryEmit(Unit)
+    }
+
     // Granular 4-way UI state flows for UI performance optimization
     val searchState: StateFlow<SearchUiState> = _uiState
         .map { SearchUiState(it.searchQuery, it.searchResults, it.suggestions, it.isSearching, it.isLoadingSuggestions, it.searchHistory, it.searchFilter) }
@@ -267,7 +274,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     // Shared event to signal that the host fragment should propagate current state to Player service INSTANTLY!
 
 
-    private val _events = Channel<ExploreEvent>()
+    private val _events = Channel<ExploreEvent>(Channel.BUFFERED)
     val events: Flow<ExploreEvent> = _events.receiveAsFlow()
 
     fun sendEvent(event: ExploreEvent) {
@@ -643,9 +650,17 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     // ========== Online Playback ==========
 
     fun playOnlineSong(song: OnlineSong) {
-        _uiState.update { 
-            it.copy(
+        _uiState.update { current ->
+            val effectiveQueue = if (current.onlineQueue.isEmpty() || current.onlineQueue.none { q -> q.videoId == song.videoId }) {
+                listOf(song)
+            } else {
+                current.onlineQueue
+            }
+            val effectiveIndex = effectiveQueue.indexOfFirst { q -> q.videoId == song.videoId }.coerceAtLeast(0)
+            current.copy(
                 currentOnlineSong = song,
+                onlineQueue = effectiveQueue,
+                currentOnlineIndex = effectiveIndex,
                 isLoadingStream = false,
                 streamError = null
             )
@@ -671,8 +686,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
-        // EXTREME LATENCY REMOVAL: Deleted explicit blocking network call! 
-        // ExoPlayer uses ResolvingDataSource to resolve URIs asynchronously in the background AFTER opening the player instantly!
+        // EXTREME LATENCY REMOVAL: Trigger instant playback via global listener in MainActivity!
         sendEvent(ExploreEvent.TriggerInstantPlayback)
     }
 
@@ -680,17 +694,22 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
      * Play an online song and set queue context.
      */
     fun playOnlineSongWithQueue(song: OnlineSong, queue: List<OnlineSong>, index: Int) {
+        val effectiveQueue = if (queue.isNotEmpty()) queue else listOf(song)
+        val effectiveIndex = if (index in effectiveQueue.indices) index else effectiveQueue.indexOfFirst { it.videoId == song.videoId }.coerceAtLeast(0)
         _uiState.update { 
             it.copy(
-                onlineQueue = queue,
-                currentOnlineIndex = index
+                onlineQueue = effectiveQueue,
+                currentOnlineIndex = effectiveIndex,
+                currentOnlineSong = song,
+                isLoadingStream = false,
+                streamError = null
             )
         }
         playOnlineSong(song)
 
         // PREFETCH NEXT SONG TO WARM UP THE CACHE INSTANTLY!
-        if (index + 1 < queue.size) {
-            val nextSong = queue[index + 1]
+        if (effectiveIndex + 1 < effectiveQueue.size) {
+            val nextSong = effectiveQueue[effectiveIndex + 1]
             YouTubeMusic.prefetchStream(nextSong.videoId)
         }
     }

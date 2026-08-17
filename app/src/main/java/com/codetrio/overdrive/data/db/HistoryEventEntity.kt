@@ -1,9 +1,17 @@
 package com.codetrio.overdrive.data.db
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "history_events")
+@Entity(
+    tableName = "history_events",
+    indices = [
+        Index(value = ["timestamp"]),
+        Index(value = ["songId"]),
+        Index(value = ["hourOfDay"])
+    ]
+)
 data class HistoryEventEntity(
     @PrimaryKey(autoGenerate = true) val eventId: Long = 0,
     val songId: String,          // videoId or id.toString()

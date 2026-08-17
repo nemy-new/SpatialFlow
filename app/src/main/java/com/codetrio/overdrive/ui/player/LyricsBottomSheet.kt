@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import com.codetrio.overdrive.data.lyrics.LyricLine
 import com.codetrio.overdrive.data.lyrics.LyricsResult
 import com.codetrio.overdrive.model.SongItem
@@ -49,6 +51,7 @@ fun LyricsBottomSheet(
     onPlayPauseClick: () -> Unit = {},
     duration: Long,
     onCollapse: () -> Unit,
+    onToggleTranslation: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Intercept system back button while Lyrics Sheet is visible
@@ -70,7 +73,7 @@ fun LyricsBottomSheet(
         ) + fadeOut(
             animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f)
         ),
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures() }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             FullScreenLyricsOverlay(
@@ -99,6 +102,7 @@ fun LyricsBottomSheet(
                 onPlayPauseClick = onPlayPauseClick,
                 duration = duration,
                 onCollapse = onCollapse,
+                onToggleTranslation = onToggleTranslation,
                 modifier = Modifier.fillMaxSize()
             )
         }

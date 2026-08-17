@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.filled.TrendingUp
 import com.codetrio.overdrive.ui.explore.SearchScreen
 import androidx.compose.ui.draw.alpha
 
@@ -29,6 +30,8 @@ import android.util.Log
 import android.view.View
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.activity.viewModels
@@ -48,9 +51,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -112,7 +118,6 @@ import com.codetrio.overdrive.ui.theme.SpatialFlowTheme
 import com.codetrio.overdrive.ui.theme.observeKey
 import com.codetrio.overdrive.ui.onboarding.OnboardingScreen
 import android.content.Context
-import com.codetrio.overdrive.ui.components.TelegramJoinDialog
 import com.codetrio.overdrive.util.CrashHandler
 import com.codetrio.overdrive.ui.components.CrashReportDialog
 import com.codetrio.overdrive.update.GitHubReleaseClient
@@ -121,6 +126,11 @@ import com.codetrio.overdrive.update.VersionUtils
 import com.codetrio.overdrive.update.UpdateBottomSheet
 import com.codetrio.overdrive.viewmodel.ExploreViewModel
 import com.codetrio.overdrive.viewmodel.PlayerSharedViewModel
+import com.codetrio.overdrive.ui.ObserveAsEvents
+import com.codetrio.overdrive.ui.SnackbarController
+import com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger
+import com.codetrio.overdrive.data.diagnostics.LogLevel
+import com.codetrio.overdrive.viewmodel.ExploreEvent
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
@@ -236,17 +246,6 @@ class MainActivity : AppCompatActivity() {
             val playerBackgroundColor by playerViewModel.playerBackgroundColor.collectAsStateWithLifecycle()
             val dynamicAlbumColor = if (currentSong != null) playerBackgroundColor else null
 
-            var showTelegramDialog by remember { mutableStateOf(false) }
-            LaunchedEffect(hasSeenOnboarding) {
-                if (hasSeenOnboarding) {
-                    val tgPrefs = getSharedPreferences("telegram_prefs", MODE_PRIVATE)
-                    val hasShownDialog = tgPrefs.getBoolean("has_shown_join_dialog", false)
-                    if (!hasShownDialog) {
-                        showTelegramDialog = true
-                    }
-                }
-            }
-
             val forceHighRefreshRate by prefs.observeKey("force_high_refresh_rate", false)
             val supportedHighestFps = com.codetrio.overdrive.util.rememberSupportedHighestFps()
             val isHighRefreshRateSupported = supportedHighestFps > 60.5f
@@ -261,25 +260,6 @@ class MainActivity : AppCompatActivity() {
                 dynamicAlbumColor = dynamicAlbumColor,
                 windowSizeClass = windowSizeClass
             ) {
-                if (showTelegramDialog) {
-                    TelegramJoinDialog(
-                        onDismiss = {
-                            val tgPrefs = getSharedPreferences("telegram_prefs", MODE_PRIVATE)
-                            tgPrefs.edit().putBoolean("has_shown_join_dialog", true).apply()
-                            showTelegramDialog = false
-                        },
-                        onJoin = {
-                            val tgPrefs = getSharedPreferences("telegram_prefs", MODE_PRIVATE)
-                            tgPrefs.edit().putBoolean("has_shown_join_dialog", true).apply()
-                            showTelegramDialog = false
-                            try {
-                                com.codetrio.overdrive.util.TelegramHelper.openTelegram(this@MainActivity, domain = "SpatialFlow")
-                            } catch (e: Exception) {
-                                android.widget.Toast.makeText(this@MainActivity, "Could not open Telegram", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    )
-                }
                 crashLog?.let { log ->
                     CrashReportDialog(
                         crashLog = log,
@@ -295,11 +275,77 @@ class MainActivity : AppCompatActivity() {
                 }
                 val hideNavLabels by prefs.observeKey("hide_nav_labels", false)
                 val dynamicNavStyle by prefs.observeKey("dynamic_nav_style", false)
+                val floatingNavBar by prefs.observeKey("floating_nav_bar", false)
                 val isBlurEnabled by prefs.observeKey("navigation_blur", true)
 
                 val currentNavController = rememberNavController()
                 LaunchedEffect(currentNavController) {
                     navController = currentNavController
+                }
+
+                // Global event listener for exploreViewModel (handles instant playback triggers from Search, Artists, Home, Playlists, etc.)
+                ObserveAsEvents(exploreViewModel.events) { event ->
+                    when (event) {
+                        is ExploreEvent.ShowSnackbar -> {
+                            SnackbarController.showMessage(event.message.asString(this@MainActivity))
+                        }
+                        is ExploreEvent.TriggerInstantPlayback -> {
+                            val state = exploreViewModel.uiState.value
+                            val queue = state.onlineQueue
+                            val index = state.currentOnlineIndex
+                            val currentSong = state.currentOnlineSong
+
+                            val songsToPlay = when {
+                                queue.isNotEmpty() && index in queue.indices -> {
+                                    queue.map { s ->
+                                        SongItem.createOnlineSong(
+                                            videoId = s.videoId,
+                                            title = s.title,
+                                            artist = s.artist,
+                                            streamUrl = "",
+                                            durationMs = s.durationMs,
+                                            thumbnailUrl = s.thumbnailUrl,
+                                            artistId = s.artistId,
+                                            animatedThumbnailUrl = s.animatedThumbnailUrl
+                                        )
+                                    }
+                                }
+                                currentSong != null -> {
+                                    listOf(
+                                        SongItem.createOnlineSong(
+                                            videoId = currentSong.videoId,
+                                            title = currentSong.title,
+                                            artist = currentSong.artist,
+                                            streamUrl = "",
+                                            durationMs = currentSong.durationMs,
+                                            thumbnailUrl = currentSong.thumbnailUrl,
+                                            artistId = currentSong.artistId,
+                                            animatedThumbnailUrl = currentSong.animatedThumbnailUrl
+                                        )
+                                    )
+                                }
+                                else -> emptyList()
+                            }
+
+                            if (songsToPlay.isNotEmpty()) {
+                                val playIndex = if (queue.isNotEmpty() && index in queue.indices) index else 0
+                                val targetSong = songsToPlay.getOrNull(playIndex)
+                                PlaybackDiagnosticsLogger.log(
+                                    level = LogLevel.INFO,
+                                    tag = "UI-Trigger",
+                                    message = "TriggerInstantPlayback: playing '${targetSong?.title}' (${targetSong?.videoId}) [Queue size: ${songsToPlay.size}, index: $playIndex]"
+                                )
+                                playerViewModel.setSongList(songsToPlay)
+                                playerViewModel.playSongAtIndex(playIndex)
+                            } else {
+                                PlaybackDiagnosticsLogger.log(
+                                    level = LogLevel.WARN,
+                                    tag = "UI-Trigger",
+                                    message = "TriggerInstantPlayback received but queue and currentSong are both empty!"
+                                )
+                            }
+                        }
+                    }
                 }
 
                 val isPlayerExpanded by playerViewModel.isPlayerExpanded.collectAsStateWithLifecycle()
@@ -308,7 +354,9 @@ class MainActivity : AppCompatActivity() {
 
                 val isTablet = windowSizeClass?.widthSizeClass != androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Compact
 
-                androidx.compose.foundation.layout.Row(modifier = Modifier.fillMaxSize()) {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+                ) {
                     if (isTablet) {
                         val navBackStackEntry by currentNavController.currentBackStackEntryAsState()
                         val currentDestination = navBackStackEntry?.destination
@@ -328,13 +376,39 @@ class MainActivity : AppCompatActivity() {
                         ) {
                             androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                             val tabsState by rememberBottomNavTabs(LocalContext.current)
+                            
+                            var lastClickTime by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0L) }
+                            var lastClickRoute by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+
                             val items = tabsState.filter { it.isVisible }.map { Triple(it.route, getNavLabelForRoute(it.route), getNavIconForRoute(it.route)) }
                             items.forEach { (route, label, iconData) ->
                                 val selected = currentDestination?.route == route
                                 androidx.compose.material3.NavigationRailItem(
                                     selected = selected,
                                     onClick = {
-                                        if (route == "explore") exploreViewModel.resetToHome()
+                                        val currentTime = System.currentTimeMillis()
+                                        val isDoubleTap = (currentTime - lastClickTime < 400L) || selected
+                                        lastClickTime = currentTime
+                                        lastClickRoute = route
+
+                                        if (isDoubleTap && selected) {
+                                            when (route) {
+                                                "search" -> exploreViewModel.triggerSearchFocus()
+                                                "explore" -> {
+                                                    exploreViewModel.resetToHome()
+                                                    exploreViewModel.triggerScrollToTop()
+                                                }
+                                                "library" -> playerViewModel.triggerScrollToTop()
+                                                "settings" -> {
+                                                    currentNavController.popBackStack("settings", inclusive = false)
+                                                }
+                                            }
+                                        }
+
+                                        if (route == "explore" && !isDoubleTap) {
+                                            exploreViewModel.resetToHome()
+                                        }
+
                                         if (!selected) {
                                             currentNavController.navigate(route) {
                                                 popUpTo(currentNavController.graph.findStartDestination().id) { saveState = true }
@@ -372,13 +446,10 @@ class MainActivity : AppCompatActivity() {
                         val navBackStackEntry by currentNavController.currentBackStackEntryAsState()
                         val currentDestination = navBackStackEntry?.destination
 
-                        val showBottomBar = currentDestination?.route in listOf("explore", "search", "library", "effects", "settings")
+                        val showBottomBar = currentDestination?.route !in listOf("onboarding", "google_signin")
 
                         val density = LocalDensity.current
-                        val navigationBarsHeightPx = WindowInsets.navigationBars.getBottom(density).toFloat()
-                        val bottomNavHeight = 80.dp
-                        val bottomNavHeightPx = with(density) { bottomNavHeight.toPx() }
-                        val totalSlideDistPx = bottomNavHeightPx + navigationBarsHeightPx
+                        val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
                         val playerExpansionFractionState = remember { mutableStateOf(0f) }
                         LaunchedEffect(playerViewModel) {
@@ -387,9 +458,32 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
 
+                        val navBarTransition = updateTransition(
+                            targetState = dynamicNavStyle,
+                            label = "NavBarStyle"
+                        )
+                        val navBarHeight by navBarTransition.animateDp(
+                            label = "navBarHeight",
+                            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow) }
+                        ) { if (it) 64.dp else 80.dp }
+                        val navIconSize by navBarTransition.animateDp(
+                            label = "navIconSize",
+                            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow) }
+                        ) { if (it) 34.dp else 26.dp }
+                        val navElevation by navBarTransition.animateDp(
+                            label = "navElevation",
+                            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow) }
+                        ) { if (it) 8.dp else 3.dp }
 
-                        // This is the target for general bottom nav visibility (like scrolling or settings screen)
-                        val baseTargetTranslation = if (showBottomBar && isBottomNavVisible) 0f else totalSlideDistPx
+                        val totalBottomNavHeight = if (floatingNavBar) {
+                            navBarHeight + bottomPadding + 16.dp
+                        } else {
+                            navBarHeight + bottomPadding
+                        }
+                        val totalSlideDistPx = with(density) { totalBottomNavHeight.toPx() }
+
+                        // User requested the bottom bar to be ALWAYS visible except during media player expansion
+                        val baseTargetTranslation = if (showBottomBar) 0f else totalSlideDistPx
 
                         val animatedBaseTranslationState = animateFloatAsState(
                             targetValue = baseTargetTranslation,
@@ -411,26 +505,10 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
 
-                        val navBarTransition = updateTransition(
-                            targetState = dynamicNavStyle,
-                            label = "NavBarStyle"
-                        )
-                        val navBarHeight by navBarTransition.animateDp(
-                            label = "navBarHeight",
-                            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow) }
-                        ) { if (it) 64.dp else 80.dp }
-                        val navIconSize by navBarTransition.animateDp(
-                            label = "navIconSize",
-                            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow) }
-                        ) { if (it) 34.dp else 26.dp }
-                        val navElevation by navBarTransition.animateDp(
-                            label = "navElevation",
-                            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow) }
-                        ) { if (it) 8.dp else 3.dp }
-                        val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
-                        NavigationBar(
+                        Box(
                             modifier = Modifier
+                                .fillMaxWidth()
+                                .height(totalBottomNavHeight)
                                 .graphicsLayer {
                                     val currentBase = animatedBaseTranslationState.value
                                     val currentFraction = playerExpansionFractionState.value
@@ -438,51 +516,98 @@ class MainActivity : AppCompatActivity() {
                                     this.translationY = translationY
                                     this.alpha = if (translationY >= totalSlideDistPx - 1f) 0f else 1f
                                 }
-                                .height(navBarHeight + bottomPadding)
                                 .onGloballyPositioned { coordinates ->
                                     val height = coordinates.size.height.toFloat()
                                     playerViewModel.setBottomNavHeight(height)
-                                },
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            tonalElevation = navElevation
+                                }
                         ) {
-                            val tabsState by rememberBottomNavTabs(LocalContext.current)
-                            val items = tabsState.filter { it.isVisible }.map { Triple(it.route, getNavLabelForRoute(it.route), getNavIconForRoute(it.route)) }
-                             items.forEach { (route, label, iconData) ->
-                                val selected = currentDestination?.route == route
-                                NavigationBarItem(
-                                    selected = selected,
-                                    onClick = {
-                                        if (route == "explore") {
-                                            exploreViewModel.resetToHome()
-                                        }
-                                        if (!selected) {
-                                            currentNavController.navigate(route) {
-                                                popUpTo(currentNavController.graph.findStartDestination().id) {
-                                                    saveState = true
+                            val navBarContent: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
+                                val tabsState by rememberBottomNavTabs(LocalContext.current)
+                                
+                                var lastClickTime by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0L) }
+                                var lastClickRoute by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+
+                                val items = tabsState.filter { it.isVisible }.map { Triple(it.route, getNavLabelForRoute(it.route), getNavIconForRoute(it.route)) }
+                                items.forEach { (route, label, iconData) ->
+                                    val selected = currentDestination?.route == route
+                                    NavigationBarItem(
+                                        selected = selected,
+                                        onClick = {
+                                            val currentTime = System.currentTimeMillis()
+                                            val isDoubleTap = (currentTime - lastClickTime < 400L) || selected
+                                            lastClickTime = currentTime
+                                            lastClickRoute = route
+
+                                            if (isDoubleTap && selected) {
+                                                when (route) {
+                                                    "search" -> exploreViewModel.triggerSearchFocus()
+                                                    "explore" -> {
+                                                        exploreViewModel.resetToHome()
+                                                        exploreViewModel.triggerScrollToTop()
+                                                    }
+                                                    "library" -> playerViewModel.triggerScrollToTop()
+                                                    "settings" -> {
+                                                        // Pop all the way back to the root settings view
+                                                        currentNavController.popBackStack("settings", inclusive = false)
+                                                    }
                                                 }
-                                                launchSingleTop = true
-                                                restoreState = true
                                             }
-                                        }
-                                    },
-                                    icon = {
-                                        if (iconData is androidx.compose.ui.graphics.vector.ImageVector) {
-                                            Icon(imageVector = iconData, contentDescription = label, modifier = Modifier.size(navIconSize))
-                                        } else if (iconData is Int) {
-                                            Icon(painter = painterResource(id = iconData), contentDescription = label, modifier = Modifier.size(navIconSize))
-                                        }
-                                    },
-                                    label = if (hideNavLabels) null else { { Text(label) } }
-                                )
+
+                                            if (route == "explore" && !isDoubleTap) {
+                                                exploreViewModel.resetToHome()
+                                            }
+                                            
+                                            if (!selected) {
+                                                currentNavController.navigate(route) {
+                                                    popUpTo(currentNavController.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            }
+                                        },
+                                        icon = {
+                                            if (iconData is androidx.compose.ui.graphics.vector.ImageVector) {
+                                                Icon(imageVector = iconData, contentDescription = label, modifier = Modifier.size(navIconSize))
+                                            } else if (iconData is Int) {
+                                                Icon(painter = painterResource(id = iconData), contentDescription = label, modifier = Modifier.size(navIconSize))
+                                            }
+                                        },
+                                        label = if (hideNavLabels) null else { { Text(label) } }
+                                    )
+                                }
                             }
+
+                            if (floatingNavBar) {
+                                NavigationBar(
+                                    modifier = Modifier
+                                        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPadding + 8.dp)
+                                        .clip(RoundedCornerShape(24.dp))
+                                        .height(navBarHeight),
+                                    windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                    tonalElevation = navElevation,
+                                    content = navBarContent
+                                )
+                            } else {
+                                NavigationBar(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(totalBottomNavHeight),
+                                    windowInsets = androidx.compose.material3.NavigationBarDefaults.windowInsets,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                    tonalElevation = navElevation,
+                                    content = navBarContent
+                                )
                             }
                         }
                     }
-                ) { paddingValues ->
+                }
+            ) { paddingValues ->
                     val navBackStackEntry by currentNavController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
-                    val showBottomBar = currentDestination?.route in listOf("explore", "search", "library", "effects", "settings")
+                    val showBottomBar = currentDestination?.route !in listOf("onboarding", "google_signin")
 
                     val playerExpansionFractionState = remember { mutableStateOf(0f) }
                     LaunchedEffect(playerViewModel) {
@@ -492,7 +617,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     // Base padding target not considering expansion
-                    val baseTargetPadding = if (showBottomBar && isBottomNavVisible) {
+                    val baseTargetPadding = if (showBottomBar && !floatingNavBar) {
                         paddingValues.calculateBottomPadding()
                     } else {
                         0.dp
@@ -679,6 +804,20 @@ class MainActivity : AppCompatActivity() {
                                         }
                                     )
                                 }
+                                composableWithBlur("statistics") {
+                                    com.codetrio.overdrive.ui.statistics.StatisticsScreen(
+                                        playerViewModel = playerViewModel,
+                                        onNavigateToExplore = {
+                                            currentNavController.navigate("explore") {
+                                                popUpTo(currentNavController.graph.findStartDestination().id) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    )
+                                }
                                 composableWithBlur("library") {
                                     LibraryScreen(
                                         viewModel = playerViewModel,
@@ -743,9 +882,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         updateManager = UpdateManager(this)
-        if (!handleIntent(intent)) {
-            checkForUpdateOnLaunch()
-        }
+        handleIntent(intent)
     }
 
     fun navigateToSettings() {
@@ -800,62 +937,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun checkForUpdateOnLaunch() {
-        if (!shouldCheckForUpdate()) {
-            Log.d(TAG, "Update check skipped (checked recently)")
-            return
-        }
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val client = GitHubReleaseClient("MythicalSHUB", "SpatialFlow")
-                val release = client.latestRelease ?: return@launch
-
-                val currentVersion = BuildConfig.VERSION_NAME
-                if (VersionUtils.isNewer(release.tagName, currentVersion)) {
-                    withContext(Dispatchers.Main) {
-                        showUpdateDialog(release)
-                        updateManager.showUpdateNotification(release.tagName, release.changelog ?: "", release.apkUrl ?: "")
-                    }
-                } else {
-                    Log.d(TAG, "App is up to date (current: $currentVersion, latest: ${release.tagName})")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Update check failed", e)
-            }
-        }
-    }
-
-    private fun showUpdateDialog(release: GitHubReleaseClient.ReleaseInfo) {
-        val sheet = UpdateBottomSheet.newInstance(
-            tagName = release.tagName,
-            changelog = release.changelog ?: "",
-            apkUrl = release.apkUrl ?: ""
-        )
-        sheet.setOnUpdateClickListener(object : UpdateBottomSheet.OnUpdateClickListener {
-            override fun onUpdateClick(apkUrl: String): Long {
-                val rootView = findViewById<View>(android.R.id.content)
-                return updateManager.startDownload(rootView, apkUrl)
-            }
-
-            override fun onLaterClick() {}
-        })
-        sheet.show(supportFragmentManager, "UpdateBottomSheet")
-    }
-
-    private fun shouldCheckForUpdate(): Boolean {
-        val prefs = getSharedPreferences("update_prefs", MODE_PRIVATE)
-        if (prefs.getBoolean("update_check_disabled", false)) return false
-
-        val lastCheck = prefs.getLong("last_update_check", 0)
-        val currentTime = System.currentTimeMillis()
-        val oneDayMillis = 24 * 60 * 60 * 1000L
-
-        return if (currentTime - lastCheck > oneDayMillis) {
-            prefs.edit { putLong("last_update_check", currentTime) }
-            true
-        } else false
-    }
 
     private fun startAudioService() {
         val serviceIntent = Intent(this, AudioPlaybackService::class.java)
@@ -978,28 +1060,6 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun handleIntent(intent: Intent?): Boolean {
         if (intent == null) return false
-
-        val showUpdateSheet = intent.getBooleanExtra("show_update_sheet", false)
-        if (showUpdateSheet) {
-            val tagName = intent.getStringExtra("update_tag_name")
-            val changelog = intent.getStringExtra("update_changelog")
-            val apkUrl = intent.getStringExtra("update_apk_url")
-            if (tagName != null && apkUrl != null) {
-                intent.removeExtra("show_update_sheet")
-                val release = GitHubReleaseClient.ReleaseInfo(
-                    tagName = tagName,
-                    changelog = changelog,
-                    apkUrl = apkUrl,
-                    checksumUrl = null
-                )
-                window.decorView.post {
-                    if (!isFinishing && !isDestroyed) {
-                        showUpdateDialog(release)
-                    }
-                }
-                return true
-            }
-        }
 
         if (Intent.ACTION_SEND == intent.action && "text/plain" == intent.type) {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
@@ -1135,7 +1195,7 @@ fun NavGraphBuilder.composableWithBlur(
     content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit
 ) {
     // Main bottom-nav tab routes — blur here is most expensive since users switch these constantly.
-    val mainTabRoutes = setOf("explore", "search", "library", "effects", "settings")
+    val mainTabRoutes = setOf("explore", "search", "library", "statistics", "effects", "settings")
     val isMainTabRoute = route in mainTabRoutes
 
     composable(
@@ -1209,7 +1269,7 @@ fun getNavIconForRoute(route: String): Any {
         "explore" -> androidx.compose.material.icons.Icons.Rounded.Home
         "search" -> androidx.compose.material.icons.Icons.Rounded.Search
         "library" -> com.codetrio.overdrive.R.drawable.ic_library_music
-        "statistics" -> androidx.compose.material.icons.Icons.Rounded.Home
+        "statistics" -> androidx.compose.material.icons.Icons.Default.TrendingUp
         "effects" -> com.codetrio.overdrive.R.drawable.ic_equalizer
         "settings" -> com.codetrio.overdrive.R.drawable.ic_settings
         else -> androidx.compose.material.icons.Icons.Rounded.Home

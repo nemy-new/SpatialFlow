@@ -71,6 +71,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
@@ -247,6 +248,33 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 vibrator.vibrate(50)
             }
         }
+    }
+
+    // ── Lyrics Translation ───────────────────────────────────────────────────
+    private val _lyricsTranslationEnabled = MutableStateFlow(
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context).getBoolean("enable_lyrics_translation", false)
+    )
+    val lyricsTranslationEnabled: StateFlow<Boolean> = _lyricsTranslationEnabled.asStateFlow()
+
+    fun setLyricsTranslationEnabled(enabled: Boolean) {
+        _lyricsTranslationEnabled.value = enabled
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putBoolean("enable_lyrics_translation", enabled)
+            .apply()
+    }
+
+    private val _lyricsTranslationEngine = MutableStateFlow(
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context).getString("lyrics_translation_engine", "gemini_api") ?: "gemini_api"
+    )
+    val lyricsTranslationEngine: StateFlow<String> = _lyricsTranslationEngine.asStateFlow()
+
+    fun setLyricsTranslationEngine(engine: String) {
+        _lyricsTranslationEngine.value = engine
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putString("lyrics_translation_engine", engine)
+            .apply()
     }
 
     // ── Crossfade ────────────────────────────────────────────────────────────
@@ -1174,7 +1202,7 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
 
         BackupRestoreScreen(
             navController = navController,
-            onBackupClick = { exportBackupLauncher.launch("spatialflow_backup.json") },
+            onBackupClick = { exportBackupLauncher.launch("overdrive_backup.json") },
             onRestoreClick = { importBackupLauncher.launch(arrayOf("application/json")) }
         )
     }
@@ -1285,6 +1313,8 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
         val volumeNormalizationEnabled by viewModel.volumeNormalizationEnabled.collectAsStateWithLifecycle()
         val targetLufs by viewModel.targetLufs.collectAsStateWithLifecycle()
         val showVolumeSlider by viewModel.showVolumeSlider.collectAsStateWithLifecycle()
+        val lyricsTranslationEnabled by viewModel.lyricsTranslationEnabled.collectAsStateWithLifecycle()
+        val lyricsTranslationEngine by viewModel.lyricsTranslationEngine.collectAsStateWithLifecycle()
         PlaybackScreen(
             navController = navController,
             crossfadeEnabled = crossfadeEnabled,
@@ -1310,7 +1340,11 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
             targetLufs = targetLufs,
             onTargetLufsChange = { viewModel.setTargetLufs(it) },
             showVolumeSlider = showVolumeSlider,
-            onShowVolumeSliderChange = { viewModel.setShowVolumeSlider(it) }
+            onShowVolumeSliderChange = { viewModel.setShowVolumeSlider(it) },
+            lyricsTranslationEnabled = lyricsTranslationEnabled,
+            onLyricsTranslationToggle = { viewModel.setLyricsTranslationEnabled(it) },
+            lyricsTranslationEngine = lyricsTranslationEngine,
+            onLyricsTranslationEngineChange = { viewModel.setLyricsTranslationEngine(it) }
         )
     }
 
@@ -1395,6 +1429,36 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
             onBack = { navController.popBackStack() }
         )
     }
+
+    composableWithBlur(
+        route = "developer_options",
+        enterTransition = enterAnim,
+        exitTransition = exitAnim,
+        popEnterTransition = popEnterAnim,
+        popExitTransition = popExitAnim
+    ) {
+        DeveloperOptionsScreen(navController = navController)
+    }
+
+    composableWithBlur(
+        route = "developer_playback_logs",
+        enterTransition = enterAnim,
+        exitTransition = exitAnim,
+        popEnterTransition = popEnterAnim,
+        popExitTransition = popExitAnim
+    ) {
+        com.codetrio.overdrive.ui.settings.PlaybackLogsScreen(navController = navController)
+    }
+
+    composableWithBlur(
+        route = "developer_performance",
+        enterTransition = enterAnim,
+        exitTransition = exitAnim,
+        popEnterTransition = popEnterAnim,
+        popExitTransition = popExitAnim
+    ) {
+        com.codetrio.overdrive.ui.settings.PerformanceSettingsScreen(navController = navController)
+    }
 }
 
 
@@ -1469,7 +1533,7 @@ private fun SettingsMainScreen(navController: androidx.navigation.NavController)
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Settings",
+            text = stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
@@ -1606,7 +1670,7 @@ private fun MusicManagementScreen(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
-            topBar = { SettingsDetailTopBar("Music Management") { navController.popBackStack() } }
+            topBar = { SettingsDetailTopBar(stringResource(R.string.settings_cat_music_mgmt)) { navController.popBackStack() } }
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -1629,7 +1693,7 @@ private fun MusicManagementScreen(
                     add { AddMorePathRow(onAddPathClick) }
                 })
 
-                SettingsHeader("Audio Filtering")
+                SettingsHeader(stringResource(R.string.settings_audio_filtering))
                 SettingsGroupCard(buildList {
                     add {
                         IgnoreShortAudioRow(ignoreShortAudio, onIgnoreShortAudioChange)
@@ -1641,7 +1705,7 @@ private fun MusicManagementScreen(
                     }
                 })
 
-                SettingsHeader("Hidden Folders")
+                SettingsHeader(stringResource(R.string.settings_hidden_folders))
                 SettingsGroupCard(buildList {
                     hiddenFolders.forEach { folder ->
                         add { HiddenFolderRow(folder, onRemoveHiddenFolder) }
@@ -1649,7 +1713,7 @@ private fun MusicManagementScreen(
                     if (hiddenFolders.isEmpty()) {
                         add {
                             ListItem(
-                                headlineContent = { Text("No folders blacklisted", style = MaterialTheme.typography.bodyLarge) },
+                                headlineContent = { Text(stringResource(R.string.settings_no_folders_blacklisted), style = MaterialTheme.typography.bodyLarge) },
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                             )
                         }
@@ -1659,7 +1723,7 @@ private fun MusicManagementScreen(
                     }
                 })
 
-                SettingsHeader("Downloads")
+                SettingsHeader(stringResource(R.string.settings_downloads))
                 SettingsGroupCard(listOf(
                     { DownloadFolderRow(downloadFolder, onDownloadFolderClick) }
                 ))
@@ -1670,15 +1734,15 @@ private fun MusicManagementScreen(
                     add { ImageCacheSizeRow(imageCacheSize, imageCacheMaxSize, onImageCacheMaxSizeChange, onClearImageCache) }
                 })
 
-                SettingsHeader("Database & Scanning")
+                SettingsHeader(stringResource(R.string.settings_database_scanning))
                 SettingsGroupCard(buildList {
                     add {
                         ListItem(
                             onClick = onRescanClick,
                             content = {
                                 Column {
-                                    Text("Full Library Rescan", style = MaterialTheme.typography.bodyLarge)
-                                    Text("Scan local storage for new music files", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(stringResource(R.string.text_full_library_rescan), style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(R.string.text_scan_local_storage_for_new_music_files), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             },
                             leadingContent = {
@@ -1692,8 +1756,8 @@ private fun MusicManagementScreen(
                             onClick = onRebuildDatabaseClick,
                             content = {
                                 Column {
-                                    Text("Rebuild Database", style = MaterialTheme.typography.bodyLarge)
-                                    Text("Clear media & image caches, then full re-index", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                                    Text(stringResource(R.string.text_rebuild_database), style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(R.string.text_clear_media_image_caches_then_full_re_index), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
                                 }
                             },
                             leadingContent = {
@@ -1727,7 +1791,7 @@ private fun MusicManagementScreen(
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Scanning & syncing library...",
+                            text = stringResource(R.string.text_scanning_syncing_library),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -1746,7 +1810,7 @@ private fun BackupRestoreScreen(
     onRestoreClick: () -> Unit
 ) {
     Scaffold(
-        topBar = { SettingsDetailTopBar("Backup & Restore") { navController.popBackStack() } }
+        topBar = { SettingsDetailTopBar(stringResource(R.string.settings_cat_backup)) { navController.popBackStack() } }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -1757,15 +1821,15 @@ private fun BackupRestoreScreen(
                 .padding(bottom = 400.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SettingsHeader("Backup & Restore")
+            SettingsHeader(stringResource(R.string.settings_backup_restore))
             SettingsGroupCard(buildList {
                 add {
                     ListItem(
                         onClick = onBackupClick,
                         content = {
                             Column {
-                                Text("Export Settings & Library", style = MaterialTheme.typography.bodyLarge)
-                                Text("Export playlists, favorites, and preferences to JSON", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.text_export_settings_library), style = MaterialTheme.typography.bodyLarge)
+                                Text(stringResource(R.string.text_export_playlists_favorites_and_preferences_to_json), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         },
                         leadingContent = {
@@ -1784,8 +1848,8 @@ private fun BackupRestoreScreen(
                         onClick = onRestoreClick,
                         content = {
                             Column {
-                                Text("Import Settings & Library", style = MaterialTheme.typography.bodyLarge)
-                                Text("Restore playlists, favorites, and preferences from JSON", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.text_import_settings_library), style = MaterialTheme.typography.bodyLarge)
+                                Text(stringResource(R.string.text_restore_playlists_favorites_and_preferences_from_json), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         },
                         leadingContent = {
@@ -1811,11 +1875,11 @@ private fun IgnoreShortAudioRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Ignore Short Audio (Voice Notes)",
+                    text = stringResource(R.string.setting_ignore_short_audio),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Hide voice notes and short recordings from library",
+                    text = stringResource(R.string.setting_ignore_short_audio_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1840,11 +1904,11 @@ private fun IgnoreShortAudioDurationRow(
         content = {
             Column {
                 Text(
-                    text = "Minimum Duration Threshold",
+                    text = stringResource(R.string.setting_min_duration_threshold),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Ignore tracks under ${value.toInt()} seconds",
+                    text = stringResource(R.string.setting_ignore_tracks_under_sec, value.toInt()),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1894,7 +1958,7 @@ private fun HiddenFolderRow(path: String, onRemove: (String) -> Unit) {
         },
         trailingContent = {
             Text(
-                text = "Remove",
+                text = stringResource(R.string.text_remove),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error,
@@ -1914,7 +1978,7 @@ private fun AddHiddenFolderRow(onClick: () -> Unit) {
         onClick = onClick,
         content = {
             Text(
-                text = "Add Hidden Folder",
+                text = stringResource(R.string.setting_add_hidden_folder),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -1942,7 +2006,7 @@ private fun AccountScreen(
     onPauseHistoryChange: (Boolean) -> Unit
 ) {
     Scaffold(
-        topBar = { SettingsDetailTopBar("Account & Sync") { navController.popBackStack() } }
+        topBar = { SettingsDetailTopBar(stringResource(R.string.settings_cat_account)) { navController.popBackStack() } }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -1953,7 +2017,7 @@ private fun AccountScreen(
                 .padding(bottom = 400.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SettingsHeader("YouTube Music Account")
+            SettingsHeader(stringResource(R.string.yt_music_account))
             SettingsGroupCard(listOf(
                 {
                     var showLoginDialog by remember { mutableStateOf(false) }
@@ -1977,20 +2041,20 @@ private fun AccountScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (ytCookies != null) "Logged in to YouTube Music" else "Guest Mode (Anonymous)",
+                                text = if (ytCookies != null) stringResource(R.string.logged_in_yt) else stringResource(R.string.guest_mode),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             if (ytCookies != null) {
                                 Text(
-                                    text = "Profile: SpatialFlow User",
+                                    text = stringResource(R.string.profile_spatialflow),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                             Text(
-                                text = if (ytCookies != null) "Accessing personalized playlists, library, and recommended interests." else "No account linked. Tap to sign in securely.",
+                                text = if (ytCookies != null) stringResource(R.string.accessing_personalized) else stringResource(R.string.no_account_linked),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -2010,18 +2074,18 @@ private fun AccountScreen(
                                 contentColor = if (ytCookies != null) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         ) {
-                            Text(if (ytCookies != null) "Log Out" else "Log In")
+                            Text(if (ytCookies != null) stringResource(R.string.log_out) else stringResource(R.string.log_in))
                         }
                     }
                 }
             ))
 
-            SettingsHeader("Data Saving")
+            SettingsHeader(stringResource(R.string.data_saving))
             SettingsGroupCard(listOf(
                 { DataSaverRow(dataSaver, onDataSaverChange) }
             ))
 
-            SettingsHeader("Sync & Privacy")
+            SettingsHeader(stringResource(R.string.sync_privacy))
             SettingsGroupCard(listOf(
                 { PauseHistoryRow(pauseHistory, onPauseHistoryChange) },
                 { ManualSyncRow() }
@@ -2038,11 +2102,11 @@ private fun DataSaverRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Data Saver (Wi-Fi Only)",
+                    text = stringResource(R.string.text_data_saver_wi_fi_only),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Restrict streaming and high-res cover art downloads to Wi-Fi only",
+                    text = stringResource(R.string.text_restrict_streaming_and_high_res_cover_art_downloads_to_wi_fi_only),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2065,11 +2129,11 @@ private fun PauseHistoryRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Pause Listening History",
+                    text = stringResource(R.string.pause_history_title),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Stop tracking played songs for recommendations",
+                    text = stringResource(R.string.pause_history_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2102,8 +2166,8 @@ private fun ManualSyncRow() {
         },
         content = {
             Column {
-                Text(text = "Manual Sync", style = MaterialTheme.typography.bodyLarge)
-                Text(text = "Sync playlists and favorites with server", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = stringResource(R.string.text_manual_sync), style = MaterialTheme.typography.bodyLarge)
+                Text(text = stringResource(R.string.text_sync_playlists_and_favorites_with_server), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         trailingContent = {
@@ -2159,7 +2223,7 @@ private fun AppearanceScreen(
     onUnifiedFloatingBarChange: (Boolean) -> Unit
 ) {
     Scaffold(
-        topBar = { SettingsDetailTopBar("Appearance") { navController.popBackStack() } }
+        topBar = { SettingsDetailTopBar(stringResource(R.string.settings_cat_appearance)) { navController.popBackStack() } }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -2180,12 +2244,12 @@ private fun AppearanceScreen(
                 add { HighRefreshRateRow(forceHighRefreshRate, onForceHighRefreshRateChange) }
             })
 
-            SettingsHeader("Visual Effects")
+            SettingsHeader(stringResource(R.string.settings_visual_effects))
             SettingsGroupCard(buildList {
                 add {
                     ListItem(
-                        headlineContent = { Text("Animated Album Art", style = MaterialTheme.typography.bodyLarge) },
-                        supportingContent = { Text("Show looping video canvas on player screen if available", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        headlineContent = { Text(stringResource(R.string.setting_animated_album_art), style = MaterialTheme.typography.bodyLarge) },
+                        supportingContent = { Text(stringResource(R.string.setting_animated_album_art_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                         trailingContent = { Switch(checked = showAnimatedArt, onCheckedChange = onShowAnimatedArtChange) },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier.clickable { onShowAnimatedArtChange(!showAnimatedArt) }
@@ -2193,17 +2257,19 @@ private fun AppearanceScreen(
                 }
                 add {
                     var showThemeSheet by remember { mutableStateOf(false) }
+                    val fluidStr = stringResource(R.string.text_fluid_theme)
+                    val staticStr = stringResource(R.string.text_static_theme)
                     val themeText = when (playerTheme) {
-                        "fluid" -> "Fluid Animation (Apple Fluid)"
-                        "static" -> "Static Album Colors"
-                        else -> "Fluid Animation (Apple Fluid)"
+                        "fluid" -> fluidStr
+                        "static" -> staticStr
+                        else -> fluidStr
                     }
                     ListItem(
                         onClick = { showThemeSheet = true },
                         content = {
                             Column {
                                 Text(
-                                    text = "Player Theme",
+                                    text = stringResource(R.string.setting_player_theme),
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Text(
@@ -2251,7 +2317,7 @@ private fun AppearanceScreen(
                 }
             })
 
-            SettingsHeader("Navigation Bar")
+            SettingsHeader(stringResource(R.string.settings_navigation_bar))
             SettingsGroupCard(buildList {
                 add { BottomNavCustomizeRow { navController.navigate(SettingsRoute.CustomizeBottomNav.route) } }
                 add { HideNavOnScrollRow(hideNavOnScroll, onHideNavOnScrollChange) }
@@ -2359,11 +2425,11 @@ private fun NavigationBlurRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Blur Effects",
+                    text = stringResource(R.string.setting_navigation_blur),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Apply blur transitions to screen navigation",
+                    text = stringResource(R.string.setting_navigation_blur_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2394,11 +2460,11 @@ private fun TabSwitchBlurRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Tab Switch Blur",
+                    text = stringResource(R.string.setting_tab_switch_blur),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Blur on Explore/Library/Effects/Settings tab swaps (GPU-heavy)",
+                    text = stringResource(R.string.setting_tab_switch_blur_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2429,11 +2495,11 @@ private fun DynamicNavStyleRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Dynamic Navbar Style",
+                    text = stringResource(R.string.setting_dynamic_nav_style),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Compact height with bold, elevated icons",
+                    text = stringResource(R.string.setting_dynamic_nav_style_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2456,11 +2522,11 @@ private fun HideNavLabelsRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Hide Navigation Labels",
+                    text = stringResource(R.string.setting_hide_nav_labels),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Remove text labels from the bottom navigation bar",
+                    text = stringResource(R.string.setting_hide_nav_labels_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2483,11 +2549,11 @@ private fun HideNavOnScrollRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Hide on Scroll",
+                    text = stringResource(R.string.setting_hide_nav_on_scroll),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Automatically hide navigation bar when scrolling down",
+                    text = stringResource(R.string.setting_hide_nav_on_scroll_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2510,11 +2576,11 @@ private fun DynamicAlbumThemeRow(checked: Boolean, onToggle: (Boolean) -> Unit) 
         content = {
             Column {
                 Text(
-                    text = "Dynamic colors",
+                    text = stringResource(R.string.setting_dynamic_colors),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Extract theme colors from the currently playing album art",
+                    text = stringResource(R.string.setting_dynamic_colors_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2545,11 +2611,11 @@ private fun AmoledBlackRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Pure AMOLED Black",
+                    text = stringResource(R.string.setting_pure_black),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Pitch black background in dark mode to save battery",
+                    text = stringResource(R.string.setting_pure_black_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2575,11 +2641,15 @@ private fun HighRefreshRateRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Force high refresh rate",
+                    text = stringResource(R.string.setting_force_high_refresh_rate),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = if (isHighRefreshRateSupported) "Max supported: ${supportedHighestFps.roundToInt()} Hz" else "Not supported on this device",
+                    text = if (isHighRefreshRateSupported) {
+                        stringResource(R.string.setting_max_supported_fps, supportedHighestFps.roundToInt())
+                    } else {
+                        stringResource(R.string.setting_not_supported_on_device)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2619,10 +2689,14 @@ private fun PlaybackScreen(
     targetLufs: Float,
     onTargetLufsChange: (Float) -> Unit,
     showVolumeSlider: Boolean,
-    onShowVolumeSliderChange: (Boolean) -> Unit
+    onShowVolumeSliderChange: (Boolean) -> Unit,
+    lyricsTranslationEnabled: Boolean,
+    onLyricsTranslationToggle: (Boolean) -> Unit,
+    lyricsTranslationEngine: String,
+    onLyricsTranslationEngineChange: (String) -> Unit
 ) {
     Scaffold(
-        topBar = { SettingsDetailTopBar("Playback") { navController.popBackStack() } }
+        topBar = { SettingsDetailTopBar(stringResource(R.string.settings_cat_playback)) { navController.popBackStack() } }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -2633,17 +2707,17 @@ private fun PlaybackScreen(
                 .padding(bottom = 400.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SettingsHeader("Crossfade")
+            SettingsHeader(stringResource(R.string.setting_crossfade))
             SettingsGroupCard(listOf(
                 { CrossfadeRow(crossfadeEnabled, onCrossfadeToggle, crossfadeDuration, onCrossfadeDurationChange) }
             ))
 
-            SettingsHeader("Streaming Quality")
+            SettingsHeader(stringResource(R.string.setting_streaming_quality))
             SettingsGroupCard(listOf(
                 { AudioQualityRow(audioQuality, onAudioQualityChange) }
             ))
             
-            SettingsHeader("Audio Focus")
+            SettingsHeader(stringResource(R.string.settings_audio_focus))
             SettingsGroupCard(listOf(
                 { AudioFocusRow(audioFocus, onAudioFocusToggle) }
             ))
@@ -2653,17 +2727,27 @@ private fun PlaybackScreen(
                 { ShowVolumeSliderRow(showVolumeSlider, onShowVolumeSliderChange) }
             ))
 
-            SettingsHeader("Queue & Autoplay")
+            SettingsHeader(stringResource(R.string.pref_lyrics_translation_title))
+            SettingsGroupCard(listOf(
+                { LyricsTranslationRow(lyricsTranslationEnabled, onLyricsTranslationToggle) },
+                {
+                    AnimatedVisibility(visible = lyricsTranslationEnabled) {
+                        LyricsEngineRow(lyricsTranslationEngine, onLyricsTranslationEngineChange)
+                    }
+                }
+            ))
+
+            SettingsHeader(stringResource(R.string.settings_queue_autoplay))
             SettingsGroupCard(listOf(
                 { AutoplayRow(autoplayEnabled, onAutoplayToggle) }
             ))
 
-            SettingsHeader("Volume Controls")
+            SettingsHeader(stringResource(R.string.settings_volume_controls))
             SettingsGroupCard(listOf(
                 { VolumeNormalizationRow(volumeNormalizationEnabled, onVolumeNormalizationChange, targetLufs, onTargetLufsChange) }
             ))
 
-            SettingsHeader("Sleep Timer")
+            SettingsHeader(stringResource(R.string.setting_sleep_timer))
             SettingsGroupCard(listOf(
                 { SleepTimerSection(sleepTimerEndTime, sleepTimerMode, onStartSleepTimer, onCancelSleepTimer, onSetEndOfSong) }
             ))
@@ -2679,17 +2763,21 @@ private fun AudioQualityRow(
     currentQuality: String,
     onQualityChange: (String) -> Unit
 ) {
-    val options = listOf("High", "Normal", "Data Saver")
+    val options = listOf(
+        "High" to stringResource(R.string.quality_high),
+        "Normal" to stringResource(R.string.quality_normal),
+        "Data Saver" to stringResource(R.string.quality_data_saver)
+    )
     
     ListItem(
         headlineContent = {
             Column {
                 Text(
-                    text = "Streaming Quality",
+                    text = stringResource(R.string.settings_streaming_quality),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "High uses more data, Data Saver uses lowest bitrate",
+                    text = stringResource(R.string.text_high_uses_more_data_data_saver_uses_lowest_bitrate),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2700,16 +2788,16 @@ private fun AudioQualityRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    options.forEach { option ->
-                        val isSelected = option == currentQuality
+                    options.forEach { (key, label) ->
+                        val isSelected = key == currentQuality
                         Surface(
                             shape = RoundedCornerShape(50),
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            onClick = { onQualityChange(option) }
+                            onClick = { onQualityChange(key) }
                         ) {
                             Text(
-                                text = option,
+                                text = label,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 style = MaterialTheme.typography.labelLarge
                             )
@@ -2731,19 +2819,19 @@ private fun VolumeNormalizationRow(
     onTargetLufsChange: (Float) -> Unit
 ) {
     val options = listOf(
-        Pair("Quiet", -19f),
-        Pair("Normal", -14f),
-        Pair("Loud", -11f)
+        Triple("Quiet", stringResource(R.string.loudness_quiet), -19f),
+        Triple("Normal", stringResource(R.string.loudness_normal), -14f),
+        Triple("Loud", stringResource(R.string.loudness_loud), -11f)
     )
 
     Column {
         ListItem(
             headlineContent = {
-                Text("Volume Normalization", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.settings_volume_normalization), style = MaterialTheme.typography.bodyLarge)
             },
             supportingContent = {
                 Text(
-                    "Automatically adjust playback volume so all songs sound equally loud.",
+                    stringResource(R.string.settings_volume_normalization_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2762,7 +2850,7 @@ private fun VolumeNormalizationRow(
                 headlineContent = {
                     Column {
                         Text(
-                            text = "Target Loudness",
+                            text = stringResource(R.string.text_target_loudness),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -2771,16 +2859,16 @@ private fun VolumeNormalizationRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            options.forEach { option ->
-                                val isSelected = option.second == targetLufs
+                            options.forEach { (_, label, lufs) ->
+                                val isSelected = lufs == targetLufs
                                 Surface(
                                     shape = RoundedCornerShape(50),
                                     color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                                     contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    onClick = { onTargetLufsChange(option.second) }
+                                    onClick = { onTargetLufsChange(lufs) }
                                 ) {
                                     Text(
-                                        text = option.first,
+                                        text = label,
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                         style = MaterialTheme.typography.labelLarge
                                     )
@@ -2809,7 +2897,7 @@ private fun HapticsScreen(
     onHapticFavoriteChange: (Boolean) -> Unit
 ) {
     Scaffold(
-        topBar = { SettingsDetailTopBar("Haptics") { navController.popBackStack() } }
+        topBar = { SettingsDetailTopBar(stringResource(R.string.settings_cat_haptics)) { navController.popBackStack() } }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -2828,11 +2916,11 @@ private fun HapticsScreen(
                 add { VibrationStrengthRow(vibrationStrength, onVibrationStrengthChange, hasHaptics) }
             })
 
-            SettingsHeader("Granular Interactions")
+            SettingsHeader(stringResource(R.string.settings_granular_interactions))
             SettingsGroupCard(buildList {
-                add { HapticToggleRow("Haptics on Play/Pause", "Vibrate when playing or pausing audio", hapticPlayPause, onHapticPlayPauseChange, hasHaptics) }
-                add { HapticToggleRow("Haptics on Queue Reordering", "Vibrate when dragging items in the queue", hapticQueue, onHapticQueueChange, hasHaptics) }
-                add { HapticToggleRow("Haptics on Heart/Favorite", "Vibrate when liking a song", hapticFavorite, onHapticFavoriteChange, hasHaptics) }
+                add { HapticToggleRow(stringResource(R.string.haptics_play_pause), stringResource(R.string.haptics_play_pause_desc), hapticPlayPause, onHapticPlayPauseChange, hasHaptics) }
+                add { HapticToggleRow(stringResource(R.string.haptics_queue_reorder), stringResource(R.string.haptics_queue_reorder_desc), hapticQueue, onHapticQueueChange, hasHaptics) }
+                add { HapticToggleRow(stringResource(R.string.haptics_favorite), stringResource(R.string.haptics_favorite_desc), hapticFavorite, onHapticFavoriteChange, hasHaptics) }
             })
         }
     }
@@ -2885,7 +2973,7 @@ private fun HapticToggleRow(
 private fun WhatsNewScreen(navController: androidx.navigation.NavController) {
     val releases by androidx.compose.runtime.produceState<List<com.codetrio.overdrive.update.GitHubReleaseClient.ReleaseInfo>?>(initialValue = null) {
         withContext(Dispatchers.IO) {
-            val client = com.codetrio.overdrive.update.GitHubReleaseClient("MythicalSHUB", "SpatialFlow")
+            val client = com.codetrio.overdrive.update.GitHubReleaseClient("nemy-new", "OverDrive")
             value = client.getAllReleases()
         }
     }
@@ -2896,10 +2984,10 @@ private fun WhatsNewScreen(navController: androidx.navigation.NavController) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             androidx.compose.material3.LargeTopAppBar(
-                title = { Text("What's New") },
+                title = { Text(stringResource(R.string.settings_whats_new)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.text_back))
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -2917,7 +3005,7 @@ private fun WhatsNewScreen(navController: androidx.navigation.NavController) {
             }
         } else if (releases!!.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                Text("No releases found.", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.whats_new_no_releases), style = MaterialTheme.typography.bodyLarge)
             }
         } else {
             androidx.compose.foundation.lazy.LazyColumn(
@@ -2935,7 +3023,7 @@ private fun WhatsNewScreen(navController: androidx.navigation.NavController) {
                 groupedReleases.forEach { (majorVersion, majorReleases) ->
                     item(key = "header_$majorVersion") {
                         Text(
-                            text = "Version $majorVersion Series",
+                            text = stringResource(R.string.whats_new_version_series, majorVersion),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
@@ -3146,8 +3234,31 @@ private fun AboutScreen(
     onWhatsNew: () -> Unit,
     onOpenUrl: (String) -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = androidx.compose.runtime.remember { context.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE) }
+    var isDeveloperMode by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getBoolean("developer_mode", false)) }
+    var tapCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+    var currentToast by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<android.widget.Toast?>(null) }
+    
+    fun handleVersionTap() {
+        if (isDeveloperMode) return
+        tapCount++
+        currentToast?.cancel()
+        if (tapCount >= 7) {
+            isDeveloperMode = true
+            prefs.edit().putBoolean("developer_mode", true).apply()
+            val t = android.widget.Toast.makeText(context, context.getString(R.string.developer_mode_enabled), android.widget.Toast.LENGTH_SHORT)
+            currentToast = t
+            t.show()
+        } else if (tapCount >= 3) {
+            val t = android.widget.Toast.makeText(context, context.getString(R.string.developer_steps_away, 7 - tapCount), android.widget.Toast.LENGTH_SHORT)
+            currentToast = t
+            t.show()
+        }
+    }
+
     Scaffold(
-        topBar = { SettingsDetailTopBar("About") { navController.popBackStack() } }
+        topBar = { SettingsDetailTopBar(stringResource(R.string.settings_cat_about)) { navController.popBackStack() } }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -3199,7 +3310,12 @@ private fun AboutScreen(
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                indication = null
+                            ) { handleVersionTap() }
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
                     )
                 }
             }
@@ -3216,7 +3332,7 @@ private fun AboutScreen(
                 ) {
                     Icon(Icons.Rounded.Update, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Updates", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.settings_updates), style = MaterialTheme.typography.labelLarge)
                 }
                 Button(
                     onClick = onWhatsNew,
@@ -3224,8 +3340,23 @@ private fun AboutScreen(
                 ) {
                     Icon(Icons.Rounded.Info, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("What's New", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.settings_whats_new), style = MaterialTheme.typography.labelLarge)
                 }
+            }
+            
+            if (isDeveloperMode) {
+                Spacer(modifier = Modifier.height(32.dp))
+                SettingsHeader(stringResource(R.string.settings_developer_options))
+                SettingsGroupCard(
+                    items = listOf {
+                        SettingsCategoryItem(
+                            icon = Icons.Rounded.Info,
+                            title = stringResource(R.string.settings_developer_options),
+                            subtitle = stringResource(R.string.settings_developer_options_desc),
+                            onClick = { navController.navigate("developer_options") }
+                        )
+                    }
+                )
             }
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -3397,6 +3528,7 @@ private fun CrossfadeRow(
     duration: Float,
     onDurationChange: (Float) -> Unit
 ) {
+    val offText = stringResource(R.string.text_off)
     ListItem(
         onClick = { onToggle(!enabled) },
         verticalAlignment = Alignment.CenterVertically,
@@ -3409,7 +3541,7 @@ private fun CrossfadeRow(
         supportingContent = {
             Column {
                 AnimatedContent(
-                    targetState = if (enabled) "${duration.toInt()}s" else "Off",
+                    targetState = if (enabled) "${duration.toInt()}s" else offText,
                     transitionSpec = {
                         fadeIn(spring(stiffness = Spring.StiffnessMedium)) togetherWith
                             fadeOut(spring(stiffness = Spring.StiffnessMedium))
@@ -3445,6 +3577,9 @@ private fun CrossfadeRow(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AudioFocusRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
+    val enabledDesc = stringResource(R.string.setting_audio_focus_desc_enabled)
+    val disabledDesc = stringResource(R.string.setting_audio_focus_desc_disabled)
+
     ListItem(
         onClick = { onToggle(!enabled) },
         content = {
@@ -3462,11 +3597,7 @@ private fun AudioFocusRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
                     label = "audioFocusDesc"
                 ) { isEnabled ->
                     Text(
-                        text = if (isEnabled) {
-                            "Stop or pause playback when another app plays audio"
-                        } else {
-                            "Do not stop or pause playback when another app plays audio"
-                        },
+                        text = if (isEnabled) enabledDesc else disabledDesc,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -3488,7 +3619,85 @@ private fun AudioFocusRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
 
 // ── Autoplay ─────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LyricsTranslationRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
+    ListItem(
+        onClick = { onToggle(!enabled) },
+        content = {
+            Column {
+                Text(
+                    text = stringResource(R.string.pref_lyrics_translation_title),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = stringResource(R.string.pref_lyrics_translation_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        leadingContent = {
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.Rounded.Translate,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+        },
+        trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+    )
+}
+
+@Composable
+private fun LyricsEngineRow(currentEngine: String, onEngineChange: (String) -> Unit) {
+    val options = listOf(
+        "mlkit" to stringResource(R.string.ml_model_engine_mlkit),
+        "aicore" to stringResource(R.string.ml_model_engine_aicore)
+    )
+    
+    ListItem(
+        headlineContent = {
+            Column {
+                Text(
+                    text = stringResource(R.string.ml_model_engine_title),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = stringResource(R.string.ml_model_engine_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    options.forEach { (id, label) ->
+                        val isSelected = id == currentEngine
+                        Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            onClick = { onEngineChange(id) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = label,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+    )
+}
+
 @Composable
 private fun AutoplayRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
     ListItem(
@@ -3496,11 +3705,11 @@ private fun AutoplayRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
         content = {
             Column {
                 Text(
-                    text = "Autoplay",
+                    text = stringResource(R.string.text_autoplay),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Similar songs will play next",
+                    text = stringResource(R.string.text_similar_songs_will_play_next),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -3549,10 +3758,10 @@ private fun SleepTimerSection(
             supportingContent = {
                 val supportingText = when (mode) {
                     PlayerSharedViewModel.SleepTimerMode.OFF -> stringResource(R.string.setting_sleep_timer_off)
-                    PlayerSharedViewModel.SleepTimerMode.END_OF_SONG -> "Stop at end of current song"
-                    PlayerSharedViewModel.SleepTimerMode.END_OF_QUEUE -> "Stop at end of queue"
+                    PlayerSharedViewModel.SleepTimerMode.END_OF_SONG -> stringResource(R.string.setting_sleep_timer_end_song)
+                    PlayerSharedViewModel.SleepTimerMode.END_OF_QUEUE -> stringResource(R.string.setting_sleep_timer_end_queue)
                     PlayerSharedViewModel.SleepTimerMode.CUSTOM -> {
-                        if (remaining > 0) "${remaining / 60000} min remaining"
+                        if (remaining > 0) stringResource(R.string.setting_sleep_timer_remaining, remaining / 60000)
                         else stringResource(R.string.setting_sleep_timer_off)
                     }
                 }
@@ -3648,7 +3857,7 @@ private fun LibraryPathRow(path: String, onRemove: ((String) -> Unit)?) {
         trailingContent = if (onRemove != null) {
             {
                 Text(
-                    text = "Remove",
+                    text = stringResource(R.string.text_remove),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.error,
@@ -3691,16 +3900,17 @@ private fun AddMorePathRow(onClick: () -> Unit) {
 
 @Composable
 private fun DownloadFolderRow(path: String?, onClick: () -> Unit) {
+    val notSetText = stringResource(R.string.setting_not_set)
     ListItem(
         onClick = onClick,
         content = {
             Column {
                 Text(
-                    text = "Download Location",
+                    text = stringResource(R.string.setting_download_location),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = path ?: "Not Set",
+                    text = path ?: notSetText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -3729,15 +3939,16 @@ private fun CacheSizeRow(
     onClear: () -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    val unlimitedText = stringResource(R.string.setting_unlimited)
 
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("Max $title Size") },
+            title = { Text(stringResource(R.string.setting_max_cache_size, title)) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     listOf(100, 500, 1024, 2048, 0).forEach { sizeOption ->
-                        val text = if (sizeOption == 0) "Unlimited" else if (sizeOption >= 1024) "${sizeOption / 1024} GB" else "$sizeOption MB"
+                        val text = if (sizeOption == 0) unlimitedText else if (sizeOption >= 1024) "${sizeOption / 1024} GB" else "$sizeOption MB"
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -3762,7 +3973,7 @@ private fun CacheSizeRow(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -3801,9 +4012,9 @@ private fun CacheSizeRow(
                         )
                     }
                     
-                    val maxText = if (maxSize == 0) "Unlimited" else if (maxSize >= 1024) "${maxSize / 1024} GB" else "$maxSize MB"
+                    val maxText = if (maxSize == 0) unlimitedText else if (maxSize >= 1024) "${maxSize / 1024} GB" else "$maxSize MB"
                     Text(
-                        text = "Max: $maxText",
+                        text = stringResource(R.string.setting_max_label, maxText),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -3826,7 +4037,7 @@ private fun CacheSizeRow(
             IconButton(onClick = onClear) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Clear Cache",
+                    contentDescription = stringResource(R.string.setting_clear_cache),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -3862,7 +4073,7 @@ private fun SongCacheSizeRow(
     onClear: () -> Unit
 ) {
     CacheSizeRow(
-        title = "Song Cache",
+        title = stringResource(R.string.setting_song_cache),
         currentSize = cacheSize,
         maxSize = maxSize,
         onMaxSizeChange = onMaxSizeChange,
@@ -3878,7 +4089,7 @@ private fun ImageCacheSizeRow(
     onClear: () -> Unit
 ) {
     CacheSizeRow(
-        title = "Image Cache",
+        title = stringResource(R.string.setting_image_cache),
         currentSize = cacheSize,
         maxSize = maxSize,
         onMaxSizeChange = onMaxSizeChange,
@@ -3963,12 +4174,12 @@ fun YouTubeMusicLoginDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text("Cancel", color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.action_cancel), color = MaterialTheme.colorScheme.primary)
             }
         },
         title = {
             Text(
-                text = "Log In to YouTube Music",
+                text = stringResource(R.string.yt_login_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -3976,7 +4187,7 @@ fun YouTubeMusicLoginDialog(
         text = {
             Column(modifier = Modifier.fillMaxWidth().height(420.dp)) {
                 Text(
-                    text = "Sign in to access your real playlists, library, and personalized interests.",
+                    text = stringResource(R.string.yt_login_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -4037,7 +4248,7 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
     }
 
     Scaffold(
-        topBar = { SettingsDetailTopBar("Feedback & Bug Reports") { navController.popBackStack() } }
+        topBar = { SettingsDetailTopBar(stringResource(R.string.settings_feedback_bug_reports)) { navController.popBackStack() } }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -4048,70 +4259,34 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
                 .padding(bottom = 400.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SettingsHeader("Report & Request")
+            SettingsHeader(stringResource(R.string.settings_report_request))
             SettingsGroupCard(
                 items = listOf(
                     {
                         ListItem(
-                            headlineContent = { Text("Report a Bug", style = MaterialTheme.typography.bodyLarge) },
-                            supportingContent = { Text("Open GitHub with pre-filled device information", style = MaterialTheme.typography.bodyMedium) },
+                            headlineContent = { Text(stringResource(R.string.settings_report_a_bug), style = MaterialTheme.typography.bodyLarge) },
+                            supportingContent = { Text(stringResource(R.string.settings_open_github_desc), style = MaterialTheme.typography.bodyMedium) },
                             leadingContent = { Icon(Icons.Rounded.BugReport, null, tint = MaterialTheme.colorScheme.error) },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable {
                                 val title = URLEncoder.encode("[Bug] ", "UTF-8")
                                 val body = URLEncoder.encode("## Description\n\n\n## Device Information\n$debugInfo\n\n## Steps to Reproduce\n1.\n2.\n3.\n", "UTF-8")
-                                val url = "https://github.com/MythicalSHUB/SpatialFlow/issues/new?title=$title&body=$body"
+                                val url = "https://github.com/nemy-new/OverDrive/issues/new?title=$title&body=$body"
                                 context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                             }
                         )
                     },
                     {
                         ListItem(
-                            headlineContent = { Text("Report Bug via Telegram", style = MaterialTheme.typography.bodyLarge) },
-                            supportingContent = { Text("Share pre-filled device and app details directly to Telegram", style = MaterialTheme.typography.bodyMedium) },
-                            leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_telegram), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp)) },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.clickable {
-                                val telegramMsg = "SPATIALFLOW BUG REPORT\n\n$debugInfo\n\nDescribe the bug/issue below:\n"
-                                val url = "https://t.me/share/url?url=&text=${URLEncoder.encode(telegramMsg, "UTF-8")}"
-                                try {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                } catch (e: Exception) {
-                                    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    val clip = ClipData.newPlainText("Bug Report", telegramMsg)
-                                    clipboardManager.setPrimaryClip(clip)
-                                    android.widget.Toast.makeText(context, "Report template copied. Paste in Telegram.", android.widget.Toast.LENGTH_LONG).show()
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/SpatialFlow")))
-                                }
-                            }
-                        )
-                    },
-                    {
-                        ListItem(
-                            headlineContent = { Text("Request Feature", style = MaterialTheme.typography.bodyLarge) },
-                            supportingContent = { Text("Suggest a new feature for SpatialFlow", style = MaterialTheme.typography.bodyMedium) },
+                            headlineContent = { Text(stringResource(R.string.settings_request_feature), style = MaterialTheme.typography.bodyLarge) },
+                            supportingContent = { Text(stringResource(R.string.settings_suggest_feature_desc), style = MaterialTheme.typography.bodyMedium) },
                             leadingContent = { Icon(Icons.Rounded.OpenInNew, null, tint = MaterialTheme.colorScheme.primary) },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable {
                                 val title = URLEncoder.encode("[Feature] ", "UTF-8")
                                 val body = URLEncoder.encode("## Feature Description\n\n\n## Why is this needed?\n\n", "UTF-8")
-                                val url = "https://github.com/MythicalSHUB/SpatialFlow/issues/new?title=$title&body=$body"
+                                val url = "https://github.com/nemy-new/OverDrive/issues/new?title=$title&body=$body"
                                 context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-                            }
-                        )
-                    },
-                    {
-                        ListItem(
-                            headlineContent = { Text("Join Telegram Community", style = MaterialTheme.typography.bodyLarge) },
-                            supportingContent = { Text("Chat with the community and developer", style = MaterialTheme.typography.bodyMedium) },
-                            leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_telegram), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp)) },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.clickable {
-                                try {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/SpatialFlow")))
-                                } catch (e: Exception) {
-                                    android.widget.Toast.makeText(context, "Could not open Telegram link", android.widget.Toast.LENGTH_SHORT).show()
-                                }
                             }
                         )
                     }
@@ -4121,7 +4296,7 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
             val prefs = context.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
             var debugToastsEnabled by remember { mutableStateOf(prefs.getBoolean("debug_toasts_enabled", false)) }
 
-            SettingsHeader("Debug Information")
+            SettingsHeader(stringResource(R.string.settings_debug_information))
             SettingsGroupCard(
                 items = listOf(
                     {
@@ -4141,8 +4316,8 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
                     },
                     {
                         ListItem(
-                            headlineContent = { Text("Copy Debug Information", style = MaterialTheme.typography.bodyLarge) },
-                            supportingContent = { Text("Copy device & app version to clipboard", style = MaterialTheme.typography.bodyMedium) },
+                            headlineContent = { Text(stringResource(R.string.settings_copy_debug_info), style = MaterialTheme.typography.bodyLarge) },
+                            supportingContent = { Text(stringResource(R.string.settings_copy_debug_desc), style = MaterialTheme.typography.bodyMedium) },
                             leadingContent = { Icon(Icons.Rounded.ContentCopy, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable {
@@ -4154,8 +4329,8 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
                     },
                     {
                         ListItem(
-                            headlineContent = { Text("Export Logs", style = MaterialTheme.typography.bodyLarge) },
-                            supportingContent = { Text("Share raw debug logs to attach to an issue", style = MaterialTheme.typography.bodyMedium) },
+                            headlineContent = { Text(stringResource(R.string.settings_export_logs), style = MaterialTheme.typography.bodyLarge) },
+                            supportingContent = { Text(stringResource(R.string.settings_share_logs_desc), style = MaterialTheme.typography.bodyMedium) },
                             leadingContent = { Icon(Icons.Rounded.Description, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable {
@@ -4170,8 +4345,8 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
                     },
                     {
                         ListItem(
-                            headlineContent = { Text("Simulate Crash", style = MaterialTheme.typography.bodyLarge) },
-                            supportingContent = { Text("Force a runtime exception to test crash report dialog", style = MaterialTheme.typography.bodyMedium) },
+                            headlineContent = { Text(stringResource(R.string.settings_simulate_crash), style = MaterialTheme.typography.bodyLarge) },
+                            supportingContent = { Text(stringResource(R.string.settings_force_crash_desc), style = MaterialTheme.typography.bodyMedium) },
                             leadingContent = { Icon(Icons.Rounded.BugReport, null, tint = MaterialTheme.colorScheme.error) },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable {
@@ -4228,4 +4403,93 @@ private fun ShowVolumeSliderRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
         modifier = Modifier.clickable { onToggle(!checked) }
     )
+}
+
+@Composable
+private fun DeveloperOptionsScreen(navController: androidx.navigation.NavController) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = androidx.compose.runtime.remember { context.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE) }
+    var isDeveloperMode by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getBoolean("developer_mode", false)) }
+
+    Scaffold(
+        topBar = { SettingsDetailTopBar(stringResource(R.string.settings_developer_options)) { navController.popBackStack() } }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 200.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            SettingsHeader(stringResource(R.string.developer_playback_diagnostics))
+            SettingsGroupCard(
+                items = listOf(
+                    {
+                        androidx.compose.material3.ListItem(
+                            headlineContent = { Text(stringResource(R.string.developer_playback_logs)) },
+                            supportingContent = { Text(stringResource(R.string.developer_playback_logs_desc)) },
+                            leadingContent = {
+                                Icon(Icons.Rounded.BugReport, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            },
+                            trailingContent = {
+                                Icon(Icons.Default.ChevronRight, contentDescription = null)
+                            },
+                            modifier = Modifier.clickable {
+                                navController.navigate("developer_playback_logs")
+                            }
+                        )
+                    }
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SettingsHeader(stringResource(R.string.developer_performance_tuning))
+            SettingsGroupCard(
+                items = listOf(
+                    {
+                        androidx.compose.material3.ListItem(
+                            headlineContent = { Text(stringResource(R.string.developer_performance)) },
+                            supportingContent = { Text(stringResource(R.string.developer_performance_desc)) },
+                            leadingContent = {
+                                Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_equalizer), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            },
+                            trailingContent = {
+                                Icon(Icons.Default.ChevronRight, contentDescription = null)
+                            },
+                            modifier = Modifier.clickable {
+                                navController.navigate("developer_performance")
+                            }
+                        )
+                    }
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SettingsHeader(stringResource(R.string.developer_controls))
+            SettingsGroupCard(
+                items = listOf(
+                    {
+                        androidx.compose.material3.ListItem(
+                            headlineContent = { Text(stringResource(R.string.developer_disable)) },
+                            supportingContent = { Text(stringResource(R.string.developer_disable_desc)) },
+                            leadingContent = {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            },
+                            modifier = Modifier.clickable {
+                                isDeveloperMode = false
+                                prefs.edit().putBoolean("developer_mode", false).apply()
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                )
+            )
+        }
+    }
 }

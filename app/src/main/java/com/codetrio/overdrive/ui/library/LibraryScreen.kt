@@ -5,6 +5,8 @@
 
 package com.codetrio.overdrive.ui.library
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import android.content.Context
@@ -230,6 +232,17 @@ fun LibraryScreen(
     }
 
     val subscriptionChanged by exploreViewModel?.subscriptionChanged?.collectAsStateWithLifecycle(false) ?: remember { mutableStateOf(false) }
+
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    
+    LaunchedEffect(viewModel.scrollToTopEvent) {
+        viewModel.scrollToTopEvent.collect {
+            launch { listState.animateScrollToItem(0) }
+            launch { gridState.animateScrollToItem(0) }
+        }
+    }
+
     LaunchedEffect(subscriptionChanged) {
         if (subscriptionChanged) {
             accountViewModel?.loadLibrary()
@@ -381,12 +394,15 @@ fun LibraryScreen(
                     .nestedScroll(nestedScrollConnection)
             ) {
                 when (activeTab) {
-                    "Playlists" -> PlaylistsTabContent(nestedScrollConnection, viewModel, isLoggedIn)
-                    "Podcasts" -> PodcastsTabContent(nestedScrollConnection)
-                    "Songs" -> SongsTabContent(nestedScrollConnection, viewModel)
-                    "Albums" -> AlbumsTabContent(nestedScrollConnection)
-                    "Artists" -> ArtistsTabContent(nestedScrollConnection)
-                    "Recap" -> RecapTabContent(nestedScrollConnection, viewModel, onNavigateToExplore)
+                    "Playlists" -> PlaylistsTabContent(
+                                        listState = listState,
+                                        gridState = gridState,
+                                        nestedScrollConnection = nestedScrollConnection, viewModel, isLoggedIn)
+                    "Podcasts" -> PodcastsTabContent(gridState, nestedScrollConnection)
+                    "Songs" -> SongsTabContent(listState, nestedScrollConnection, viewModel)
+                    "Albums" -> AlbumsTabContent(gridState, nestedScrollConnection)
+                    "Artists" -> ArtistsTabContent(gridState, nestedScrollConnection)
+
                     "Device Files" -> {
                         // Scan Local Files helper
                         val onRefreshAction = {
@@ -552,6 +568,7 @@ fun LibraryScreen(
                                     }
                                 } else {
                                     LazyColumn(
+                    state = listState,
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .weight(1f),
@@ -734,6 +751,8 @@ fun LibraryScreen(
                         }
                     }
                     "" -> UnifiedLibraryContent(
+                        listState = listState,
+                        gridState = gridState,
                         nestedScrollConnection = nestedScrollConnection,
                         isLoggedIn = isLoggedIn,
                         onSignInClick = { mainActivity?.navigateToGoogleSignIn() }
@@ -957,6 +976,8 @@ fun SongListItem(
 
 @Composable
 private fun UnifiedLibraryContent(
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
     isLoggedIn: Boolean,
     onSignInClick: () -> Unit
@@ -1116,6 +1137,7 @@ private fun UnifiedLibraryContent(
         }
     } else {
         LazyVerticalGrid(
+                    state = gridState,
             columns = GridCells.Adaptive(minSize = 160.dp),
             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 160.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -1208,6 +1230,8 @@ private fun UnifiedLibraryCard(item: UnifiedLibraryItem) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun PlaylistsTabContent(
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
     viewModel: PlayerSharedViewModel,
     isLoggedIn: Boolean
@@ -1383,6 +1407,7 @@ private fun PlaylistsTabContent(
                 }
             } else {
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Adaptive(minSize = 160.dp),
                     contentPadding = PaddingValues(bottom = 160.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -1521,6 +1546,7 @@ private fun LocalPlaylistDetailsBottomSheet(
                 }
             } else {
                 LazyColumn(
+                    
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f, fill = false)
@@ -1683,7 +1709,7 @@ private fun OnlinePlaylistCard(
 }
 
 @Composable
-private fun PodcastsTabContent(nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection) {
+private fun PodcastsTabContent(gridState: androidx.compose.foundation.lazy.grid.LazyGridState, nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection) {
     val context = LocalContext.current
     val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
 
@@ -1742,6 +1768,7 @@ private fun PodcastsTabContent(nestedScrollConnection: androidx.compose.ui.input
             }
         } else {
             LazyVerticalGrid(
+                    state = gridState,
                 columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(bottom = 160.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -1764,7 +1791,7 @@ private fun PodcastsTabContent(nestedScrollConnection: androidx.compose.ui.input
 }
 
 @Composable
-private fun SongsTabContent(nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection, viewModel: PlayerSharedViewModel) {
+private fun SongsTabContent(listState: androidx.compose.foundation.lazy.LazyListState, nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection, viewModel: PlayerSharedViewModel) {
     val context = LocalContext.current
     val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
 
@@ -1802,6 +1829,7 @@ private fun SongsTabContent(nestedScrollConnection: androidx.compose.ui.input.ne
             }
         } else {
             LazyColumn(
+                    state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f)
@@ -1861,7 +1889,7 @@ private fun SongsTabContent(nestedScrollConnection: androidx.compose.ui.input.ne
 }
 
 @Composable
-private fun AlbumsTabContent(nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection) {
+private fun AlbumsTabContent(gridState: androidx.compose.foundation.lazy.grid.LazyGridState, nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection) {
     val context = LocalContext.current
     val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
 
@@ -1902,6 +1930,7 @@ private fun AlbumsTabContent(nestedScrollConnection: androidx.compose.ui.input.n
             }
         } else {
             LazyVerticalGrid(
+                    state = gridState,
                 columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(bottom = 160.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -1991,7 +2020,7 @@ private fun OnlineAlbumCard(
 }
 
 @Composable
-private fun ArtistsTabContent(nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection) {
+private fun ArtistsTabContent(gridState: androidx.compose.foundation.lazy.grid.LazyGridState, nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection) {
     val context = LocalContext.current
     val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
 
@@ -2032,6 +2061,7 @@ private fun ArtistsTabContent(nestedScrollConnection: androidx.compose.ui.input.
             }
         } else {
             LazyVerticalGrid(
+                    state = gridState,
                 columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(bottom = 160.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -2118,528 +2148,6 @@ private fun OnlineArtistCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-    }
-}
-
-@Composable
-private fun RecapTabContent(
-    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
-    viewModel: PlayerSharedViewModel,
-    onNavigateToExplore: () -> Unit
-) {
-    val context = LocalContext.current
-    val recap by viewModel.listeningRecapFlow.collectAsStateWithLifecycle(null)
-
-    if (recap == null) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.BarChart,
-                    contentDescription = "No Stats",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(64.dp)
-                )
-                Text(
-                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_flow_is_warming_up),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_start_playing_your_favorite_tracks_and_your_listening_flow_highlights_will_appear_here),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-            }
-        }
-    } else {
-        val data = recap!!
-
-        val heroSong = remember(data.topSongs) { data.topSongs.firstOrNull() }
-        var topSongColor by remember(heroSong?.thumbnailUrl) { mutableStateOf<Color?>(null) }
-        LaunchedEffect(heroSong?.thumbnailUrl) {
-            val url = heroSong?.thumbnailUrl
-            if (!url.isNullOrEmpty()) {
-                withContext(Dispatchers.IO) {
-                    try {
-                        val loader = context.imageLoader
-                        val request = ImageRequest.Builder(context)
-                            .data(url)
-                            .allowHardware(false)
-                            .build()
-                        val result = loader.execute(request)
-                        if (result is SuccessResult) {
-                            val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
-                            if (bitmap != null) {
-                                val palette = Palette.from(bitmap).generate()
-                                val vibrantColor = palette.getVibrantColor(0)
-                                val dominantColor = palette.getDominantColor(0)
-                                val darkVibrantColor = palette.getDarkVibrantColor(0)
-                                val mutedColor = palette.getMutedColor(0)
-                                val lightVibrantColor = palette.getLightVibrantColor(0)
-                                
-                                val extractedInt = if (vibrantColor != 0) vibrantColor
-                                                   else if (dominantColor != 0) dominantColor
-                                                   else if (darkVibrantColor != 0) darkVibrantColor
-                                                   else if (mutedColor != 0) mutedColor
-                                                   else if (lightVibrantColor != 0) lightVibrantColor
-                                                   else 0
-                                if (extractedInt != 0) {
-                                    topSongColor = Color(extractedInt)
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("RecapColor", "Failed to extract color: ${e.message}")
-                    }
-                }
-            }
-        }
-
-        LaunchedEffect(data.topArtists) {
-            data.topArtists.forEach { item ->
-                viewModel.resolveArtistProfileImage(item.artist)
-            }
-        }
-
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(nestedScrollConnection),
-            contentPadding = PaddingValues(bottom = 160.dp)
-        ) {
-            // Sleek Gradient Banner
-            item {
-                val brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                        MaterialTheme.colorScheme.background
-                    )
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(brush)
-                        .padding(horizontal = 24.dp, vertical = 28.dp)
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_flow_highlights),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            letterSpacing = 2.sp
-                        )
-                        Text(
-                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_personal_listening_recap),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_a_dynamic_reflection_of_your_musical_journey_on_spatialflow),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            // Glassmorphic Summary Metrics
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min)
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Total Listening Card
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Headset,
-                                contentDescription = "Minutes Played",
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text(
-                                text = "${data.totalMinutes} min",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text(
-                                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_total_listen_time),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
-                            )
-                        }
-                    }
-
-                    // Peak Habit Mood Card
-                    val moodIconRes = when (data.peakMood) {
-                        "Morning Spark" -> R.drawable.ic_morning
-                        "Afternoon Groove" -> R.drawable.ic_afternoon
-                        "Evening Harmony" -> R.drawable.ic_evening
-                        else -> R.drawable.ic_evening
-                    }
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(id = moodIconRes),
-                                contentDescription = "Peak Vibe",
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = data.peakMood,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Text(
-                                text = data.peakMoodDescription,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Top Songs Ranked Shelf
-            item {
-                Text(
-                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_top_played_songs),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 24.dp, top = 28.dp, bottom = 12.dp)
-                )
-            }
-
-            // Hero #1 Song Card
-            if (data.topSongs.isNotEmpty()) {
-                val heroSong = data.topSongs.first()
-                item {
-                    val cardBgColor = topSongColor ?: MaterialTheme.colorScheme.primaryContainer
-                    val isDark = topSongColor?.let { 
-                        (0.2126f * it.red + 0.7152f * it.green + 0.0722f * it.blue) < 0.5f 
-                    } ?: true
-
-                    val effectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Color>()
-                    val animatedCardBgColor by animateColorAsState(
-                        targetValue = cardBgColor,
-                        animationSpec = effectsSpec,
-                        label = "TopSongCardBgAnimation"
-                    )
-
-                    val titleColor = if (topSongColor != null) {
-                        if (isDark) Color.White else Color(0xFF1C1B1F)
-                    } else {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    }
-
-                    val artistColor = if (topSongColor != null) {
-                        if (isDark) Color.White.copy(alpha = 0.75f) else Color(0xFF1C1B1F).copy(alpha = 0.75f)
-                    } else {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    }
-
-                    val playedCountColor = if (topSongColor != null) {
-                        if (isDark) Color.White else Color(0xFF1C1B1F)
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    }
-
-                    val badgeBgColor = if (topSongColor != null) {
-                        if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.2f)
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    }
-
-                    val badgeTextColor = if (topSongColor != null) {
-                        if (isDark) Color.White else Color.Black
-                    } else {
-                        MaterialTheme.colorScheme.onPrimary
-                    }
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 8.dp)
-                            .clickable {
-                                val songItem = if (heroSong.songId.toLongOrNull() != null && !heroSong.thumbnailUrl.isNullOrEmpty() && !heroSong.thumbnailUrl.startsWith("http")) {
-                                    SongItem(
-                                        heroSong.songId.toLong(),
-                                        heroSong.title,
-                                        heroSong.artist,
-                                        -1L,
-                                        heroSong.thumbnailUrl,
-                                        0L,
-                                        System.currentTimeMillis()
-                                    )
-                                } else {
-                                    SongItem.createOnlineSong(
-                                        videoId = heroSong.songId,
-                                        title = heroSong.title,
-                                        artist = heroSong.artist,
-                                        streamUrl = null,
-                                        durationMs = 0L,
-                                        thumbnailUrl = heroSong.thumbnailUrl
-                                    )
-                                }
-                                viewModel.playSong(songItem)
-                            },
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = animatedCardBgColor
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Card(
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier.size(110.dp),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                            ) {
-                                if (!heroSong.thumbnailUrl.isNullOrEmpty()) {
-                                    AsyncImage(
-                                        model = heroSong.thumbnailUrl,
-                                        contentDescription = "Cover Art",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.MusicNote,
-                                            contentDescription = "Placeholder",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(36.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = badgeBgColor,
-                                    modifier = Modifier.wrapContentSize()
-                                ) {
-                                    Text(
-                                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_1_track),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = badgeTextColor,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                                Text(
-                                    text = heroSong.title,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = titleColor,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = heroSong.artist,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = artistColor
-                                )
-                                Text(
-                                    text = "Played ${heroSong.count} times",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = playedCountColor
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Remaining Top Songs (Ranked List)
-            if (data.topSongs.size > 1) {
-                items(data.topSongs.drop(1)) { song ->
-                    ListItem(
-                        headlineContent = { Text(song.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        supportingContent = { Text(song.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        leadingContent = {
-                            Box(
-                                modifier = Modifier
-                                    .size(54.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (!song.thumbnailUrl.isNullOrEmpty()) {
-                                    AsyncImage(
-                                        model = song.thumbnailUrl,
-                                        contentDescription = "Cover",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    Icon(Icons.Default.MusicNote, null)
-                                }
-                            }
-                        },
-                        trailingContent = {
-                            Text(
-                                text = "${song.count} plays",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                            .clickable {
-                                val songItem = if (song.songId.toLongOrNull() != null && !song.thumbnailUrl.isNullOrEmpty() && !song.thumbnailUrl.startsWith("http")) {
-                                    SongItem(
-                                        song.songId.toLong(),
-                                        song.title,
-                                        song.artist,
-                                        -1L,
-                                        song.thumbnailUrl,
-                                        0L,
-                                        System.currentTimeMillis()
-                                    )
-                                } else {
-                                    SongItem.createOnlineSong(
-                                        videoId = song.songId,
-                                        title = song.title,
-                                        artist = song.artist,
-                                        streamUrl = null,
-                                        durationMs = 0L,
-                                        thumbnailUrl = song.thumbnailUrl
-                                    )
-                                }
-                                viewModel.playSong(songItem)
-                            }
-                    )
-                }
-            }
-
-            // Top Artists Shelf
-            if (data.topArtists.isNotEmpty()) {
-                item {
-                    Text(
-                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_top_artists),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 12.dp)
-                    )
-                }
-
-                item {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(data.topArtists) { item ->
-                            val imageUrl = viewModel.artistProfileMap[item.artist]
-                            Column(
-                                modifier = Modifier
-                                    .width(96.dp)
-                                    .clickable {
-                                        onNavigateToExplore()
-                                    },
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (!imageUrl.isNullOrEmpty()) {
-                                        AsyncImage(
-                                            model = imageUrl,
-                                            contentDescription = "Artist picture",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Icon(Icons.Default.Person, null, modifier = Modifier.size(36.dp))
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = item.artist,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    text = "${item.count} songs played",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

@@ -21,7 +21,6 @@
     <string name="stats_plays_count">%d 回再生</string>
 
     <!-- Common UI -->
-    <string name="error_telegram">Telegramを開けませんでした</string>
     <string name="external_track">外部トラック</string>
     <string name="external_source">外部ソース</string>
     <string name="sign_in_required_title">サインインが必要です</string>
@@ -33,6 +32,7 @@
     <string name="action_close">閉じる</string>
     <string name="action_save">保存</string>
     <string name="action_delete">削除</string>
+    <string name="action_copy">ログをコピー</string>
 
     <!-- Settings Title & Main Categories -->
     <string name="settings_title">設定</string>
@@ -44,7 +44,7 @@
     <string name="settings_cat_music_mgmt_sub">フォルダの管理、ライブラリ再スキャン、ストレージ</string>
     <string name="settings_cat_appearance">外観・デザイン</string>
     <string name="settings_cat_appearance_sub">テーマ、レイアウト、ビジュアルスタイル、言語設定</string>
-    <string name="settings_cat_haptics">ハプティクス（触覚振動）</string>
+    <string name="settings_cat_haptics">触覚フィードバック・振動</string>
     <string name="settings_cat_haptics_sub">振動の強度、タップ時のフィードバック設定</string>
     <string name="settings_cat_backup">バックアップと復元</string>
     <string name="settings_cat_backup_sub">ライブラリ設定のエクスポートとインポート</string>
@@ -54,11 +54,11 @@
     <string name="settings_cat_about_sub">アプリバージョン、クレジット、更新の確認</string>
 
     <!-- Language Settings -->
-    <string name="setting_app_language">アプリの言語 (Language)</string>
-    <string name="setting_app_language_desc">表示言語を設定します（日本語 / English）</string>
-    <string name="lang_system">システム設定に従う (自動)</string>
-    <string name="lang_english">English (英語)</string>
-    <string name="lang_japanese">日本語 (Japanese)</string>
+    <string name="setting_app_language">言語</string>
+    <string name="setting_app_language_desc">表示言語を設定します</string>
+    <string name="lang_system">システム設定に従う</string>
+    <string name="lang_english">英語</string>
+    <string name="lang_japanese">日本語</string>
 
     <!-- Settings Headers -->
     <string name="settings_header_general">一般</string>
@@ -66,7 +66,7 @@
     <string name="settings_header_playback">再生</string>
     <string name="settings_header_library">ライブラリ</string>
     <string name="settings_header_storage">ストレージ</string>
-    <string name="settings_header_visual_effects">視覚効果 (Visual Effects)</string>
+    <string name="settings_header_visual_effects">視覚効果</string>
     <string name="settings_header_nav_bar">ナビゲーションバー</string>
     <string name="settings_header_audio_filtering">オーディオフィルタリング</string>
     <string name="settings_header_hidden_folders">非表示フォルダ</string>
@@ -75,7 +75,7 @@
 
     <!-- Appearance & Navigation Settings -->
     <string name="setting_dark_mode">ダークモード</string>
-    <string name="setting_amoled_black">有機EL完全ブラック (AMOLED)</string>
+    <string name="setting_amoled_black">完全な黒（有機EL向け）</string>
     <string name="setting_animated_album_art">アニメーションアルバムアート</string>
     <string name="setting_animated_album_art_desc">利用可能な場合、プレイヤー画面でループ動画キャンバスを表示します</string>
     <string name="setting_player_theme">プレイヤーテーマ</string>
@@ -118,7 +118,7 @@
         <b>カラオケ歌詞表示</b><br>
         <b>グローバル歌詞サポート</b><br>
         <b>パーソナルライブラリ機能</b><br>
-        <b>リスニング振り返り (Recap)</b><br>
+        <b>リスニング振り返り</b><br>
         <b>ミュージック・ハプティクス（音楽連動振動）</b><br>
         <b>Material 3 Expressive UI 刷新</b><br>
         <b>ワンクリック音楽ダウンロード</b><br>
@@ -126,7 +126,7 @@
 
         + 多数の機能改善とパフォーマンス向上<br><br>
 
-        <a href="https://github.com/nemy-new/OverDrive/releases"><b>完全な変更履歴を見る (GitHub)</b></a><br><br>
+        <a href="https://github.com/nemy-new/OverDrive/releases"><b>完全な変更履歴を見る</b></a><br><br>
 
         <i>OverDrive 1.8 は、単なるオフライン音楽プレイヤーから新次元へ進化しました。</i>
         ]]></string>
@@ -143,8 +143,8 @@
     <string name="text_5_band_studio_equalizer">5バンドスタジオイコライザー</string>
     <string name="text_8d_audio">8Dオーディオ</string>
     <string name="text_8d_only_works_on_local_downloaded_songs">8Dはローカル/ダウンロード済みの曲でのみ機能します</string>
-    <string name="text_a_dynamic_reflection_of_your_musical_journey_on_spatialflow">SpatialFlowでのあなたの音楽の旅をダイナミックに反映。</string>
-    <string name="text_audio_effects">オーディオ効果</string>
+    <string name="text_a_dynamic_reflection_of_your_musical_journey_on_spatialflow">OverDriveでのあなたの音楽の旅をダイナミックに反映。</string>
+    <string name="text_audio_effects">エフェクト</string>
     <string name="text_access_youtube_music">YouTube Musicにアクセス</string>
     <string name="text_account_settings">アカウント設定</string>
     <string name="text_add_hidden_folder">非表示フォルダを追加</string>
@@ -162,7 +162,7 @@
     <string name="text_autoplay">自動再生</string>
     <string name="text_balanced">バランス</string>
     <string name="text_blur_effects">ぼかし効果</string>
-    <string name="text_blur_on_explore_library_effects_settings_tab_swaps_gpu_heavy">探索/ライブラリ/エフェクト/設定のタブ切り替え時にぼかす (GPU高負荷)</string>
+    <string name="text_blur_on_explore_library_effects_settings_tab_swaps_gpu_heavy">探索/ライブラリ/エフェクト/設定のタブ切り替え時にぼかし効果を適用</string>
     <string name="text_browse_categories">カテゴリを閲覧</string>
     <string name="text_bug_report">バグレポート</string>
     <string name="text_buy_me_a_coffee_to_support_development">開発を支援するためにコーヒーをおごる！</string>
@@ -207,8 +207,8 @@
     <string name="text_export_playlists_favorites_and_preferences_to_json">プレイリスト、お気に入り、設定をJSONにエクスポート</string>
     <string name="text_extract_theme_colors_from_the_currently_playing_album_art">現在再生中のアルバムアートからテーマカラーを抽出する</string>
     <string name="text_feature">機能</string>
-    <string name="text_fluid_theme">Fluid Theme (流体)</string>
-    <string name="text_followed_artists_yt_music">フォロー中のアーティスト (YT Music)</string>
+    <string name="text_fluid_theme">流体テーマ</string>
+    <string name="text_followed_artists_yt_music">フォロー中のアーティスト</string>
     <string name="text_force_a_runtime_exception_to_test_crash_report_dialog">実行時例外を発生させてクラッシュレポートダイアログをテストする</string>
     <string name="text_force_high_refresh_rate">高リフレッシュレートを強制</string>
     <string name="text_full_library_rescan">ライブラリのフル再スキャン</string>
@@ -223,15 +223,13 @@
     <string name="text_hide_voice_notes_and_short_recordings_from_library">ボイスメモや短い録音をライブラリから隠す</string>
     <string name="text_high_uses_more_data_data_saver_uses_lowest_bitrate">高音質はデータ通信量を多く消費します</string>
     <string name="text_info">情報</string>
-    <string name="text_ignore_short_audio_voice_notes">短いオーディオを無視 (ボイスメモ)</string>
-    <string name="text_immersion_theme">Immersion Theme (没入)</string>
+    <string name="text_ignore_short_audio_voice_notes">短い音声やボイスメモを無視</string>
+    <string name="text_immersion_theme">没入テーマ</string>
     <string name="text_import_settings_library">設定とライブラリをインポート</string>
     <string name="text_information">情報</string>
     <string name="text_inspect_background_security_context">バックグラウンドのセキュリティコンテキストを検査</string>
     <string name="text_intensity">強度</string>
     <string name="text_join_group">グループに参加</string>
-    <string name="text_join_telegram_community">Telegramコミュニティに参加</string>
-    <string name="text_join_our_telegram_group">Telegramグループに参加</string>
     <string name="text_karaoke_lyrics_powerful_search_and_offline_downloads_all_in_one_place">カラオケ歌詞、強力な検索、オフラインダウンロードを1か所に。</string>
     <string name="text_l">左</string>
     <string name="text_lyrics">歌詞</string>
@@ -240,16 +238,16 @@
     <string name="text_let_s_go">さあ、始めましょう！</string>
     <string name="text_lets_setup_the_everything_for_you">あなたのための準備を始めます</string>
     <string name="text_library">ライブラリ</string>
-    <string name="text_liked_songs_yt_music">高く評価した曲 (YT Music)</string>
+    <string name="text_liked_songs_yt_music">高く評価した曲</string>
     <string name="text_listening_history">再生履歴</string>
     <string name="text_load_home_feed">ホームフィードを読み込む</string>
     <string name="text_log_in_to_youtube_music">YouTube Musicにログイン</string>
     <string name="text_login_successful">ログイン成功</string>
     <string name="text_loudness_enhancer">ラウドネスエンハンサー</string>
-    <string name="text_lush">Lush</string>
+    <string name="text_lush">ラッシュ</string>
     <string name="text_manual_sync">手動同期</string>
     <string name="text_match_pitch">ピッチを合わせる</string>
-    <string name="text_match_pitch_preserve_original_vocal_tone">ピッチを合わせる (元のボーカルトーンを維持)</string>
+    <string name="text_match_pitch_preserve_original_vocal_tone">ピッチを合わせてボーカルトーンを維持</string>
     <string name="text_minimum_duration_threshold">最小再生時間のしきい値</string>
     <string name="text_moods_genres">ムードとジャンル</string>
     <string name="text_music_haptics">ミュージックハプティクス</string>
@@ -283,20 +281,19 @@
     <string name="text_position">ポジション</string>
     <string name="text_preset">プリセット</string>
     <string name="text_preset_name">プリセット名</string>
-    <string name="text_profile_spatialflow_user">プロフィール: SpatialFlow ユーザー</string>
+    <string name="text_profile_spatialflow_user">プロフィール: OverDrive ユーザー</string>
     <string name="text_providers">プロバイダー</string>
-    <string name="text_pure_amoled_black">ピュア AMOLED ブラック</string>
+    <string name="text_pure_amoled_black">完全な漆黒</string>
     <string name="text_queue">キュー</string>
     <string name="text_r">右</string>
     <string name="text_radio">ラジオ</string>
     <string name="text_rebuild_database">データベースを再構築</string>
     <string name="text_recent_listening_history">最近の再生履歴</string>
     <string name="text_recent_searches">最近の検索</string>
-    <string name="text_recently_played_youtube_music">最近再生した曲 (YouTube Music)</string>
+    <string name="text_recently_played_youtube_music">最近再生した曲</string>
     <string name="text_refind_re_search_all_providers">すべてのプロバイダーを再検索</string>
     <string name="text_remove">削除</string>
     <string name="text_remove_text_labels_from_the_bottom_navigation_bar">下部のナビゲーションバーからテキストラベルを削除します。</string>
-    <string name="text_report_bug_via_telegram">Telegramでバグを報告</string>
     <string name="text_report_a_bug">バグを報告</string>
     <string name="text_request_feature">機能リクエスト</string>
     <string name="text_reset_all">すべてリセット</string>
@@ -319,7 +316,6 @@
     <string name="text_settings">設定</string>
     <string name="text_setup_complete">セットアップ完了</string>
     <string name="text_share">共有</string>
-    <string name="text_share_pre_filled_device_and_app_details_directly_to_telegram">デバイスとアプリの詳細が事前に入力された状態で直接Telegramに共有する</string>
     <string name="text_share_raw_debug_logs_to_attach_to_an_issue">問題に添付する生のデバッグログを共有する</string>
     <string name="text_show_m3e_expressive_volume_slider_below_playback_controls">再生コントロールの下にM3Eエクスプレッシブ音量スライダーを表示する</string>
     <string name="text_show_looping_video_canvas_on_player_screen_if_available">可能な場合、プレーヤー画面にループするビデオキャンバスを表示する</string>
@@ -337,11 +333,11 @@
     <string name="text_snap_to_center">中央にスナップ</string>
     <string name="text_songs_you_listen_to_from_your_account_will_appear_here">アカウントから聴いた曲がここに表示されます。</string>
     <string name="text_spatial_360_rotating_audio_effect_for_an_immersive_sound_stage_experience">没入型のサウンドステージ体験のための360°回転する空間オーディオエフェクト。</string>
-    <string name="text_spatialflow_crashed_unexpectedly_during_your_last_session_would_you_like_to_report_this_issue_to_help_us_fix_it">SpatialFlowは前回のセッション中に予期せずクラッシュしました。問題を修正するために報告しますか？</string>
+    <string name="text_spatialflow_crashed_unexpectedly_during_your_last_session_would_you_like_to_report_this_issue_to_help_us_fix_it">OverDriveは前回のセッション中に予期せずクラッシュしました。問題を修正するために報告しますか？</string>
     <string name="text_speed">速度</string>
     <string name="text_start_listening">リスニングを開始</string>
     <string name="text_start_playing_your_favorite_tracks_and_your_listening_flow_highlights_will_appear_here">お気に入りのトラックを再生し始めると、あなたのリスニングフローのハイライトがここに表示されます！</string>
-    <string name="text_static_theme">Static Theme (静的)</string>
+    <string name="text_static_theme">静的テーマ</string>
     <string name="text_stereo_balance">ステレオバランス</string>
     <string name="text_stereo_soundstage_balance">ステレオサウンドステージバランス</string>
     <string name="text_stop_at_end_of_track">曲の終わりで停止</string>
@@ -352,13 +348,12 @@
     <string name="text_studio_eq_profiles">スタジオEQプロファイル</string>
     <string name="text_subtle">微細</string>
     <string name="text_suggest_a_new_feature_for_overdrive">OverDriveの新機能を提案する</string>
-    <string name="text_support_spatialflow">SpatialFlowをサポート</string>
+    <string name="text_support_spatialflow">OverDriveをサポート</string>
     <string name="text_sync_control">同期コントロール</string>
     <string name="text_sync_playlists">プレイリストを同期</string>
     <string name="text_sync_playlists_and_favorites_with_server">プレイリストとお気に入りをサーバーと同期する</string>
     <string name="text_tab_switch_blur">タブ切り替え時のぼかし</string>
     <string name="text_target_loudness">ターゲットラウドネス</string>
-    <string name="text_telegram">Telegram</string>
     <string name="text_this_playlist_is_empty">このプレイリストは空です</string>
     <string name="text_top_played_songs">最も再生された曲</string>
     <string name="text_top_songs">トップソング</string>
@@ -394,4 +389,215 @@
     <string name="setting_customize_bottom_nav_desc">表示するタブとその順序を変更します</string>
     <string name="customize_bottom_nav_title">ボトムナビゲーション</string>
     <string name="error_need_at_least_one_tab">少なくとも1つのタブを表示する必要があります</string>
+    <!-- ML Kit Lyrics Translation -->
+    <string name="ml_model_checking">翻訳モデルの状態を確認中...</string>
+    <string name="ml_model_downloaded">言語モデル: ダウンロード済み (約30MB)</string>
+    <string name="ml_model_downloading">言語モデルをダウンロード中... (約30MB)</string>
+    <string name="ml_model_not_downloaded">言語モデル: 未ダウンロード (約30MB)</string>
+    <string name="ml_model_download_btn">モデルを事前ダウンロード</string>
+    <string name="ml_model_error">エラー: %s</string>
+    <string name="ml_model_engine_title">翻訳エンジン</string>
+    <string name="ml_model_engine_mlkit">標準エンジン（高速・オフライン）</string>
+    <string name="ml_model_engine_aicore">AI Core（高精度・自然な意訳・オフライン）</string>
+    <string name="ml_model_engine_desc">標準エンジンは高速な単語ベースの機械翻訳です。AI Coreは最新のAIモデルを使用し、曲の文脈を理解した非常に自然な翻訳をオフラインで提供します。</string>
+    <string name="ml_model_aicore_unsupported">このデバイスはAI Coreをサポートしていません。</string>
+    <string name="ml_model_aicore_checking">AI Coreの互換性を確認中...</string>
+
+
+    <string name="pref_lyrics_translation_title">歌詞の自動翻訳</string>
+    <string name="pref_lyrics_translation_desc">ML Kitを使用してオフラインで歌詞を自動翻訳します。初回のみ約30MBの言語モデルのダウンロードが必要です。</string>
+    <string name="pref_lyrics_target_lang_title">翻訳先言語</string>
+    <string name="pref_lyrics_target_lang_desc">歌詞を翻訳する対象言語を設定します。</string>
+
+    <string name="settings_sleep_timer">スリープタイマー</string>
+    <string name="settings_streaming_quality">ストリーミング品質</string>
+    <string name="settings_volume_normalization">音量の正規化</string>
+    <string name="settings_volume_normalization_desc">トラック間の音量を一定に保ちます</string>
+    <string name="settings_haptics">ハプティクス</string>
+    <string name="settings_granular_interactions">詳細なインタラクション</string>
+    <string name="settings_whats_new">新機能</string>
+    <string name="settings_no_releases_found">リリースが見つかりません</string>
+    <string name="settings_about">アプリ情報</string>
+    <string name="settings_updates">アップデート</string>
+    <string name="settings_max_title_size">最大タイトルサイズ</string>
+    <string name="settings_cancel">キャンセル</string>
+    <string name="settings_feedback_bug_reports">フィードバックとバグ報告</string>
+    <string name="settings_report_request">バグ報告とリクエスト</string>
+    <string name="settings_report_a_bug">バグを報告</string>
+    <string name="settings_open_github_desc">GitHubを開いてバグを報告</string>
+    <string name="settings_bug_report">バグ報告</string>
+    <string name="settings_request_feature">機能リクエスト</string>
+    <string name="settings_suggest_feature_desc">OverDriveの新機能を提案</string>
+    <string name="settings_debug_information">デバッグ情報</string>
+    <string name="settings_copy_debug_info">デバッグ情報をコピー</string>
+    <string name="settings_copy_debug_desc">端末情報とアプリバージョンをクリップボードにコピー</string>
+    <string name="settings_debug_info">デバッグ情報</string>
+    <string name="settings_export_logs">ログをエクスポート</string>
+    <string name="settings_share_logs_desc">問題報告用に生のデバッグログを共有</string>
+    <string name="settings_simulate_crash">クラッシュをシミュレート</string>
+    <string name="settings_force_crash_desc">クラッシュ報告ダイアログをテストするために例外を強制発生させる</string>
+    <string name="settings_database_scanning">データベースとスキャン</string>
+    <string name="settings_full_library_rescan">ライブラリのフル再スキャン</string>
+    <string name="settings_scan_local_desc">デバイス内のローカル音楽ファイルをスキャン</string>
+    <string name="settings_rebuild_database">データベースの再構築</string>
+    <string name="settings_rebuild_db_desc">メディアライブラリのデータベースを消去して再構築</string>
+    <string name="settings_backup_restore">バックアップと復元</string>
+    <string name="settings_export_settings">設定をエクスポート</string>
+    <string name="settings_export_desc">設定とライブラリの状態をファイルに保存</string>
+    <string name="settings_import_settings">設定をインポート</string>
+    <string name="settings_restore_desc">以前のバックアップから設定を復元</string>
+    <string name="account_sync_title">アカウントと同期</string>
+    <string name="yt_music_account">YouTube Music アカウント</string>
+    <string name="logged_in_yt">YouTube Musicでログイン済み</string>
+    <string name="guest_mode">ゲストモード</string>
+    <string name="profile_spatialflow">OverDrive プロフィール</string>
+    <string name="accessing_personalized">パーソナライズされたコンテンツにアクセス中</string>
+    <string name="no_account_linked">アカウントが連携されていません</string>
+    <string name="log_out">ログアウト</string>
+    <string name="log_in">ログイン</string>
+    <string name="data_saving">データ節約</string>
+    <string name="sync_privacy">同期とプライバシー</string>
+    <string name="data_saver_title">データセーバーモード</string>
+    <string name="data_saver_desc">モバイル通信時に音質を下げます</string>
+    <string name="pause_history_title">再生履歴を一時停止</string>
+    <string name="pause_history_desc">YouTubeに再生履歴を保存しません</string>
+    <string name="manual_sync_title">手動同期</string>
+    <string name="manual_sync_desc">プレイリストとライブラリを強制的に同期</string>
+    <string name="settings_appearance">外観デザイン</string>
+    <string name="settings_visual_effects">視覚効果</string>
+    <string name="settings_animated_album_art">アニメーション付きアルバムアート</string>
+    <string name="settings_show_looping_video_desc">アルバムアートの背後にループ動画を表示</string>
+    <string name="settings_navigation_bar">ナビゲーションバー</string>
+    <string name="settings_playback">再生設定</string>
+    <string name="settings_crossfade">クロスフェード</string>
+    <string name="settings_audio_focus">オーディオフォーカス</string>
+    <string name="settings_queue_autoplay">キューの自動再生</string>
+    <string name="settings_volume_controls">音量コントロール</string>
+    <string name="settings_music_management">音楽ファイル管理</string>
+    <string name="settings_audio_filtering">オーディオフィルタリング</string>
+    <string name="settings_hidden_folders">非表示フォルダ</string>
+    <string name="settings_no_folders_blacklisted">現在ブラックリストに登録されたフォルダはありません</string>
+    <string name="settings_downloads">ダウンロード</string>
+
+    <string name="text_balance_effects">バランス</string>
+    <string name="text_presets_effects">プリセット</string>
+    <string name="text_spatial_effects">空間オーディオ</string>
+    <string name="text_loudness_effects">ラウドネス</string>
+    <string name="text_flat_effects">フラット</string>
+    <string name="text_360_active">360° アクティブ</string>
+    <string name="text_standard_effects">標準</string>
+    <string name="text_5_band_on">5バンド オン</string>
+    <string name="text_bypass">バイパス</string>
+    <string name="text_l_plus">L +</string>
+    <string name="text_r_plus">R +</string>
+
+    <string name="developer_mode_enabled">デベロッパーモードが有効になりました！</string>
+    <string name="developer_steps_away">デベロッパーになるまであと %1$d ステップです。</string>
+    <string name="settings_developer_options">開発者向けオプション</string>
+    <string name="settings_developer_options_desc">高度なデバッグと設定</string>
+    <string name="developer_playback_diagnostics">再生診断</string>
+    <string name="developer_playback_logs">再生ログ</string>
+    <string name="developer_playback_logs_desc">ストリーム解決、バッファ状況、エラー履歴の詳細</string>
+    <string name="developer_performance">パフォーマンス最適化</string>
+    <string name="developer_performance_desc">120Hz垂直同期、動的ポーリング、バッファ調整、GPUアクセラレーション</string>
+    <string name="developer_controls">開発者コントロール</string>
+    <string name="developer_disable">開発者向けオプションを無効化</string>
+    <string name="developer_disable_desc">開発者モードをオフにします</string>
+    <string name="developer_performance_tuning">パフォーマンス最適化</string>
+
+    <string name="pref_perf_title">パフォーマンス最適化</string>
+    <string name="pref_perf_subtitle">パフォーマンスチューニング</string>
+    <string name="pref_perf_active_title">ハイパフォーマンスエンジン稼働中</string>
+    <string name="pref_perf_active_desc">すべての最適化がデフォルトで有効化されており、120Hzの高滑らかさと1秒以内の即時再生を実現します。</string>
+    <string name="pref_perf_sec_rendering">描画とアニメーション</string>
+    <string name="pref_opt_120fps_sync_title">120Hz 垂直同期フレーム同期</string>
+    <string name="pref_opt_120fps_sync_sub">超高精度フレーム同期</string>
+    <string name="pref_opt_120fps_sync_desc">カラオケ歌詞アニメーションやビジュアライザーをディスプレイのリフレッシュレート（60/90/120Hz）に同期し、カクつきを完全防止します。</string>
+    <string name="pref_opt_gpu_layer_title">GPU描画アクセラレーション</string>
+    <string name="pref_opt_gpu_layer_sub">GPUレイヤー描画処理</string>
+    <string name="pref_opt_gpu_layer_desc">プレイヤーシートの展開やぼかし変形をGPUレイヤーで直接処理し、画面全体の不要な再計算を防ぎます。</string>
+    <string name="pref_perf_sec_audio">オーディオエンジンと省電力</string>
+    <string name="pref_opt_dynamic_polling_title">動的オーディオポーリング</string>
+    <string name="pref_opt_dynamic_polling_sub">状況に応じた更新頻度の自動調整</string>
+    <string name="pref_opt_dynamic_polling_desc">プレイヤー表示中は200msで滑らかにシークバーを更新し、バックグラウンド時は500msに抑えてバッテリーを節約します。</string>
+    <string name="pref_opt_low_latency_title">超低遅延バッファリング</string>
+    <string name="pref_opt_low_latency_sub">即時再生開始と安定バッファ</string>
+    <string name="pref_opt_low_latency_desc">1秒未満での即時再生開始と、音途切れを防ぐ50秒の安定したバッファ上限を両立します。</string>
+    <string name="pref_opt_predictive_precache_title">次曲の高速先読み</string>
+    <string name="pref_opt_predictive_precache_sub">バックグラウンド先読み</string>
+    <string name="pref_opt_predictive_precache_desc">再生進捗が80%に達した時点で次曲の冒頭512KBを非同期で先読みし、曲間を途切れなく再生します。</string>
+    <string name="pref_perf_sec_memory">メモリとキャッシュ</string>
+    <string name="pref_opt_thumbnail_downsampling_title">サムネイルの省メモリ化</string>
+    <string name="pref_opt_thumbnail_downsampling_sub">メモリ半減とカクつき防止</string>
+    <string name="pref_opt_thumbnail_downsampling_desc">一覧のサムネイル画像を適切なサイズに縮小し16ビット色でデコードすることで、メモリ消費を半減しスクロールの引っかかりを防ぎます。</string>
+    <string name="pref_perf_reset_toast">すべてのパフォーマンス最適化を有効化しました（デフォルト）</string>
+
+    <string name="logs_title">再生ログ</string>
+    <string name="logs_subtitle">診断とストリーム履歴</string>
+    <string name="logs_all">すべて</string>
+    <string name="logs_errors">エラーのみ</string>
+    <string name="logs_online">オンライン再生</string>
+    <string name="logs_empty">再生イベントはまだ記録されていません。</string>
+    <string name="logs_clear">ログを消去</string>
+    <string name="logs_copy_all">すべてのログをコピー</string>
+    <string name="logs_copied">すべてのログをクリップボードにコピーしました</string>
+    <string name="logs_cleared">ログを消去しました</string>
+
+    <!-- Granular Haptics -->
+    <string name="haptics_play_pause">再生/一時停止時の振動</string>
+    <string name="haptics_play_pause_desc">再生や一時停止の操作時に振動フィードバックを発生させます</string>
+    <string name="haptics_queue_reorder">キュー並び替え時の振動</string>
+    <string name="haptics_queue_reorder_desc">キュー内の曲をドラッグして並び替える際に振動します</string>
+    <string name="haptics_favorite">お気に入り追加時の振動</string>
+    <string name="haptics_favorite_desc">曲をお気に入りに追加した際に振動します</string>
+    <string name="tab_at_least_one">最低1つのタブを表示する必要があります</string>
+    <string name="text_back">戻る</string>
+    <string name="text_off">オフ</string>
+
+    <!-- Audio & Playback Options -->
+    <string name="setting_audio_focus_desc_enabled">他のアプリが音声を再生した時に一時停止または停止します</string>
+    <string name="setting_audio_focus_desc_disabled">他のアプリが音声を再生しても一時停止や停止を行いません</string>
+    <string name="quality_high">高音質</string>
+    <string name="quality_normal">標準</string>
+    <string name="quality_data_saver">データセーバー</string>
+    <string name="loudness_quiet">控えめ</string>
+    <string name="loudness_normal">標準</string>
+    <string name="loudness_loud">迫力 (大)</string>
+    <string name="setting_sleep_timer_end_song">現在の曲が終了したら停止</string>
+    <string name="setting_sleep_timer_end_queue">キューの最後まで再生して停止</string>
+    <string name="setting_sleep_timer_remaining">残り %d 分</string>
+
+    <!-- Library & Cache Management -->
+    <string name="setting_ignore_short_audio">短い音声の除外</string>
+    <string name="setting_ignore_short_audio_desc">ボイスメモや短い録音ファイルをライブラリから非表示にします</string>
+    <string name="setting_min_duration_threshold">除外する最小再生時間</string>
+    <string name="setting_ignore_tracks_under_sec">%d 秒未満の曲を除外</string>
+    <string name="setting_add_hidden_folder">非表示フォルダを追加</string>
+    <string name="setting_download_location">ダウンロード保存先</string>
+    <string name="setting_not_set">未設定</string>
+    <string name="setting_max_cache_size">%s の最大サイズ</string>
+    <string name="setting_unlimited">無制限</string>
+    <string name="setting_max_label">最大: %s</string>
+    <string name="setting_song_cache">楽曲キャッシュ</string>
+    <string name="setting_image_cache">画像キャッシュ</string>
+
+    <!-- Appearance & Visual Effects -->
+    <string name="setting_pure_black">完全な漆黒</string>
+    <string name="setting_pure_black_desc">ダークモード時に背景を完全な黒にしてバッテリーを節約します</string>
+    <string name="setting_force_high_refresh_rate">高リフレッシュレートの強制</string>
+    <string name="setting_max_supported_fps">対応最大レート: %d Hz</string>
+    <string name="setting_not_supported_on_device">この端末では非対応です</string>
+    <string name="setting_dynamic_colors">ダイナミックカラー</string>
+    <string name="setting_dynamic_colors_desc">再生中のアルバムアートからテーマカラーを抽出します</string>
+    <string name="setting_tab_switch_blur">タブ切り替え時のブラー</string>
+    <string name="setting_tab_switch_blur_desc">タブ切り替え時にブラーを適用します（GPU負荷が高くなります）</string>
+    <string name="setting_dynamic_nav_style_desc">高さをコンパクトにし、アイコンを強調表示します</string>
+
+    <!-- YouTube Dialog -->
+    <string name="yt_login_title">YouTube Music にログイン</string>
+    <string name="yt_login_desc">プレイリストやライブラリ、あなたへのおすすめにアクセスするためにログインします。</string>
+
+    <!-- What's New -->
+    <string name="whats_new_no_releases">リリース情報が見つかりませんでした。</string>
+    <string name="whats_new_version_series">バージョン %s シリーズ</string>
 </resources>

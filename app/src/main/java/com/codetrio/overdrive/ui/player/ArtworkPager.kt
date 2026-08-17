@@ -29,6 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
+import com.codetrio.overdrive.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -287,7 +291,27 @@ fun ArtworkPager(
                         .fillMaxSize()
                         .then(if (isTrueFullscreen) Modifier else Modifier.padding(horizontal = 14.dp))
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    var showOverlay by remember { androidx.compose.runtime.mutableStateOf(false) }
+                    
+                    androidx.compose.runtime.LaunchedEffect(showOverlay, isPlaying) {
+                        if (showOverlay && isPlaying) {
+                            kotlinx.coroutines.delay(3000)
+                            showOverlay = false
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable(
+                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                if (isTrueFullscreen) {
+                                    showOverlay = !showOverlay
+                                }
+                            }
+                    ) {
                         com.codetrio.overdrive.ui.player.canvas.MusicVideoPlayer(
                             videoUrl = musicVideoUrl,
                             isPlaying = isCurrentPage && isMvMode && isPlaying,
@@ -307,26 +331,78 @@ fun ArtworkPager(
                                     viewModel.playNextSong()
                                 }
                             },
-                            resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT,
+                            onAspectRatioUpdate = { ratio -> 
+                                viewModel.setVideoAspectRatio(ratio) 
+                            },
+                            resizeMode = if (isTrueFullscreen) androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT else androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .then(if (isTrueFullscreen) Modifier else Modifier.clip(RoundedCornerShape(12.dp)))
                         )
                         
-                        if (!isInPipMode) {
-                            androidx.compose.material3.IconButton(
-                                onClick = { viewModel.setMvFullscreen(!isMvFullscreen) },
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = !isTrueFullscreen || showOverlay || !isPlaying,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier.matchParentSize()
+                        ) {
+                            Box(
                                 modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(16.dp)
-                                    .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(Color.Black.copy(alpha = 0.5f))
+                                    .fillMaxSize()
+                                    .background(if (isTrueFullscreen) Color.Black.copy(alpha = 0.6f) else Color.Transparent)
                             ) {
-                                androidx.compose.material3.Icon(
-                                    imageVector = if (isMvFullscreen) androidx.compose.material.icons.Icons.Default.FullscreenExit else androidx.compose.material.icons.Icons.Default.Fullscreen,
-                                    contentDescription = if (isMvFullscreen) "Exit Fullscreen" else "Enter Fullscreen",
-                                    tint = Color.White
-                                )
+                                if (isTrueFullscreen) {
+                                    // Play/Pause button in center
+                                    androidx.compose.material3.IconButton(
+                                        onClick = { if (isPlaying) viewModel.pauseAudio() else viewModel.playAudio() },
+                                        modifier = Modifier.align(Alignment.Center).size(80.dp)
+                                    ) {
+                                        androidx.compose.material3.Icon(
+                                            painter = painterResource(id = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play),
+                                            contentDescription = "Play/Pause",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(64.dp)
+                                        )
+                                    }
+                                    
+                                    // Wavy Slider at bottom
+                                    val duration by viewModel.duration.collectAsStateWithLifecycle()
+                                    val playbackFormat by viewModel.playbackFormat.collectAsStateWithLifecycle()
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .padding(bottom = 72.dp, start = 32.dp, end = 32.dp)
+                                    ) {
+                                        com.codetrio.overdrive.ui.player.WavySliderWithLabels(
+                                            currentPositionProvider = { currentPosition },
+                                            duration = duration,
+                                            isPlaying = isPlaying,
+                                            onSeekTo = { viewModel.seekTo(it) },
+                                            dynamicAccentColor = Color.White,
+                                            contentColor = Color.White,
+                                            contentSecondary = Color.White.copy(alpha = 0.7f),
+                                            isDark = true,
+                                            playbackFormat = playbackFormat
+                                        )
+                                    }
+                                }
+
+                                if (!isInPipMode) {
+                                    androidx.compose.material3.IconButton(
+                                        onClick = { viewModel.setMvFullscreen(!isMvFullscreen) },
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(16.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.5f))
+                                    ) {
+                                        androidx.compose.material3.Icon(
+                                            imageVector = if (isMvFullscreen) androidx.compose.material.icons.Icons.Default.FullscreenExit else androidx.compose.material.icons.Icons.Default.Fullscreen,
+                                            contentDescription = if (isMvFullscreen) "Exit Fullscreen" else "Enter Fullscreen",
+                                            tint = Color.White
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

@@ -108,12 +108,14 @@ sealed class SearchItem {
 }
 
 /** Search result container */
+@Stable
 data class SearchResult(
     val items: List<SearchItem>,
     val continuation: String? = null
 )
 
 /** Stream URL data extracted from player response */
+@Stable
 data class StreamData(
     val url: String,
     val mimeType: String,
@@ -123,6 +125,7 @@ data class StreamData(
 )
 
 /** Player response containing streaming data */
+@Stable
 data class PlayerResult(
     val videoId: String,
     val title: String,
@@ -133,7 +136,8 @@ data class PlayerResult(
     val streams: List<StreamData>,
     val playbackUrl: String? = null,
     val watchtimeUrl: String? = null,
-    val likesCount: String? = null
+    val likesCount: String? = null,
+    val musicVideoType: String? = null
 )
 
 /** Home feed section (carousel) */
@@ -186,6 +190,7 @@ enum class SearchFilter(val value: String) {
 }
 
 /** Represents a user profile */
+@Stable
 data class UserProfile(
     val name: String,
     val handle: String? = null,
@@ -194,6 +199,7 @@ data class UserProfile(
 )
 
 /** Represents an autoplay recommendation chip */
+@Stable
 data class AutoplayChip(
     val title: String,
     val params: String?,
@@ -203,6 +209,7 @@ data class AutoplayChip(
 )
 
 /** Represents the results of a related/next API call */
+@Stable
 data class RelatedSongsResult(
     val songs: List<OnlineSong>,
     val chips: List<AutoplayChip>

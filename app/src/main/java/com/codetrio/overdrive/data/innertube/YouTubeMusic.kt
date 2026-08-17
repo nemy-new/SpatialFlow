@@ -181,6 +181,12 @@ object YouTubeMusic {
         // Check Level 1 Cache: Instant memory map retrieval
         val cached = streamUrlCache[videoId]
         if (cached != null && cached.second > System.currentTimeMillis()) {
+            com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                level = com.codetrio.overdrive.data.diagnostics.LogLevel.SUCCESS,
+                tag = "StreamExtractor",
+                message = "Stream retrieved from Level 1 Memory Cache for $videoId",
+                details = "URL=${cached.first}"
+            )
             return@coroutineScope Result.success(cached.first)
         }
 
@@ -188,9 +194,21 @@ object YouTubeMusic {
         // Atomically compute or retrieve an active coroutine future for this exact stream.
         val activeTask = activeStreamRequests.computeIfAbsent(videoId) { id ->
             appScope.async {
+                val startTime = System.currentTimeMillis()
+                com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                    level = com.codetrio.overdrive.data.diagnostics.LogLevel.INFO,
+                    tag = "StreamExtractor",
+                    message = "Resolving audio stream for $id via InnerTube Client..."
+                )
                 try {
                     // Attempt the lightning-fast InnerTube JSON API first
                     var bestUrl: String? = null
+                    var resolvedMime: String? = null
+                    var resolvedCodecs: String? = null
+                    var resolvedBitrate: Int? = null
+                    var resolvedSampleRate: Int? = null
+                    var resolvedExtractor = "InnerTube"
+
                     try {
                         val playerJson = InnerTubeClient.player(id)
                         val parsed = InnerTubeParser.parsePlayerResponse(playerJson)
@@ -212,30 +230,72 @@ object YouTubeMusic {
                             else -> streamsToSelectFrom.maxByOrNull { it.bitrate }
                         }
                         bestUrl = bestStream?.url
+                        resolvedMime = bestStream?.mimeType
+                        resolvedCodecs = if (bestStream?.mimeType?.contains("codecs=") == true) {
+                            bestStream.mimeType.substringAfter("codecs=\"").substringBefore("\"")
+                        } else if (bestStream?.mimeType?.contains("opus", ignoreCase = true) == true) {
+                            "opus"
+                        } else null
+                        resolvedBitrate = bestStream?.bitrate
+                        resolvedSampleRate = if (bestStream?.mimeType?.contains("opus", ignoreCase = true) == true) 48000 else 44100
+
                         if (!bestUrl.isNullOrEmpty()) {
                             Log.d(TAG, "Successfully resolved primary stream via InnerTube player API for $id")
                         }
                     } catch (primaryEx: Exception) {
                         Log.e(TAG, "InnerTube player API failed for $id: ${primaryEx.message}")
+                        com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                            level = com.codetrio.overdrive.data.diagnostics.LogLevel.WARN,
+                            tag = "StreamExtractor",
+                            message = "InnerTube player API failed: ${primaryEx.message}",
+                            details = primaryEx.stackTraceToString()
+                        )
                     }
 
                     // Fallback to NewPipe if InnerTube fails (e.g., due to missing ciphers or HTTP 400)
                     if (bestUrl.isNullOrEmpty()) {
                         Log.d(TAG, "InnerTube player returned empty for $id. Falling back to NewPipe HTML scraper...")
+                        com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                            level = com.codetrio.overdrive.data.diagnostics.LogLevel.WARN,
+                            tag = "StreamExtractor",
+                            message = "Falling back to NewPipe HTML scraper for $id..."
+                        )
+                        resolvedExtractor = "NewPipeScraper"
                         bestUrl = NewPipeStreamExtractor.getStreamUrl(id)
                         if (!bestUrl.isNullOrEmpty()) {
                             Log.d(TAG, "Successfully resolved fallback stream via NewPipe for $id")
                         }
                     }
 
+                    val durationMs = System.currentTimeMillis() - startTime
                     if (!bestUrl.isNullOrEmpty()) {
                         // Commit successfully resolved URL to memory cache
                         streamUrlCache[id] = bestUrl to (System.currentTimeMillis() + CACHE_TTL)
+                        com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.updateStreamInfo(
+                            streamUrl = bestUrl,
+                            mimeType = resolvedMime,
+                            codec = resolvedCodecs,
+                            bitrate = resolvedBitrate,
+                            sampleRate = resolvedSampleRate,
+                            extractor = resolvedExtractor,
+                            extractionDurationMs = durationMs
+                        )
                         Result.success(bestUrl)
                     } else {
+                        com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                            level = com.codetrio.overdrive.data.diagnostics.LogLevel.ERROR,
+                            tag = "StreamExtractor",
+                            message = "Stream extraction exhausted: All extractors returned empty for $id (took ${durationMs}ms)"
+                        )
                         Result.failure(IllegalStateException("Stream extraction total exhaustion"))
                     }
                 } catch (e: Exception) {
+                    com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
+                        level = com.codetrio.overdrive.data.diagnostics.LogLevel.ERROR,
+                        tag = "StreamExtractor",
+                        message = "Stream extraction exception for $id: ${e.message}",
+                        details = e.stackTraceToString()
+                    )
                     Result.failure(e)
                 } finally {
                     // Release request lock immediately upon resolution boundary

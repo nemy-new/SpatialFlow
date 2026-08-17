@@ -1,9 +1,16 @@
 package com.codetrio.overdrive.data.db
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "playlist_songs")
+@Entity(
+    tableName = "playlist_songs",
+    indices = [
+        Index(value = ["playlistId"]),
+        Index(value = ["songId"])
+    ]
+)
 data class PlaylistSongEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val playlistId: Long,

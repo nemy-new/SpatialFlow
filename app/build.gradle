@@ -34,7 +34,7 @@ android {
 
     defaultConfig {
         applicationId "com.codetrio.overdrive"
-        minSdk 25
+        minSdk 26
         targetSdk 37
         versionCode 11
         versionName "0.0.1"
@@ -111,6 +111,7 @@ configurations {
 }
 
 dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     coreLibraryDesugaring libs.desugar.jdk.libs.nio
     implementation fileTree(dir: 'libs', include: ['*.aar', '*.jar'], exclude: [
         'ffmpeg-kit-audio-6.0-2.LTS.aar',
@@ -211,6 +212,11 @@ dependencies {
 
     // Media3 OkHttp DataSource (Canvas ExoPlayer)
     implementation libs.media3.datasource.okhttp
+
+    // ML Kit for On-Device Translation
+    implementation libs.mlkit.translate
+    implementation libs.mlkit.language.id
+    implementation libs.mlkit.genai.prompt
 }
 
 def isNonStable = { String version ->

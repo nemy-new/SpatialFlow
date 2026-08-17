@@ -1,10 +1,13 @@
 package com.codetrio.overdrive.data.lyrics
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Normalized track metadata used across all lyrics providers and the decision
  * engine.
  * Created by MetadataRepair from raw SongItem fields.
  */
+@Immutable
 data class TrackMetadata @JvmOverloads constructor(
     val rawTitle: String = "",
     val rawArtist: String = "",

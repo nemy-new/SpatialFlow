@@ -44,6 +44,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -128,6 +129,9 @@ class PlayerSharedViewModel @Inject constructor(
         val peakMoodDescription: String
     )
 
+    // Expose raw history for Recent History UI
+    val historyFlow = playlistDao.getAllHistoryEventsFlow()
+
     // Reactive flow that live-aggregates history records
     val listeningRecapFlow = playlistDao.getAllHistoryEventsFlow().map { events ->
         if (events.isEmpty()) return@map null
@@ -186,6 +190,13 @@ class PlayerSharedViewModel @Inject constructor(
     )
 
     val artistProfileMap = mutableStateMapOf<String, String>()
+
+    private val _scrollToTopEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(replay = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
+    val scrollToTopEvent = _scrollToTopEvent.asSharedFlow()
+
+    fun triggerScrollToTop() {
+        _scrollToTopEvent.tryEmit(Unit)
+    }
 
     fun resolveArtistProfileImage(artistName: String) {
         if (artistProfileMap.containsKey(artistName)) return
@@ -398,6 +409,12 @@ class PlayerSharedViewModel @Inject constructor(
     val isQueueExpanded: StateFlow<Boolean> = _isQueueExpanded.asStateFlow()
     fun setQueueExpanded(expanded: Boolean) {
         _isQueueExpanded.value = expanded
+    }
+
+    private val _isEffectsExpanded = MutableStateFlow(false)
+    val isEffectsExpanded: StateFlow<Boolean> = _isEffectsExpanded.asStateFlow()
+    fun setEffectsExpanded(expanded: Boolean) {
+        _isEffectsExpanded.value = expanded
     }
 
     private val _localSongs = MutableStateFlow<List<SongItem>>(emptyList())
@@ -665,6 +682,10 @@ class PlayerSharedViewModel @Inject constructor(
                 // Fetch player info for likes count and animated thumbnail directly from WebRemix
                 val playerJson = com.codetrio.overdrive.data.innertube.InnerTubeClient.playerWebRemix(videoId)
                 val playerResult = com.codetrio.overdrive.data.innertube.InnerTubeParser.parsePlayerResponse(playerJson, parseStreams = false)
+                
+                if (playerResult != null) {
+                    _hasMusicVideo.value = (playerResult.musicVideoType != "MUSIC_VIDEO_TYPE_ATV")
+                }
 
                 // ── RESOLVE CANVAS ARTWORK (MOTION ARTWORK) ──
                 launch {
@@ -971,6 +992,7 @@ class PlayerSharedViewModel @Inject constructor(
                 _likesCount.value = "Like"
                 _isCurrentSongDisliked.value = false
                 _canvasArtwork.value = null
+                _hasMusicVideo.value = false
 
                 // Reset lyrics state & provider locks on song change
                 lyricsController.clearForSongChange(song)
@@ -1431,6 +1453,8 @@ class PlayerSharedViewModel @Inject constructor(
     fun setLyricsModeEnabled(enabled: Boolean) {
         lyricsController.setLyricsModeEnabled(enabled, appContext, _currentSong.value)
     }
+
+    fun toggleLyricsTranslation() = lyricsController.toggleTranslation(appContext)
 
     fun selectLyricsProvider(providerName: String) {
         lyricsController.selectProvider(providerName, appContext, _currentSong.value)
@@ -2187,6 +2211,12 @@ class PlayerSharedViewModel @Inject constructor(
     val musicVideoUrl: StateFlow<String?> = _currentSong.map { song -> 
         if (!song?.videoId.isNullOrBlank()) "innertube://${song?.videoId}" else null 
     }.stateIn(bgScope, SharingStarted.WhileSubscribed(), null)
+
+    private val _hasMusicVideo = MutableStateFlow(false)
+    val hasMusicVideo: StateFlow<Boolean> = _hasMusicVideo.asStateFlow()
+    private val _videoAspectRatio = MutableStateFlow(16f / 9f)
+    val videoAspectRatio: StateFlow<Float> = _videoAspectRatio.asStateFlow()
+    fun setVideoAspectRatio(ratio: Float) { _videoAspectRatio.value = ratio }
 
     private val _mvSeekRequest = MutableStateFlow<Long?>(null)
     val mvSeekRequest: StateFlow<Long?> = _mvSeekRequest.asStateFlow()

@@ -457,6 +457,7 @@ object InnerTubeParser {
             val durationMs = (videoDetails.get("lengthSeconds")?.asLong ?: 0) * 1000
             val thumbnail = videoDetails.path("thumbnail.thumbnails")?.asJsonArray
                 ?.lastOrNull()?.asJsonObject?.get("url")?.asString
+            val musicVideoType = videoDetails.get("musicVideoType")?.asString
 
             val animatedThumbnailUrl = findAnimatedThumbnailUrl(json)
 
@@ -562,7 +563,8 @@ object InnerTubeParser {
                 streams = streams,
                 playbackUrl = bestStream?.url,
                 watchtimeUrl = playbackTracking?.path("videostatsWatchtimeUrl.baseUrl")?.asString,
-                likesCount = null
+                likesCount = null,
+                musicVideoType = musicVideoType
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing player response", e)

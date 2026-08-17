@@ -47,6 +47,7 @@ fun MusicVideoPlayer(
     seekRequest: Long? = null,
     onSeekRequestConsumed: () -> Unit = {},
     onPlaybackCompleted: () -> Unit = {},
+    onAspectRatioUpdate: (Float) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -88,6 +89,12 @@ fun MusicVideoPlayer(
 
     DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                if (videoSize.width > 0 && videoSize.height > 0) {
+                    val ratio = videoSize.width.toFloat() / videoSize.height.toFloat()
+                    onAspectRatioUpdate(ratio)
+                }
+            }
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     onPlaybackCompletedState()

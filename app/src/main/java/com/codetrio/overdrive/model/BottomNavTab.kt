@@ -1,5 +1,8 @@
 package com.codetrio.overdrive.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class BottomNavTab(
     val route: String,
     val isVisible: Boolean
@@ -9,12 +12,13 @@ data class BottomNavTab(
             BottomNavTab("explore", true),
             BottomNavTab("search", true),
             BottomNavTab("library", true),
-            BottomNavTab("effects", true),
+            BottomNavTab("statistics", true),
+            BottomNavTab("effects", false),
             BottomNavTab("settings", true)
         )
         
         fun parse(prefsString: String?): List<BottomNavTab> {
-            if (prefsString.isNullOrEmpty()) return DEFAULT_TABS
+            if (prefsString.isNullOrEmpty() || prefsString == "explore:true,search:true,library:true,effects:true,settings:true") return DEFAULT_TABS
             try {
                 val parsedTabs = prefsString.split(",").map {
                     val parts = it.split(":")
