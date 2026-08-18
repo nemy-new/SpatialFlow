@@ -6,14 +6,21 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -305,10 +312,11 @@ fun UnifiedShimmerProvider(content: @Composable () -> Unit) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ShimmerModifier(
-    width: Dp,
+    width: Dp = 0.dp,
     height: Dp,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(8.dp),
-    useMorphingLoadingShape: Boolean = false
+    useMorphingLoadingShape: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     val finalShape = if (useMorphingLoadingShape) {
         val shapes = remember {
@@ -344,9 +352,14 @@ fun ShimmerModifier(
     val colorLow = MaterialTheme.colorScheme.surfaceContainerLow
     val colorHigh = MaterialTheme.colorScheme.surfaceContainerHigh
 
+    val sizeModifier = if (width > 0.dp) {
+        modifier.size(width = width, height = height)
+    } else {
+        modifier.height(height)
+    }
+
     Box(
-        modifier = Modifier
-            .size(width = width, height = height)
+        modifier = sizeModifier
             .clip(finalShape)
             .onGloballyPositioned { coords ->
                 posInRoot = coords.positionInRoot()
@@ -434,29 +447,90 @@ fun HomeFeedSkeleton() {
             modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
+            // Quick Picks 2x3 Grid Skeleton
             item {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
-                    ShimmerModifier(width = 160.dp, height = 40.dp, shape = RoundedCornerShape(12.dp))
-                    Spacer(modifier = Modifier.height(20.dp))
-                    // Chip row shimmer
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        repeat(4) {
-                            ShimmerModifier(width = 72.dp, height = 32.dp, shape = CircleShape)
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ShimmerModifier(width = 140.dp, height = 24.dp, shape = RoundedCornerShape(8.dp))
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        repeat(3) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                repeat(2) {
+                                    ShimmerModifier(
+                                        width = 0.dp,
+                                        height = 56.dp,
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
-            items(4) {
-                Column(modifier = Modifier.padding(vertical = 10.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        ShimmerModifier(width = 140.dp, height = 26.dp, shape = RoundedCornerShape(8.dp))
-                        ShimmerModifier(width = 64.dp, height = 28.dp, shape = CircleShape)
+
+            // Bento 3x3 Grid Skeleton
+            item {
+                val configuration = LocalConfiguration.current
+                val isTablet = configuration.screenWidthDp >= 600
+                val cellHeight = if (isTablet) 125.dp else 105.dp
+                val spacing = if (isTablet) 10.dp else 8.dp
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ShimmerModifier(width = 140.dp, height = 22.dp, shape = RoundedCornerShape(8.dp))
+                        ShimmerModifier(width = 64.dp, height = 26.dp, shape = CircleShape)
                     }
-                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+                        repeat(3) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().height(cellHeight),
+                                horizontalArrangement = Arrangement.spacedBy(spacing)
+                            ) {
+                                repeat(3) {
+                                    ShimmerModifier(
+                                        width = 0.dp,
+                                        height = cellHeight,
+                                        shape = RoundedCornerShape(if (isTablet) 14.dp else 12.dp),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Carousel Row Skeleton
+            items(2) {
+                Column(modifier = Modifier.padding(vertical = 10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ShimmerModifier(width = 140.dp, height = 24.dp, shape = RoundedCornerShape(8.dp))
+                        ShimmerModifier(width = 30.dp, height = 30.dp, shape = CircleShape)
+                    }
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         items(4) {
                             Column(horizontalAlignment = Alignment.Start) {
-                                ShimmerModifier(width = 170.dp, height = 170.dp, useMorphingLoadingShape = true)
+                                ShimmerModifier(width = 160.dp, height = 160.dp, shape = RoundedCornerShape(16.dp))
                                 Spacer(modifier = Modifier.height(8.dp))
                                 ShimmerModifier(width = 120.dp, height = 16.dp, shape = RoundedCornerShape(6.dp))
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -898,6 +972,36 @@ fun SearchResultItem(
     }
 }
 
+// ===== Tactile Bouncing Modifier =====
+
+fun Modifier.bouncingClickable(
+    enabled: Boolean = true,
+    scaleDown: Float = 0.96f,
+    onClick: () -> Unit
+): Modifier = composed {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && enabled) scaleDown else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BouncingScale"
+    )
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            enabled = enabled,
+            onClick = onClick
+        )
+}
+
 // ===== Bento Discovery Cells =====
 
 @Composable
@@ -905,6 +1009,7 @@ fun BentoCell(
     item: SearchItem,
     modifier: Modifier = Modifier,
     isFeature: Boolean = false,
+    isTablet: Boolean = false,
     onClick: () -> Unit
 ) {
     val title = when (item) {
@@ -932,16 +1037,21 @@ fun BentoCell(
         is SearchItem.Playlist -> item.playlist.thumbnailUrl
     }
 
+    val cornerRadius = if (isTablet) 14.dp else 12.dp
+
     Card(
-        modifier = modifier.clip(RoundedCornerShape(24.dp)).clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(0.dp)
+        modifier = modifier
+            .clip(RoundedCornerShape(cornerRadius))
+            .bouncingClickable(onClick = onClick),
+        shape = RoundedCornerShape(cornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isFeature) 3.dp else 1.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(thumbnailUrl?.resize(544))
+                    .data(thumbnailUrl?.resize(if (isTablet) 360 else 240))
                     .crossfade(true)
                     .build(),
                 contentDescription = null,
@@ -951,48 +1061,239 @@ fun BentoCell(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
+            // Multi-stop progressive gradient scrim
             Box(
-                modifier = Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (isFeature) 0.9f else 0.7f)),
-                        startY = 50f
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Transparent,
+                            0.35f to Color.Black.copy(alpha = 0.2f),
+                            0.7f to Color.Black.copy(alpha = 0.7f),
+                            1.0f to Color.Black.copy(alpha = 0.92f)
+                        )
                     )
-                )
             )
+
+            // Content Column
             Column(
-                modifier = Modifier.fillMaxSize().padding(if (isFeature) 16.dp else 12.dp),
-                verticalArrangement = Arrangement.Bottom
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(if (isTablet) 10.dp else 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
+                // Top row for feature tag
                 if (isFeature) {
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f),
-                        shape = CircleShape,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(6.dp),
+                        tonalElevation = 2.dp
                     ) {
                         Text(
                             text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_feature),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = if (isTablet) 10.sp else 9.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
+                } else {
+                    Spacer(modifier = Modifier.height(1.dp))
                 }
-                Text(
-                    text = title,
-                    style = if (isFeature) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    maxLines = if (isFeature) 2 else 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+
+                // Bottom Content
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = title,
+                            style = if (isTablet) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (subtitle.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(1.dp))
+                            Text(
+                                text = subtitle,
+                                style = if (isTablet) MaterialTheme.typography.bodySmall else MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.85f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    if (isTablet && isFeature) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            shadowElevation = 3.dp,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clickable { onClick() }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.PlayArrow,
+                                    contentDescription = "Play",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ===== Quick Picks 2x3 Compact Tile Grid =====
+
+@Composable
+fun HomeQuickPicksTileGrid(
+    items: List<SearchItem>,
+    currentOnlineSong: OnlineSong?,
+    onSongClick: (OnlineSong) -> Unit,
+    onAlbumClick: (OnlineAlbum) -> Unit,
+    onArtistClick: (OnlineArtist) -> Unit,
+    onPlaylistClick: (OnlinePlaylist) -> Unit,
+    onSongTouchDown: (OnlineSong) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 600
+    val columns = if (isTablet) 3 else 2
+    val takeCount = 6
+    val displayItems = items.take(takeCount)
+    if (displayItems.isEmpty()) return
+
+    val rows = displayItems.chunked(columns)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        rows.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowItems.forEach { item ->
+                    val title = when (item) {
+                        is SearchItem.TopResult -> item.title
+                        is SearchItem.Header -> item.title
+                        is SearchItem.Song -> item.song.title
+                        is SearchItem.Album -> item.album.title
+                        is SearchItem.Artist -> item.artist.title
+                        is SearchItem.Playlist -> item.playlist.title
+                    }
+                    val subtitle = when (item) {
+                        is SearchItem.TopResult -> item.subtitle
+                        is SearchItem.Header -> ""
+                        is SearchItem.Song -> item.song.artist
+                        is SearchItem.Album -> item.album.artists.joinToString { it.name }
+                        is SearchItem.Artist -> "Artist"
+                        is SearchItem.Playlist -> item.playlist.author?.name ?: "Playlist"
+                    }
+                    val thumbnailUrl = when (item) {
+                        is SearchItem.TopResult -> item.thumbnailUrl
+                        is SearchItem.Header -> null
+                        is SearchItem.Song -> item.song.thumbnailUrl
+                        is SearchItem.Album -> item.album.thumbnailUrl
+                        is SearchItem.Artist -> item.artist.thumbnailUrl
+                        is SearchItem.Playlist -> item.playlist.thumbnailUrl
+                    }
+                    val isPlaying = item is SearchItem.Song && item.song.videoId == currentOnlineSong?.videoId
+
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .bouncingClickable {
+                                when (item) {
+                                    is SearchItem.Song -> onSongClick(item.song)
+                                    is SearchItem.Album -> onAlbumClick(item.album)
+                                    is SearchItem.Artist -> onArtistClick(item.artist)
+                                    is SearchItem.Playlist -> onPlaylistClick(item.playlist)
+                                    is SearchItem.TopResult, is SearchItem.Header -> {}
+                                }
+                            },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        tonalElevation = if (isPlaying) 3.dp else 1.dp,
+                        border = if (isPlaying) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                                 else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
+                            ) {
+                                AsyncImage(
+                                    model = thumbnailUrl?.resize(160),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                if (isPlaying) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.5f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        AnimatedEqualizerBars(
+                                            modifier = Modifier.size(20.dp),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (subtitle.isNotBlank()) {
+                                    Text(
+                                        text = subtitle,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                if (rowItems.size < columns) {
+                    repeat(columns - rowItems.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
         }
     }
@@ -1015,197 +1316,158 @@ fun HomeSectionRow(
     onSaveClick: (SearchItem) -> Unit = {}
 ) {
     val hasSongsOnly = section.items.isNotEmpty() && section.items.all { it is SearchItem.Song }
+    val isQuickPicks = section.title.contains("もう一度聴く", ignoreCase = true) ||
+                       section.title.contains("listen again", ignoreCase = true) ||
+                       section.title.contains("クイック ピック", ignoreCase = true) ||
+                       section.title.contains("quick picks", ignoreCase = true) ||
+                       section.title.contains("speed dial", ignoreCase = true) ||
+                       section.title.contains("ライブラリから", ignoreCase = true)
 
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        // Universal Section Header
+    val isBento = !isQuickPicks && (
+        section.title.equals("おすすめ", ignoreCase = true) ||
+        section.title.equals("ミックス", ignoreCase = true) ||
+        section.title.contains("あなた専用", ignoreCase = true) ||
+        section.title.contains("personalized", ignoreCase = true) ||
+        section.title.contains("my mix", ignoreCase = true) ||
+        section.title.contains("supermix", ignoreCase = true) ||
+        section.title.contains("おすすめのミックス", ignoreCase = true)
+    ) && section.items.size >= 3
+
+    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+        // Expressive Universal Section Header
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = section.title,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 if (hasSongsOnly || section.title.contains("daily discover", ignoreCase = true)) {
-                    OutlinedButton(
+                    Surface(
                         onClick = {
                             val songs = section.items.filterIsInstance<SearchItem.Song>().map { it.song }
                             if (songs.isNotEmpty()) onSongClick(songs.first())
                         },
-                        modifier = Modifier.height(32.dp),
-                        shape = CircleShape,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onBackground
-                        )
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        tonalElevation = 2.dp,
+                        modifier = Modifier.height(30.dp)
                     ) {
-                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_play_all), style = MaterialTheme.typography.labelSmall)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_play_all),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
-                
+
                 if (section.browseEndpoint != null) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(
+                    Surface(
                         onClick = { onSectionClick(section.browseEndpoint, section.params, section.title) },
-                        modifier = Modifier.size(32.dp)
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        tonalElevation = 2.dp,
+                        modifier = Modifier.size(30.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "See All",
-                            tint = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = "See All",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
         }
 
+        // Section Content
         when {
-            // 0. BENTO GRID — High Fidelity Personal Mix
-            (section.title.contains("personalized", ignoreCase = true) || section.title.contains("おすすめ", ignoreCase = true) || section.title.contains("あなた専用", ignoreCase = true) || section.title.contains("ミックス", ignoreCase = true)) && section.items.size >= 5 -> {
-                val items = section.items
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(modifier = Modifier.height(260.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        // Dominant Feature
-                        BentoCell(
-                            item = items[0],
-                            modifier = Modifier.weight(1.25f).fillMaxHeight(),
-                            isFeature = true,
-                            onClick = {
-                                when (val it = items[0]) {
-                                    is SearchItem.Song -> onSongClick(it.song)
-                                    is SearchItem.Album -> onAlbumClick(it.album)
-                                    is SearchItem.Artist -> onArtistClick(it.artist)
-                                    is SearchItem.Playlist -> onPlaylistClick(it.playlist)
-                                    is SearchItem.TopResult, is SearchItem.Header -> {}
-                                }
-                            }
-                        )
-                        // Column of stacked tiles
-                        Column(modifier = Modifier.weight(0.75f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            BentoCell(item = items[1], modifier = Modifier.weight(1f).fillMaxWidth(), onClick = {
-                                when (val it = items[1]) {
-                                    is SearchItem.Song -> onSongClick(it.song)
-                                    is SearchItem.Album -> onAlbumClick(it.album)
-                                    is SearchItem.Artist -> onArtistClick(it.artist)
-                                    is SearchItem.Playlist -> onPlaylistClick(it.playlist)
-                                    is SearchItem.TopResult, is SearchItem.Header -> {}
-                                }
-                            })
-                            BentoCell(item = items[2], modifier = Modifier.weight(1f).fillMaxWidth(), onClick = {
-                                when (val it = items[2]) {
-                                    is SearchItem.Song -> onSongClick(it.song)
-                                    is SearchItem.Album -> onAlbumClick(it.album)
-                                    is SearchItem.Artist -> onArtistClick(it.artist)
-                                    is SearchItem.Playlist -> onPlaylistClick(it.playlist)
-                                    is SearchItem.TopResult, is SearchItem.Header -> {}
-                                }
-                            })
-                        }
-                    }
-                    Row(modifier = Modifier.height(130.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        // Lower row wide tiles
-                        BentoCell(item = items[3], modifier = Modifier.weight(1f).fillMaxHeight(), onClick = {
-                            when (val it = items[3]) {
-                                is SearchItem.Song -> onSongClick(it.song)
-                                is SearchItem.Album -> onAlbumClick(it.album)
-                                is SearchItem.Artist -> onArtistClick(it.artist)
-                                is SearchItem.Playlist -> onPlaylistClick(it.playlist)
-                                is SearchItem.TopResult, is SearchItem.Header -> {}
-                            }
-                        })
-                        BentoCell(item = items[4], modifier = Modifier.weight(1f).fillMaxHeight(), onClick = {
-                            when (val it = items[4]) {
-                                is SearchItem.Song -> onSongClick(it.song)
-                                is SearchItem.Album -> onAlbumClick(it.album)
-                                is SearchItem.Artist -> onArtistClick(it.artist)
-                                is SearchItem.Playlist -> onPlaylistClick(it.playlist)
-                                is SearchItem.TopResult, is SearchItem.Header -> {}
-                            }
-                        })
-                    }
-                }
+            // 0. QUICK PICKS (2x3 Compact Tile Grid)
+            isQuickPicks -> {
+                HomeQuickPicksTileGrid(
+                    items = section.items,
+                    currentOnlineSong = currentOnlineSong,
+                    onSongClick = onSongClick,
+                    onAlbumClick = onAlbumClick,
+                    onArtistClick = onArtistClick,
+                    onPlaylistClick = onPlaylistClick,
+                    onSongTouchDown = onSongTouchDown
+                )
             }
 
-            // 1. SPEED DIAL — 3×3 Squircle Grid
-            section.title.contains("speed dial", ignoreCase = true) -> {
-                val rows = section.items.take(9).chunked(3)
+            // 1. BENTO GRID — 3x3 Responsive Modular Grid (Adaptive Large Screen Support)
+            isBento -> {
+                val configuration = LocalConfiguration.current
+                val isTablet = configuration.screenWidthDp >= 600
+                val isLargeScreen = configuration.screenWidthDp >= 840
+                val displayItems = section.items.take(9)
+                val cellHeight = if (isLargeScreen) 135.dp else if (isTablet) 120.dp else 105.dp
+                val spacing = if (isTablet) 10.dp else 8.dp
+
                 Column(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(spacing)
                 ) {
-                    rows.forEach { rowItems ->
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            rowItems.forEach { item ->
-                                val title = when (item) {
-                                    is SearchItem.TopResult -> item.title
-                                    is SearchItem.Header -> item.title
-                                    is SearchItem.Song -> item.song.title
-                                    is SearchItem.Album -> item.album.title
-                                    is SearchItem.Artist -> item.artist.title
-                                    is SearchItem.Playlist -> item.playlist.title
-                                }
-                                val thumbnailUrl = when (item) {
-                                    is SearchItem.TopResult -> item.thumbnailUrl
-                                    is SearchItem.Header -> null
-                                    is SearchItem.Song -> item.song.thumbnailUrl
-                                    is SearchItem.Album -> item.album.thumbnailUrl
-                                    is SearchItem.Artist -> item.artist.thumbnailUrl
-                                    is SearchItem.Playlist -> item.playlist.thumbnailUrl
-                                }
-                                Box(
-                                    modifier = Modifier.weight(1f).aspectRatio(1f)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .clickable {
-                                            when (item) {
-                                                is SearchItem.Song -> onSongClick(item.song)
-                                                is SearchItem.Album -> onAlbumClick(item.album)
-                                                is SearchItem.Artist -> onArtistClick(item.artist)
-                                                is SearchItem.Playlist -> onPlaylistClick(item.playlist)
-                                                is SearchItem.TopResult, is SearchItem.Header -> {}
-                                            }
+                    val rows = displayItems.chunked(3)
+                    rows.forEachIndexed { rowIndex, rowItems ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(cellHeight),
+                            horizontalArrangement = Arrangement.spacedBy(spacing)
+                        ) {
+                            rowItems.forEachIndexed { colIndex, item ->
+                                val isGlobalFirst = (rowIndex == 0 && colIndex == 0)
+                                BentoCell(
+                                    item = item,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    isFeature = isGlobalFirst,
+                                    isTablet = isTablet,
+                                    onClick = {
+                                        when (item) {
+                                            is SearchItem.Song -> onSongClick(item.song)
+                                            is SearchItem.Album -> onAlbumClick(item.album)
+                                            is SearchItem.Artist -> onArtistClick(item.artist)
+                                            is SearchItem.Playlist -> onPlaylistClick(item.playlist)
+                                            is SearchItem.TopResult, is SearchItem.Header -> {}
                                         }
-                                ) {
-                                    AsyncImage(
-                                        model = thumbnailUrl?.resize(240),
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                    // Scrim overlay using theme token scrim is always dark by M3 spec
-                                    Box(
-                                        modifier = Modifier.fillMaxSize().background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(
-                                                    Color.Transparent,
-                                                    MaterialTheme.colorScheme.scrim.copy(alpha = 0.72f)
-                                                ),
-                                                startY = 80f
-                                            )
-                                        )
-                                    )
-                                    Text(
-                                        text = title,
-                                        color = MaterialTheme.colorScheme.inverseOnSurface,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
-                                    )
-                                }
+                                    }
+                                )
                             }
-                            if (rowItems.size < 3) repeat(3 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
+                            // Pad remaining columns if last row is incomplete
+                            repeat(3 - rowItems.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
                     }
                 }
@@ -1262,10 +1524,12 @@ fun HomeSectionRow(
                             else -> "Handpicked based on your interests"
                         }
 
-                        Box(
-                            modifier = Modifier.width(300.dp).height(300.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .clickable {
+                        Card(
+                            modifier = Modifier
+                                .width(280.dp)
+                                .height(280.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .bouncingClickable {
                                     when (item) {
                                         is SearchItem.Song -> onSongClick(item.song)
                                         is SearchItem.Album -> onAlbumClick(item.album)
@@ -1273,52 +1537,57 @@ fun HomeSectionRow(
                                         is SearchItem.Playlist -> onPlaylistClick(item.playlist)
                                         is SearchItem.TopResult, is SearchItem.Header -> {}
                                     }
-                                }
+                                },
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                         ) {
-                            AsyncImage(
-                                model = thumbnailUrl?.resize(240),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                            Box(
-                                modifier = Modifier.fillMaxSize().background(
-                                    Brush.verticalGradient(
-                                        0f to MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f),
-                                        0.35f to Color.Transparent,
-                                        1f to MaterialTheme.colorScheme.scrim.copy(alpha = 0.88f)
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                AsyncImage(
+                                    model = thumbnailUrl?.resize(400),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(
+                                        Brush.verticalGradient(
+                                            0f to MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f),
+                                            0.4f to Color.Transparent,
+                                            1f to MaterialTheme.colorScheme.scrim.copy(alpha = 0.9f)
+                                        )
                                     )
                                 )
-                            )
-                            Column(
-                                modifier = Modifier.fillMaxSize().padding(16.dp),
-                                verticalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
+                                Column(
+                                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                                    verticalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = title,
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = subtitle,
+                                            color = Color.White.copy(alpha = 0.8f),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                     Text(
-                                        text = title,
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = subtitle,
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        style = MaterialTheme.typography.bodySmall,
+                                        text = promptText,
+                                        color = Color.White.copy(alpha = 0.7f),
+                                        style = MaterialTheme.typography.labelSmall.copy(fontStyle = FontStyle.Italic),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
-                                Text(
-                                    text = promptText,
-                                    color = Color.White.copy(alpha = 0.65f),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontStyle = FontStyle.Italic),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
                             }
                         }
                     }
@@ -1438,7 +1707,7 @@ fun HomeCarouselItem(
     modifier: Modifier = Modifier.width(160.dp)
 ) {
     val isCircle = item is SearchItem.Artist
-    val imageShape = if (isCircle) CircleShape else RoundedCornerShape(8.dp)
+    val imageShape = if (isCircle) CircleShape else RoundedCornerShape(16.dp)
     val itemId = when (item) {
         is SearchItem.TopResult -> "top-${item.title}"
         is SearchItem.Header -> "header-${item.title}"
@@ -1476,7 +1745,7 @@ fun HomeCarouselItem(
 
     Column(
         modifier = modifier
-            .clickable(onClick = onClick),
+            .bouncingClickable(onClick = onClick),
         horizontalAlignment = Alignment.Start
     ) {
         Box(
@@ -1486,7 +1755,8 @@ fun HomeCarouselItem(
             Card(
                 modifier = Modifier.fillMaxSize().sharedElementIfAvailable("image-$itemId"),
                 shape = imageShape,
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -1515,7 +1785,7 @@ fun HomeCarouselItem(
         Text(
             text = title,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
             minLines = 2,
             maxLines = 2,
@@ -1544,57 +1814,60 @@ fun HomeSongListItem(
     onClick: () -> Unit,
     onMenuClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onMenuClick
-            )
-            .padding(vertical = 10.dp, horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .bouncingClickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = if (isPlaying) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f) else Color.Transparent
     ) {
-        Box(modifier = Modifier.size(56.dp)) {
-            AsyncImage(
-                model = song.thumbnailUrl?.resize(120),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(4.dp)),
-                contentScale = ContentScale.Crop
-            )
-            if (isPlaying) {
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.45f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AnimatedEqualizerBars(
-                        modifier = Modifier.size(24.dp).height(16.dp),
-                        color = MaterialTheme.colorScheme.inverseOnSurface
-                    )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.size(52.dp)) {
+                AsyncImage(
+                    model = song.thumbnailUrl?.resize(160),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                if (isPlaying) {
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AnimatedEqualizerBars(
+                            modifier = Modifier.size(22.dp).height(16.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = song.artist,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        IconButton(onClick = onMenuClick) {
-            Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = song.title,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Medium),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = song.artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            IconButton(onClick = onMenuClick) {
+                Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -1972,9 +2245,9 @@ fun CommunityExpressiveCard(
             .wrapContentHeight()
             .padding(vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Box(
             modifier = Modifier
@@ -2020,7 +2293,7 @@ fun CommunityExpressiveCard(
                         modifier = Modifier
                             .size(84.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.1f)),
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                         contentScale = ContentScale.Crop,
                         onSuccess = { state ->
                             val drawable = state.result.drawable
@@ -2046,7 +2319,7 @@ fun CommunityExpressiveCard(
                             text = author,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = Color.White.copy(alpha = 0.85f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -2055,7 +2328,7 @@ fun CommunityExpressiveCard(
                             Text(
                                 text = songCount,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Color.White.copy(alpha = 0.6f)
+                                color = Color.White.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -2074,12 +2347,12 @@ fun CommunityExpressiveCard(
                             onClick = { onRadioClick(item) },
                             modifier = Modifier
                                 .size(44.dp)
-                                .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
                         ) {
                             Icon(
                                 painter = androidx.compose.ui.res.painterResource(id = com.codetrio.overdrive.R.drawable.ic_radio),
                                 contentDescription = "Radio",
-                                tint = Color.White.copy(alpha = 0.9f),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -2087,12 +2360,12 @@ fun CommunityExpressiveCard(
                             onClick = { onSaveClick(item) },
                             modifier = Modifier
                                 .size(44.dp)
-                                .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.BookmarkBorder, 
                                 contentDescription = "Save",
-                                tint = Color.White.copy(alpha = 0.9f),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(22.dp)
                             )
                         }

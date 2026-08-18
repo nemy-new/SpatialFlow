@@ -302,6 +302,9 @@ fun FullPlayer(
     val prefs = remember { context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE) }
     var showVolumeSlider by remember { mutableStateOf(prefs.getBoolean("show_volume_slider", true)) }
     var showMusicHapticsOption by remember { mutableStateOf(prefs.getBoolean("show_music_haptics_option", false)) }
+    var showPlayerStatsOption by remember {
+        mutableStateOf(prefs.getBoolean("developer_mode", false) && prefs.getBoolean("show_player_stats", false))
+    }
     val isEffectsExpanded by viewModel.isEffectsExpanded.collectAsStateWithLifecycle()
     var showStatsForNerdsDialog by remember { mutableStateOf(false) }
     
@@ -311,6 +314,8 @@ fun FullPlayer(
                 showVolumeSlider = sharedPreferences.getBoolean(key, true)
             } else if (key == "show_music_haptics_option") {
                 showMusicHapticsOption = sharedPreferences.getBoolean(key, false)
+            } else if (key == "show_player_stats" || key == "developer_mode") {
+                showPlayerStatsOption = sharedPreferences.getBoolean("developer_mode", false) && sharedPreferences.getBoolean("show_player_stats", false)
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -447,13 +452,22 @@ fun FullPlayer(
                         val dominant = palette.dominantSwatch?.rgb?.let { Color(it) }
 
                         PlayerPaletteState.vibrantColor.value =
-                            palette.vibrantSwatch?.rgb?.let { Color(it) } ?: Color.Black
+                            palette.vibrantSwatch?.rgb?.let { Color(it) } ?: dominant ?: Color.Black
+
+                        PlayerPaletteState.lightVibrantColor.value =
+                            palette.lightVibrantSwatch?.rgb?.let { Color(it) } ?: palette.lightMutedSwatch?.rgb?.let { Color(it) } ?: dominant ?: Color.Black
 
                         PlayerPaletteState.darkVibrantColor.value =
-                            palette.darkVibrantSwatch?.rgb?.let { Color(it) } ?: Color.Black
+                            palette.darkVibrantSwatch?.rgb?.let { Color(it) } ?: dominant ?: Color.Black
+
+                        PlayerPaletteState.mutedColor.value =
+                            palette.mutedSwatch?.rgb?.let { Color(it) } ?: dominant ?: Color.Black
 
                         PlayerPaletteState.darkMutedColor.value =
-                            palette.darkMutedSwatch?.rgb?.let { Color(it) } ?: Color.Black
+                            palette.darkMutedSwatch?.rgb?.let { Color(it) } ?: dominant ?: Color.Black
+
+                        PlayerPaletteState.dominantColor.value =
+                            dominant ?: Color.Black
 
                     } catch (_: Exception) { /* palette failure — keep existing colors */ }
 
@@ -632,15 +646,17 @@ fun FullPlayer(
                     isDark = isDark
                 )
 
-                // Stats for Nerds / Playback Diagnostics Chip
-                PillChip(
-                    icon = painterResource(id = R.drawable.ic_stats),
-                    label = "Stats",
-                    onClick = { showStatsForNerdsDialog = true },
-                    contentColor = contentColor,
-                    accentColor = dynamicAccentColor,
-                    isDark = isDark
-                )
+                // Stats for Nerds / Playback Diagnostics Chip (Developer Option)
+                if (showPlayerStatsOption) {
+                    PillChip(
+                        icon = painterResource(id = R.drawable.ic_stats),
+                        label = "Stats",
+                        onClick = { showStatsForNerdsDialog = true },
+                        contentColor = contentColor,
+                        accentColor = dynamicAccentColor,
+                        isDark = isDark
+                    )
+                }
 
                 // Interactive Lyrics Chip inside the same row
                 PillChip(
@@ -1068,15 +1084,17 @@ fun FullPlayer(
                     isDark = isDark
                 )
 
-                // Stats for Nerds / Playback Diagnostics Chip (Tablet)
-                PillChip(
-                    icon = painterResource(id = R.drawable.ic_stats),
-                    label = "Stats",
-                    onClick = { showStatsForNerdsDialog = true },
-                    contentColor = contentColor,
-                    accentColor = dynamicAccentColor,
-                    isDark = isDark
-                )
+                // Stats for Nerds / Playback Diagnostics Chip (Tablet, Developer Option)
+                if (showPlayerStatsOption) {
+                    PillChip(
+                        icon = painterResource(id = R.drawable.ic_stats),
+                        label = "Stats",
+                        onClick = { showStatsForNerdsDialog = true },
+                        contentColor = contentColor,
+                        accentColor = dynamicAccentColor,
+                        isDark = isDark
+                    )
+                }
 
                 // Interactive Lyrics Chip inside the same row
                 PillChip(

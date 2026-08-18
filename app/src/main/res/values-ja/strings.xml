@@ -206,8 +206,10 @@
     <string name="text_export_settings_library">設定とライブラリをエクスポート</string>
     <string name="text_export_playlists_favorites_and_preferences_to_json">プレイリスト、お気に入り、設定をJSONにエクスポート</string>
     <string name="text_extract_theme_colors_from_the_currently_playing_album_art">現在再生中のアルバムアートからテーマカラーを抽出する</string>
-    <string name="text_feature">機能</string>
+    <string name="text_feature">注目</string>
     <string name="text_fluid_theme">流体テーマ</string>
+    <string name="text_fluid_mesh_theme">流体メッシュグラデーション</string>
+    <string name="text_fluid_mesh_theme_desc">アルバムアートの色から生成された複数のカラーノードが、音楽に合わせて優雅に漂い波打つ生きたメッシュキャンバス。</string>
     <string name="text_followed_artists_yt_music">フォロー中のアーティスト</string>
     <string name="text_force_a_runtime_exception_to_test_crash_report_dialog">実行時例外を発生させてクラッシュレポートダイアログをテストする</string>
     <string name="text_force_high_refresh_rate">高リフレッシュレートを強制</string>
@@ -496,6 +498,8 @@
     <string name="settings_developer_options">開発者向けオプション</string>
     <string name="settings_developer_options_desc">高度なデバッグと設定</string>
     <string name="developer_playback_diagnostics">再生診断</string>
+    <string name="developer_show_player_stats">メディアプレイヤーにStatsを表示</string>
+    <string name="developer_show_player_stats_desc">再生画面の操作バーにStats for Nerds（統計情報）ボタンを表示します</string>
     <string name="developer_playback_logs">再生ログ</string>
     <string name="developer_playback_logs_desc">ストリーム解決、バッファ状況、エラー履歴の詳細</string>
     <string name="developer_performance">パフォーマンス最適化</string>
@@ -600,4 +604,40 @@
     <!-- What's New -->
     <string name="whats_new_no_releases">リリース情報が見つかりませんでした。</string>
     <string name="whats_new_version_series">バージョン %s シリーズ</string>
+
+    <!-- Library Redesign -->
+    <string name="lib_tab_all">すべて</string>
+    <string name="lib_tab_playlists">プレイリスト</string>
+    <string name="lib_tab_albums">アルバム</string>
+    <string name="lib_tab_songs">曲</string>
+    <string name="lib_tab_artists">アーティスト</string>
+    <string name="lib_tab_downloads">ダウンロード</string>
+    <string name="lib_tab_device_files">端末の音源</string>
+    <string name="lib_tab_podcasts">ポッドキャスト</string>
+    <string name="lib_tab_recap">リキャップ</string>
+
+    <string name="lib_view_large_grid">大グリッド</string>
+    <string name="lib_view_compact_grid">小グリッド</string>
+    <string name="lib_view_standard_list">標準リスト</string>
+    <string name="lib_view_compact_list">高密度リスト</string>
+    <string name="lib_view_mode">表示方式</string>
+
+    <string name="lib_sort_recently_added">最近追加した順</string>
+    <string name="lib_sort_recently_played">最近再生した順</string>
+    <string name="lib_sort_title">タイトル順 (A-Z)</string>
+    <string name="lib_sort_artist">アーティスト順</string>
+    <string name="lib_sort_duration">再生時間順</string>
+    <string name="lib_sort_song_count">曲数順</string>
+
+    <string name="lib_hero_liked_songs">お気に入りの曲</string>
+    <string name="lib_hero_shuffle">シャッフル再生</string>
+    <string name="lib_hero_downloads">ダウンロード済み</string>
+    <string name="lib_hero_recents">最近再生した項目</string>
+    <string name="lib_hero_stats">リスニング分析</string>
+    <string name="lib_hero_new_playlist">新規作成</string>
+    <string name="lib_hero_empty_liked">曲をお気に入りに追加するとここに表示されます</string>
+    <string name="lib_hero_songs_count">%d 曲</string>
+    <string name="lib_search_placeholder">ライブラリ内を検索…</string>
+    <string name="lib_empty_search">「%s」に一致する項目はありません</string>
+    <string name="lib_empty_library">ライブラリにアイテムがありません</string>
 </resources>

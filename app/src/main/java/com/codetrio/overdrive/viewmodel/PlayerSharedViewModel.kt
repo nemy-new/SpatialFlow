@@ -292,6 +292,17 @@ class PlayerSharedViewModel @Inject constructor(
         }
     }
 
+    fun addSongsToLocalPlaylist(playlistId: Long, songs: List<SongItem>) {
+        if (songs.isEmpty()) return
+        bgScope.launch(Dispatchers.IO) {
+            var count = playlistDao.getSongCountForPlaylistSync(playlistId)
+            songs.forEach { song ->
+                val entity = song.toPlaylistSongEntity(playlistId, count++)
+                playlistDao.insertPlaylistSong(entity)
+            }
+        }
+    }
+
     fun removeSongFromLocalPlaylist(playlistId: Long, songId: String) {
         bgScope.launch(Dispatchers.IO) {
             playlistDao.deletePlaylistSong(playlistId, songId)
@@ -1960,6 +1971,21 @@ class PlayerSharedViewModel @Inject constructor(
         val insertIndex = (if (currentIdx < 0) -1 else currentIdx) + 1
         newList.add(insertIndex.coerceAtMost(newList.size), song)
         
+        _songList.value = newList
+        _currentSongIndex.value = findSongIndexById(_currentSong.value?.id ?: -1)
+        audioService?.refreshNativeQueue()
+    }
+
+    fun addSongsToQueueNext(songs: List<SongItem>) {
+        if (songs.isEmpty()) return
+        val newList = ArrayList(_songList.value)
+        val idsToRemove = songs.map { it.id }.toSet()
+        newList.removeAll { idsToRemove.contains(it.id) }
+
+        val currentIdx = _currentSongIndex.value
+        val insertIndex = (if (currentIdx < 0) -1 else currentIdx) + 1
+        newList.addAll(insertIndex.coerceAtMost(newList.size), songs)
+
         _songList.value = newList
         _currentSongIndex.value = findSongIndexById(_currentSong.value?.id ?: -1)
         audioService?.refreshNativeQueue()

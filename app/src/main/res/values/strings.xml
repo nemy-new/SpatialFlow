@@ -208,6 +208,8 @@
     <string name="text_extract_theme_colors_from_the_currently_playing_album_art">Extract theme colors from the currently playing album art</string>
     <string name="text_feature">Feature</string>
     <string name="text_fluid_theme">Fluid Theme</string>
+    <string name="text_fluid_mesh_theme">Dynamic Fluid Canvas</string>
+    <string name="text_fluid_mesh_theme_desc">A living, multi-node fluid mesh gradient dynamically generated from album art that gently drifts and pulses with the music.</string>
     <string name="text_followed_artists_yt_music">Followed Artists (YT Music)</string>
     <string name="text_force_a_runtime_exception_to_test_crash_report_dialog">Force a runtime exception to test crash report dialog</string>
     <string name="text_force_high_refresh_rate">Force high refresh rate</string>
@@ -496,6 +498,8 @@
     <string name="settings_developer_options">Developer Options</string>
     <string name="settings_developer_options_desc">Advanced debugging and settings</string>
     <string name="developer_playback_diagnostics">Playback Diagnostics</string>
+    <string name="developer_show_player_stats">Show Stats on Media Player</string>
+    <string name="developer_show_player_stats_desc">Display Stats for Nerds button in the media player action bar</string>
     <string name="developer_playback_logs">Playback Logs</string>
     <string name="developer_playback_logs_desc">Detailed stream resolution, buffer metrics and error stack traces</string>
     <string name="developer_performance">Performance &amp; Optimization</string>
@@ -600,4 +604,40 @@
     <!-- What's New -->
     <string name="whats_new_no_releases">No releases found.</string>
     <string name="whats_new_version_series">Version %s Series</string>
+
+    <!-- Library Redesign -->
+    <string name="lib_tab_all">All</string>
+    <string name="lib_tab_playlists">Playlists</string>
+    <string name="lib_tab_albums">Albums</string>
+    <string name="lib_tab_songs">Songs</string>
+    <string name="lib_tab_artists">Artists</string>
+    <string name="lib_tab_downloads">Downloads</string>
+    <string name="lib_tab_device_files">Device Audio</string>
+    <string name="lib_tab_podcasts">Podcasts</string>
+    <string name="lib_tab_recap">Recap</string>
+
+    <string name="lib_view_large_grid">Large Grid</string>
+    <string name="lib_view_compact_grid">Compact Grid</string>
+    <string name="lib_view_standard_list">Standard List</string>
+    <string name="lib_view_compact_list">High Density</string>
+    <string name="lib_view_mode">View Mode</string>
+
+    <string name="lib_sort_recently_added">Recently Added</string>
+    <string name="lib_sort_recently_played">Recently Played</string>
+    <string name="lib_sort_title">Title (A-Z)</string>
+    <string name="lib_sort_artist">Artist</string>
+    <string name="lib_sort_duration">Duration</string>
+    <string name="lib_sort_song_count">Song Count</string>
+
+    <string name="lib_hero_liked_songs">Liked Songs</string>
+    <string name="lib_hero_shuffle">Shuffle</string>
+    <string name="lib_hero_downloads">Downloads</string>
+    <string name="lib_hero_recents">Recently Played</string>
+    <string name="lib_hero_stats">Listening Stats</string>
+    <string name="lib_hero_new_playlist">New Playlist</string>
+    <string name="lib_hero_empty_liked">Favorite your first song to see it here</string>
+    <string name="lib_hero_songs_count">%d songs</string>
+    <string name="lib_search_placeholder">Search in library…</string>
+    <string name="lib_empty_search">No results matching \"%s\"</string>
+    <string name="lib_empty_library">No items in your library yet</string>
 </resources>

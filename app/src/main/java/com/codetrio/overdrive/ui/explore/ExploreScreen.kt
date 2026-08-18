@@ -1366,6 +1366,20 @@ fun CreditsTextSection(title: String, content: List<String>) {
     }
 }
 
+fun getMoodIcon(mood: String): String = when {
+    mood.contains("リラックス", ignoreCase = true) || mood.contains("relax", ignoreCase = true) -> "☕"
+    mood.contains("悲しい", ignoreCase = true) || mood.contains("sad", ignoreCase = true) || mood.contains("メランコリー", ignoreCase = true) -> "🌧️"
+    mood.contains("ポジティブ", ignoreCase = true) || mood.contains("positive", ignoreCase = true) || mood.contains("feel good", ignoreCase = true) -> "✨"
+    mood.contains("睡眠", ignoreCase = true) || mood.contains("sleep", ignoreCase = true) -> "🌙"
+    mood.contains("エナジー", ignoreCase = true) || mood.contains("energy", ignoreCase = true) -> "⚡"
+    mood.contains("ワークアウト", ignoreCase = true) || mood.contains("workout", ignoreCase = true) -> "🏃"
+    mood.contains("集中", ignoreCase = true) || mood.contains("focus", ignoreCase = true) || mood.contains("フォーカス", ignoreCase = true) -> "🎧"
+    mood.contains("ロマンス", ignoreCase = true) || mood.contains("romance", ignoreCase = true) -> "💖"
+    mood.contains("パーティ", ignoreCase = true) || mood.contains("party", ignoreCase = true) -> "🎉"
+    mood.contains("ドライブ", ignoreCase = true) || mood.contains("commute", ignoreCase = true) -> "🚗"
+    else -> "🎵"
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SearchHeader(
@@ -1656,7 +1670,7 @@ fun SearchHeader(
                         },
                         expanded = isSearchActive,
                         onExpandedChange = onSearchActiveChange,
-                        modifier = if (isLandscape) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                         windowInsets = SearchBarDefaults.windowInsets,
                         colors = SearchBarDefaults.colors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -1752,10 +1766,10 @@ fun SearchHeader(
                                         label = "suggestions_animation",
                                         modifier = Modifier.fillMaxWidth()
                                     ) { (loading, sugs) ->
-                                        Column {
+                                        Column(modifier = Modifier.fillMaxWidth()) {
                                             if (loading && sugs.isEmpty()) {
                                                 UnifiedShimmerProvider {
-                                                    Column {
+                                                    Column(modifier = Modifier.fillMaxWidth()) {
                                                         repeat(5) { i ->
                                                             SuggestionSkeletonLoader()
                                                         }
@@ -1764,10 +1778,10 @@ fun SearchHeader(
                                             } else {
                                                 sugs.forEach { suggestion ->
                                                     ListItem(
-                                                        headlineContent = { Text(suggestion) },
+                                                        headlineContent = { Text(suggestion, modifier = Modifier.fillMaxWidth()) },
                                                         leadingContent = { Icon(Icons.Default.Search, null) },
                                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                                        modifier = Modifier.clickable { onSuggestionClick(suggestion) }
+                                                        modifier = Modifier.fillMaxWidth().clickable { onSuggestionClick(suggestion) }
                                                     )
                                                 }
                                             }
@@ -1782,7 +1796,7 @@ fun SearchHeader(
             // Mood chips — hidden during active search input
             if (!isSearchActive && searchQuery.isBlank() && searchResults.isEmpty() && homeMoods.isNotEmpty()) {
                 LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1791,11 +1805,18 @@ fun SearchHeader(
                         FilterChip(
                             selected = selected,
                             onClick = { onMoodClick(if (selected) null else label) },
-                            label = { Text(label, fontWeight = FontWeight.SemiBold) },
-                            shape = RoundedCornerShape(8.dp),
+                            label = {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold
+                                    )
+                                )
+                            },
+                            shape = RoundedCornerShape(12.dp),
                             border = null,
                             colors = FilterChipDefaults.filterChipColors(
-                                containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1809,7 +1830,8 @@ fun SearchHeader(
             if (!isSearchActive && searchQuery.isNotBlank()) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     val filters = listOf(
                         null to "All",
@@ -1824,10 +1846,10 @@ fun SearchHeader(
                             selected = selected,
                             onClick = { onFilterClick(filter) },
                             label = { Text(label, fontWeight = FontWeight.SemiBold) },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(12.dp),
                             border = null,
                             colors = FilterChipDefaults.filterChipColors(
-                                containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer

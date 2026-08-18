@@ -73,6 +73,7 @@ fun AppleMusicBackground(
     }
     val isStatic = remember(playerTheme.value) { playerTheme.value == "static" }
     val isImmersion = remember(playerTheme.value) { playerTheme.value == "immersion" }
+    val isMesh = remember(playerTheme.value) { playerTheme.value == "mesh" }
 
     DisposableEffect(Unit) {
         val prefs = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
@@ -104,9 +105,12 @@ fun AppleMusicBackground(
     }
 
     // ── Palette colors from global singleton ───────────────────────────────────────
-    val vibrant     = PlayerPaletteState.vibrantColor.value
-    val darkVibrant = PlayerPaletteState.darkVibrantColor.value
-    val darkMuted   = PlayerPaletteState.darkMutedColor.value
+    val vibrant      = PlayerPaletteState.vibrantColor.value
+    val lightVibrant = PlayerPaletteState.lightVibrantColor.value
+    val darkVibrant  = PlayerPaletteState.darkVibrantColor.value
+    val muted        = PlayerPaletteState.mutedColor.value
+    val darkMuted    = PlayerPaletteState.darkMutedColor.value
+    val dominant     = PlayerPaletteState.dominantColor.value
 
     // ── Spring-animated palette color morphing ─────────────────────────────────────
     val animatedVibrant: Color = animateColorAsState(
@@ -186,6 +190,20 @@ fun AppleMusicBackground(
                                 )
                             )
                         )
+                )
+            }
+        } else if (isMesh) {
+            // DYNAMIC FLUID CANVAS THEME — LIVING MULTI-NODE MESH GRADIENT
+            SpatialWrapper {
+                DynamicMeshCanvasBackground(
+                    vibrant = vibrant,
+                    lightVibrant = lightVibrant,
+                    darkVibrant = darkVibrant,
+                    muted = muted,
+                    darkMuted = darkMuted,
+                    dominant = dominant,
+                    isPlaying = isPlaying,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         } else {

@@ -361,7 +361,7 @@ class MainActivity : AppCompatActivity() {
                         val navBackStackEntry by currentNavController.currentBackStackEntryAsState()
                         val currentDestination = navBackStackEntry?.destination
                         
-                        val showNavRail = currentDestination?.route in listOf("explore", "search", "library", "effects", "settings")
+                        val showNavRail = currentDestination?.route !in listOf("onboarding", "google_signin")
 
                         val playerExpansionFraction by playerViewModel.playerExpansionFraction.collectAsStateWithLifecycle(initialValue = 0f)
                         if (showNavRail) {
@@ -370,65 +370,73 @@ class MainActivity : AppCompatActivity() {
                                     .width(80.dp * (1f - playerExpansionFraction))
                                     .alpha(1f - playerExpansionFraction)
                             ) {
-                            androidx.compose.material3.NavigationRail(
-                            modifier = Modifier.requiredWidth(80.dp).offset(x = -80.dp * playerExpansionFraction),
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                        ) {
-                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
-                            val tabsState by rememberBottomNavTabs(LocalContext.current)
-                            
-                            var lastClickTime by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0L) }
-                            var lastClickRoute by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+                                androidx.compose.material3.NavigationRail(
+                                    modifier = Modifier
+                                        .requiredWidth(80.dp)
+                                        .offset(x = -80.dp * playerExpansionFraction),
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                ) {
+                                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+                                    val tabsState by rememberBottomNavTabs(LocalContext.current)
+                                    
+                                    var lastClickTime by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0L) }
+                                    var lastClickRoute by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
 
-                            val items = tabsState.filter { it.isVisible }.map { Triple(it.route, getNavLabelForRoute(it.route), getNavIconForRoute(it.route)) }
-                            items.forEach { (route, label, iconData) ->
-                                val selected = currentDestination?.route == route
-                                androidx.compose.material3.NavigationRailItem(
-                                    selected = selected,
-                                    onClick = {
-                                        val currentTime = System.currentTimeMillis()
-                                        val isDoubleTap = (currentTime - lastClickTime < 400L) || selected
-                                        lastClickTime = currentTime
-                                        lastClickRoute = route
+                                    val items = tabsState.filter { it.isVisible }.map { Triple(it.route, getNavLabelForRoute(it.route), getNavIconForRoute(it.route)) }
+                                    items.forEach { (route, label, iconData) ->
+                                        val selected = when (route) {
+                                            "explore" -> currentDestination?.route in listOf("explore", "album", "playlist", "artist", "section", "mood", "genres")
+                                            "library" -> currentDestination?.route in listOf("library", "statistics", "tag_editor")
+                                            "search" -> currentDestination?.route == "search"
+                                            "settings" -> currentDestination?.route in listOf("settings", "music_management", "account", "appearance", "playback", "haptics", "about", "feedback", "whats_new", "backup_restore", "customize_bottom_nav", "playback_logs", "developer_performance")
+                                            else -> currentDestination?.route == route
+                                        }
+                                        androidx.compose.material3.NavigationRailItem(
+                                            selected = selected,
+                                            onClick = {
+                                                val currentTime = System.currentTimeMillis()
+                                                val isDoubleTap = (currentTime - lastClickTime < 400L) || selected
+                                                lastClickTime = currentTime
+                                                lastClickRoute = route
 
-                                        if (isDoubleTap && selected) {
-                                            when (route) {
-                                                "search" -> exploreViewModel.triggerSearchFocus()
-                                                "explore" -> {
+                                                if (isDoubleTap && selected) {
+                                                    when (route) {
+                                                        "search" -> exploreViewModel.triggerSearchFocus()
+                                                        "explore" -> {
+                                                            exploreViewModel.resetToHome()
+                                                            exploreViewModel.triggerScrollToTop()
+                                                        }
+                                                        "library" -> playerViewModel.triggerScrollToTop()
+                                                        "settings" -> {
+                                                            currentNavController.popBackStack("settings", inclusive = false)
+                                                        }
+                                                    }
+                                                }
+
+                                                if (route == "explore" && !isDoubleTap) {
                                                     exploreViewModel.resetToHome()
-                                                    exploreViewModel.triggerScrollToTop()
                                                 }
-                                                "library" -> playerViewModel.triggerScrollToTop()
-                                                "settings" -> {
-                                                    currentNavController.popBackStack("settings", inclusive = false)
+
+                                                if (!selected) {
+                                                    currentNavController.navigate(route) {
+                                                        popUpTo(currentNavController.graph.findStartDestination().id) { saveState = true }
+                                                        launchSingleTop = true
+                                                        restoreState = true
+                                                    }
                                                 }
-                                            }
-                                        }
-
-                                        if (route == "explore" && !isDoubleTap) {
-                                            exploreViewModel.resetToHome()
-                                        }
-
-                                        if (!selected) {
-                                            currentNavController.navigate(route) {
-                                                popUpTo(currentNavController.graph.findStartDestination().id) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        }
-                                    },
-                                    icon = {
-                                        if (iconData is androidx.compose.ui.graphics.vector.ImageVector) {
-                                            Icon(imageVector = iconData, contentDescription = label, modifier = Modifier.size(26.dp))
-                                        } else if (iconData is Int) {
-                                            Icon(painter = painterResource(id = iconData), contentDescription = label, modifier = Modifier.size(26.dp))
-                                        }
-                                    },
-                                    label = if (hideNavLabels) null else { { Text(label) } }
-                                )
-                            }
-                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
-                        }
+                                            },
+                                            icon = {
+                                                if (iconData is androidx.compose.ui.graphics.vector.ImageVector) {
+                                                    Icon(imageVector = iconData, contentDescription = label, modifier = Modifier.size(26.dp))
+                                                } else if (iconData is Int) {
+                                                    Icon(painter = painterResource(id = iconData), contentDescription = label, modifier = Modifier.size(26.dp))
+                                                }
+                                            },
+                                            label = if (hideNavLabels) null else { { Text(label) } }
+                                        )
+                                    }
+                                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+                                }
                             }
                         }
 

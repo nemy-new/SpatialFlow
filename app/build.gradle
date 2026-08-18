@@ -36,8 +36,8 @@ android {
         applicationId "com.codetrio.overdrive"
         minSdk 26
         targetSdk 37
-        versionCode 11
-        versionName "0.0.1"
+        versionCode 12
+        versionName "V0.0.1.1"
     }
 
     dependenciesInfo {

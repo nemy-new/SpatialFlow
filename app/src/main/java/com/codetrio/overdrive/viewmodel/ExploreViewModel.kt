@@ -521,7 +521,16 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private fun List<HomeSection>.sortWithPersonalizedFirst(): List<HomeSection> {
         return this.sortedByDescending { sec ->
             val t = sec.title.lowercase()
-            t.contains("personalized") || t.contains("your personalized") || t.contains("おすすめ") || t.contains("あなた専用") || t.contains("ミックス")
+            when {
+                t.contains("speed dial") || t.contains("スピードダイヤル") -> 100
+                t.contains("もう一度") || t.contains("listen again") -> 90
+                t.contains("quick picks") || t.contains("クイック ピック") || t.contains("quick pick") -> 80
+                t.contains("ライブラリ") || t.contains("from your library") -> 70
+                t.contains("あなた専用") || t.contains("for you") || t.contains("personalized") || t.contains("daily discover") || t.contains("毎日のおすすめ") -> 60
+                t.contains("おすすめ") || t.contains("recommended") -> 50
+                (t.contains("ミックス") && !t.contains("リミックス")) || (t.contains("mix") && !t.contains("remix")) -> 40
+                else -> 10
+            }
         }
     }
 
@@ -555,7 +564,8 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         }
 
         // Standard Feed Scenario: Load pure YouTube Home
-        val homePage = YouTubeMusic.home().getOrNull()
+        val homePageResult = YouTubeMusic.home()
+        val homePage = homePageResult.getOrNull()
 
         homeContinuationToken = homePage?.continuation
 
@@ -568,6 +578,18 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
         // Add pure Home sections
         homePage?.sections?.let { sections.addAll(it) }
+
+        // Fallback if YouTube home returned empty or failed
+        if (sections.isEmpty()) {
+            try {
+                val explorePage = YouTubeMusic.explore().getOrNull()
+                explorePage?.sections?.let { sections.addAll(it) }
+            } catch (e: Exception) {
+                Log.e(TAG, "Fallback explore feed failed", e)
+            }
+        }
+
+        Log.d(TAG, "Home sections loaded: ${sections.size} sections -> ${sections.map { it.title }}")
 
         // Post-processing: Filter out disliked / not interested songs
         val notInterested = _uiState.value.notInterestedIds

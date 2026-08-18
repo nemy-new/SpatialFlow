@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +41,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -113,11 +117,13 @@ fun AlbumDetailView(
             )
         }
     ) {
-        item {
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-            )
+        if (!isLandscape) {
+            item {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
+            }
         }
         itemsIndexed(
             items = albumPage.songs,
@@ -165,11 +171,13 @@ fun PlaylistDetailView(
             )
         }
     ) {
-        item {
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-            )
+        if (!isLandscape) {
+            item {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
+            }
         }
         itemsIndexed(
             items = playlistPage.songs,
@@ -246,170 +254,413 @@ fun ArtistDetailView(
         }.filter { it.isNotBlank() }.distinct().joinToString(" • ")
     }
 
-    AdaptiveDetailContainer(
-        isLandscape = isLandscape,
-        thumbnailUrl = artistPage.artist.thumbnailUrl,
-        title = artistPage.artist.title,
-        subtitle = formattedSubtitle,
-        isCircular = true,
-        sharedElementKey = artistPage.artist.browseId,
-        onBack = onBack,
-        headerActions = {
-            // Follow/Subscribe Button
-            if (onSubscribeClick != null) {
-                val label = if (isSubscribed) "Subscribed" else "Subscribe"
-                FilledTonalButton(
-                    onClick = {
-                        onSubscribeClick(artistPage.artist.browseId)
-                    },
-                    shape = CircleShape,
-                    modifier = Modifier.height(38.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = if (isSubscribed) {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.primaryContainer
-                        },
-                        contentColor = if (isSubscribed) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.onPrimaryContainer
+    if (isLandscape) {
+        val lazyListState = rememberLazyListState()
+        val context = LocalContext.current
+        val activity = remember(context) { context as? androidx.fragment.app.FragmentActivity }
+        val playerSharedViewModel = remember(activity) {
+            activity?.let { androidx.lifecycle.ViewModelProvider(it)[PlayerSharedViewModel::class.java] }
+        }
+        val isPlayerExpanded = playerSharedViewModel?.isPlayerExpanded?.collectAsStateWithLifecycle()?.value ?: false
+
+        androidx.activity.compose.BackHandler(enabled = !isPlayerExpanded) {
+            onBack()
+        }
+
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 120.dp)
+            ) {
+                // Top Panoramic Hero Banner (YouTube Music style)
+                item(key = "artist_panorama_banner") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(290.dp)
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(artistPage.artist.thumbnailUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        // Gradient scrim (transparent at top, deep dark at bottom for crisp readability)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        0.0f to Color.Transparent,
+                                        0.45f to Color.Black.copy(alpha = 0.35f),
+                                        0.8f to Color.Black.copy(alpha = 0.85f),
+                                        1.0f to Color.Black
+                                    )
+                                )
+                        )
+
+                        // Bottom content inside banner
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(horizontal = 24.dp, vertical = 20.dp)
+                        ) {
+                            Text(
+                                text = artistPage.artist.title,
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            if (formattedSubtitle.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = formattedSubtitle,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White.copy(alpha = 0.85f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Subscribe Button
+                                if (onSubscribeClick != null) {
+                                    val label = if (isSubscribed) "Subscribed" else "Subscribe"
+                                    FilledTonalButton(
+                                        onClick = { onSubscribeClick(artistPage.artist.browseId) },
+                                        shape = CircleShape,
+                                        modifier = Modifier.height(38.dp),
+                                        colors = ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = if (isSubscribed) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primaryContainer,
+                                            contentColor = if (isSubscribed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    ) {
+                                        Text(label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                                    }
+                                }
+
+                                // Radio Button
+                                if (onStartRadioClick != null) {
+                                    IconButton(
+                                        onClick = {
+                                            val allSongs = artistPage.sections.flatMap { it.items }
+                                                .filterIsInstance<SearchItem.Song>().map { it.song }
+                                            if (allSongs.isNotEmpty()) onStartRadioClick(allSongs.random().videoId)
+                                        },
+                                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = com.codetrio.overdrive.R.drawable.ic_radio),
+                                            contentDescription = "Start Radio",
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+
+                                // Play All Button
+                                IconButton(
+                                    onClick = {
+                                        val allSongs = artistPage.sections.flatMap { it.items }
+                                            .filterIsInstance<SearchItem.Song>().map { it.song }
+                                        if (allSongs.isNotEmpty()) onSongClick(allSongs.first(), allSongs, 0)
+                                    },
+                                    modifier = Modifier.size(52.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = com.codetrio.overdrive.R.drawable.ic_play),
+                                        contentDescription = "Play All",
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
                         }
-                    )
-                ) {
-                    Text(
-                        label,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                    }
+                }
+
+                // Render sections below the banner
+                artistPage.sections.forEach { section ->
+                    val isTopSongs = section.title.contains("song", ignoreCase = true)
+                    if (isTopSongs) {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_top_songs),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable {
+                                        if (section.browseEndpoint != null) {
+                                            onSectionClick?.invoke(section.browseEndpoint, section.params, "Top songs")
+                                        } else {
+                                            val songs = section.items.filterIsInstance<SearchItem.Song>().map { it.song }
+                                            if (songs.isNotEmpty()) onSongClick(songs.first(), songs, 0)
+                                        }
+                                    }
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = if (section.browseEndpoint != null) "See all" else "Play all",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.ChevronRight, "See all",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                        val songs = section.items.filterIsInstance<SearchItem.Song>()
+                        val topSongsToTake = songs.take(6)
+                        val songChunks = topSongsToTake.chunked(2)
+
+                        songChunks.forEachIndexed { chunkIdx, chunk ->
+                            item(key = "top-songs-row-$chunkIdx") {
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                                    chunk.forEachIndexed { colIdx, item ->
+                                        val song = item.song
+                                        val isPlaying = song.videoId == currentOnlineSong?.videoId
+                                        val index = chunkIdx * 2 + colIdx
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            ArtistTopSongItem(
+                                                song = song,
+                                                isPlaying = isPlaying,
+                                                onClick = { onSongClick(song, songs.map { it.song }, index) },
+                                                onMenuClick = { onSongMenuClick(song) }
+                                            )
+                                        }
+                                    }
+                                    if (chunk.size < 2) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        item {
+                            HomeSectionRow(
+                                section = section,
+                                currentOnlineSong = currentOnlineSong,
+                                onSongClick = { song ->
+                                    val sectionSongs = section.items.filterIsInstance<SearchItem.Song>().map { it.song }
+                                    val idx = sectionSongs.indexOfFirst { it.videoId == song.videoId }
+                                    onSongClick(song, sectionSongs, idx)
+                                },
+                                onAlbumClick = onAlbumClick,
+                                onArtistClick = onArtistClick,
+                                onPlaylistClick = onPlaylistClick,
+                                onSongMenuClick = onSongMenuClick,
+                                onSectionClick = { browseId, params, title ->
+                                    onSectionClick?.invoke(browseId, params, title)
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // Floating Back Button
+            Box(modifier = Modifier.statusBarsPadding().padding(start = 16.dp, top = 16.dp)) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f), CircleShape),
+                    shape = IconButtonDefaults.filledShape
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    } else {
+        AdaptiveDetailContainer(
+            isLandscape = false,
+            thumbnailUrl = artistPage.artist.thumbnailUrl,
+            title = artistPage.artist.title,
+            subtitle = formattedSubtitle,
+            isCircular = true,
+            sharedElementKey = artistPage.artist.browseId,
+            onBack = onBack,
+            headerActions = {
+                // Follow/Subscribe Button
+                if (onSubscribeClick != null) {
+                    val label = if (isSubscribed) "Subscribed" else "Subscribe"
+                    FilledTonalButton(
+                        onClick = {
+                            onSubscribeClick(artistPage.artist.browseId)
+                        },
+                        shape = CircleShape,
+                        modifier = Modifier.height(38.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (isSubscribed) {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.primaryContainer
+                            },
+                            contentColor = if (isSubscribed) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            }
+                        )
+                    ) {
+                        Text(
+                            label,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
 
-            // Start Radio Button
-            if (onStartRadioClick != null) {
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Start Radio Button
+                if (onStartRadioClick != null) {
+                    IconButton(
+                        onClick = {
+                            val allSongs = artistPage.sections.flatMap { it.items }
+                                .filterIsInstance<SearchItem.Song>().map { it.song }
+                            if (allSongs.isNotEmpty()) onStartRadioClick(allSongs.random().videoId)
+                        },
+                        modifier = Modifier.size(40.dp)
+                            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = com.codetrio.overdrive.R.drawable.ic_radio),
+                            contentDescription = "Start Radio",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(2.dp))
+                }
+
+                // Play All Button
                 IconButton(
                     onClick = {
                         val allSongs = artistPage.sections.flatMap { it.items }
                             .filterIsInstance<SearchItem.Song>().map { it.song }
-                        if (allSongs.isNotEmpty()) onStartRadioClick(allSongs.random().videoId)
+                        if (allSongs.isNotEmpty()) onSongClick(allSongs.first(), allSongs, 0)
                     },
-                    modifier = Modifier.size(40.dp)
-                        .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                    modifier = Modifier.size(56.dp)
+                        .background(MaterialTheme.colorScheme.onBackground, CircleShape)
                 ) {
-                    Icon(
-                        painter = painterResource(id = com.codetrio.overdrive.R.drawable.ic_radio),
-                        contentDescription = "Start Radio",
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Icon(painter = painterResource(id = com.codetrio.overdrive.R.drawable.ic_play)
+                        , "Play All",
+                        tint = MaterialTheme.colorScheme.background,
+                        modifier = Modifier.size(28.dp))
                 }
-                Spacer(modifier = Modifier.width(2.dp))
             }
-
-            // Play All Button
-            IconButton(
-                onClick = {
-                    val allSongs = artistPage.sections.flatMap { it.items }
-                        .filterIsInstance<SearchItem.Song>().map { it.song }
-                    if (allSongs.isNotEmpty()) onSongClick(allSongs.first(), allSongs, 0)
-                },
-                modifier = Modifier.size(56.dp)
-                    .background(MaterialTheme.colorScheme.onBackground, CircleShape)
-            ) {
-                Icon(painter = painterResource(id = com.codetrio.overdrive.R.drawable.ic_play)
-                    , "Play All",
-                    tint = MaterialTheme.colorScheme.background,
-                    modifier = Modifier.size(28.dp))
-            }
-        }
-    ) {
-        artistPage.sections.forEach { section ->
-            val isTopSongs = section.title.contains("song", ignoreCase = true)
-            if (isTopSongs) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_top_songs), style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        ) {
+            artistPage.sections.forEach { section ->
+                val isTopSongs = section.title.contains("song", ignoreCase = true)
+                if (isTopSongs) {
+                    item {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable {
-                                if (section.browseEndpoint != null) {
-                                    onSectionClick?.invoke(section.browseEndpoint, section.params, "Top songs")
-                                } else {
-                                    val songs = section.items.filterIsInstance<SearchItem.Song>().map { it.song }
-                                    if (songs.isNotEmpty()) onSongClick(songs.first(), songs, 0)
-                                }
-                            }
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_top_songs), style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable {
+                                    if (section.browseEndpoint != null) {
+                                        onSectionClick?.invoke(section.browseEndpoint, section.params, "Top songs")
+                                    } else {
+                                        val songs = section.items.filterIsInstance<SearchItem.Song>().map { it.song }
+                                        if (songs.isNotEmpty()) onSongClick(songs.first(), songs, 0)
+                                    }
+                                }
                             ) {
-                                Text(
-                                    text = if (section.browseEndpoint != null) "See all" else "Play all",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.ChevronRight, "See all",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                }
-                val songs = section.items.filterIsInstance<SearchItem.Song>()
-                val topSongsToTake = songs.take(5)
-                val columns = if (isLandscape) 2 else 1
-                val songChunks = topSongsToTake.chunked(columns)
-
-                songChunks.forEachIndexed { chunkIdx, chunk ->
-                    item(key = "top-songs-row-$chunkIdx") {
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            chunk.forEachIndexed { colIdx, item ->
-                                val song = item.song
-                                val isPlaying = song.videoId == currentOnlineSong?.videoId
-                                val index = chunkIdx * columns + colIdx
-                                Box(modifier = Modifier.weight(1f)) {
-                                    ArtistTopSongItem(
-                                        song = song,
-                                        isPlaying = isPlaying,
-                                        onClick = { onSongClick(song, songs.map { it.song }, index) },
-                                        onMenuClick = { onSongMenuClick(song) }
+                                Box(
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                    Text(
+                                        text = if (section.browseEndpoint != null) "See all" else "Play all",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Medium
                                     )
                                 }
-                            }
-                            if (chunk.size < columns) {
-                                Spacer(modifier = Modifier.weight(1f))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(Icons.Default.ChevronRight, "See all",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                             }
                         }
                     }
-                }
-            } else {
-                item {
-                    HomeSectionRow(
-                        section = section,
-                        currentOnlineSong = currentOnlineSong,
-                        onSongClick = { song ->
-                            val sectionSongs = section.items.filterIsInstance<SearchItem.Song>().map { it.song }
-                            val idx = sectionSongs.indexOfFirst { it.videoId == song.videoId }
-                            onSongClick(song, sectionSongs, idx)
-                        },
-                        onAlbumClick = onAlbumClick,
-                        onArtistClick = onArtistClick,
-                        onPlaylistClick = onPlaylistClick,
-                        onSongMenuClick = onSongMenuClick,
-                        onSectionClick = { browseId, params, title ->
-                            onSectionClick?.invoke(browseId, params, title)
+                    val songs = section.items.filterIsInstance<SearchItem.Song>()
+                    val topSongsToTake = songs.take(5)
+                    val columns = 1
+                    val songChunks = topSongsToTake.chunked(columns)
+
+                    songChunks.forEachIndexed { chunkIdx, chunk ->
+                        item(key = "top-songs-row-$chunkIdx") {
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                chunk.forEachIndexed { colIdx, item ->
+                                    val song = item.song
+                                    val isPlaying = song.videoId == currentOnlineSong?.videoId
+                                    val index = chunkIdx * columns + colIdx
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        ArtistTopSongItem(
+                                            song = song,
+                                            isPlaying = isPlaying,
+                                            onClick = { onSongClick(song, songs.map { it.song }, index) },
+                                            onMenuClick = { onSongMenuClick(song) }
+                                        )
+                                    }
+                                }
+                                if (chunk.size < columns) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
                         }
-                    )
+                    }
+                } else {
+                    item {
+                        HomeSectionRow(
+                            section = section,
+                            currentOnlineSong = currentOnlineSong,
+                            onSongClick = { song ->
+                                val sectionSongs = section.items.filterIsInstance<SearchItem.Song>().map { it.song }
+                                val idx = sectionSongs.indexOfFirst { it.videoId == song.videoId }
+                                onSongClick(song, sectionSongs, idx)
+                            },
+                            onAlbumClick = onAlbumClick,
+                            onArtistClick = onArtistClick,
+                            onPlaylistClick = onPlaylistClick,
+                            onSongMenuClick = onSongMenuClick,
+                            onSectionClick = { browseId, params, title ->
+                                onSectionClick?.invoke(browseId, params, title)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -448,7 +699,7 @@ fun AdaptiveDetailContainer(
         modifier = Modifier.fillMaxSize()
     ) {
         if (isLandscape) {
-        // --- LANDSCAPE TWO-PANE ---
+        // --- LANDSCAPE TWO-PANE (YouTube Music Inspired) ---
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             // Ambient glass backdrop in landscape mode
             if (!thumbnailUrl.isNullOrBlank()) {
@@ -457,7 +708,7 @@ fun AdaptiveDetailContainer(
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer { alpha = 0.22f }
+                        .graphicsLayer { alpha = 0.18f }
                         .blur(56.dp),
                     contentScale = ContentScale.Crop
                 )
@@ -472,66 +723,84 @@ fun AdaptiveDetailContainer(
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // LEFT: Sticky Hero (Fixed premium width to eliminate stretching)
-                Box(
+                // LEFT: Sticky Hero Info Pane (Artwork + Title + Subtitle + Action Buttons)
+                Column(
                     modifier = Modifier
-                        .width(320.dp)
+                        .width(360.dp)
                         .fillMaxHeight()
-                        .padding(start = 16.dp, top = 24.dp, bottom = 24.dp, end = 16.dp),
-                    contentAlignment = Alignment.Center
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 24.dp, top = 24.dp, bottom = 48.dp, end = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     val baseModifier = Modifier
-                        .fillMaxHeight(0.85f)
+                        .fillMaxWidth()
                         .aspectRatio(1f)
-                        .clip(if (isCircular) CircleShape else RoundedCornerShape(24.dp))
+                        .clip(if (isCircular) CircleShape else RoundedCornerShape(20.dp))
 
-                    AsyncImage(
-                        model = thumbnailUrl,
-                        contentDescription = null,
+                    Card(
+                        shape = if (isCircular) CircleShape else RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .aspectRatio(1f)
+                    ) {
+                        AsyncImage(
+                            model = thumbnailUrl,
+                            contentDescription = null,
+                            modifier = if (sharedElementKey != null) {
+                                baseModifier.sharedElementIfAvailable("image-$sharedElementKey")
+                            } else baseModifier,
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = if (sharedElementKey != null) {
-                            baseModifier.sharedElementIfAvailable("image-$sharedElementKey")
-                        } else baseModifier,
-                        contentScale = ContentScale.Crop
+                            Modifier.sharedElementIfAvailable("title-$sharedElementKey")
+                        } else Modifier
                     )
+
+                    if (subtitle.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    if (headerActions != null) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            headerActions()
+                        }
+                    }
                 }
 
-                // RIGHT: Scrollable Info & Content (Consumes remaining width tightly)
+                // RIGHT: Scrollable Tracklist / Content (Consumes remaining width cleanly)
                 LazyColumn(
                     state = lazyListState,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
-                    contentPadding = PaddingValues(top = 32.dp, bottom = 120.dp, start = 8.dp, end = 24.dp)
+                    contentPadding = PaddingValues(top = 24.dp, bottom = 120.dp, start = 12.dp, end = 24.dp)
                 ) {
-                    item {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.displaySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = if (sharedElementKey != null) {
-                                Modifier.sharedElementIfAvailable("title-$sharedElementKey")
-                            } else Modifier
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                    if (headerActions != null) {
-                        item {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                headerActions()
-                            }
-                        }
-                    }
-                    item { Spacer(modifier = Modifier.height(16.dp)) }
                     content()
                 }
             }
@@ -540,7 +809,7 @@ fun AdaptiveDetailContainer(
             Box(modifier = Modifier.statusBarsPadding().padding(start = 16.dp, top = 16.dp)) {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f), CircleShape),
                     shape = IconButtonDefaults.filledShape
                 ) {
                     Icon(
@@ -548,8 +817,6 @@ fun AdaptiveDetailContainer(
                         contentDescription = "Back", 
                         tint = MaterialTheme.colorScheme.onSurface
                     )
-
-
                 }
             }
         }
@@ -965,11 +1232,13 @@ fun SectionDetailView(
                 )
             }
         ) {
-            item {
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                )
+            if (!isLandscape) {
+                item {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    )
+                }
             }
             itemsIndexed(
                 items = songs,
@@ -1004,11 +1273,13 @@ fun SectionDetailView(
             onBack = onBack,
             headerActions = null
         ) {
-            item {
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                )
+            if (!isLandscape) {
+                item {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    )
+                }
             }
 
             val columns = if (isLandscape) 4 else 2
@@ -1100,11 +1371,13 @@ fun MoodDetailView(
             }
         }
     ) {
-        item {
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-            )
+        if (!isLandscape) {
+            item {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
+            }
         }
 
         moodDetail.sections.forEach { section ->

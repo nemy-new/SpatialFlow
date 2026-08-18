@@ -54,6 +54,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -908,10 +909,24 @@ fun PlayerBottomSheetCompose(
             }
         }
 
-        val sheetBackProgress = 0f
+        var sheetBackProgress by remember { mutableFloatStateOf(0f) }
 
-        androidx.activity.compose.BackHandler(enabled = currentSheetContentState == PlayerSheetState.EXPANDED && !isLyricsModeEnabled) {
-            currentSheetContentState = PlayerSheetState.COLLAPSED
+        androidx.activity.compose.PredictiveBackHandler(enabled = currentSheetContentState == PlayerSheetState.EXPANDED && !isLyricsModeEnabled) { progressFlow ->
+            try {
+                progressFlow.collect { backEvent ->
+                    sheetBackProgress = backEvent.progress
+                    val targetY = backEvent.progress * sheetCollapsedTargetYState.value
+                    currentSheetTranslationY.snapTo(targetY)
+                }
+                sheetBackProgress = 0f
+                currentSheetContentState = PlayerSheetState.COLLAPSED
+            } catch (e: java.util.concurrent.CancellationException) {
+                sheetBackProgress = 0f
+                currentSheetTranslationY.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+                )
+            }
         }
 
         // Auto-expand/collapse sheet when currentSong is changed / ready
@@ -1176,10 +1191,6 @@ fun PlayerBottomSheetCompose(
                     val miniSizePx = with(density) { 48.dp.toPx() }
                     val fullWidthPx = with(density) { albumArtWidthDp.toPx() }
                     val fullHeightPx = with(density) { albumArtHeightDp.toPx() }
-                    val appBarThumbSizePx = with(density) { 44.dp.toPx() }
-                    val appBarScale = appBarThumbSizePx / fullWidthPx
-                    val appBarX = with(density) { 22.dp.toPx() }
-                    val appBarY = statusBarTopPx + with(density) { 18.dp.toPx() }
                     val isTablet = screenWidth >= 600
                     val screenWidthPx = with(density) { screenWidth.dp.toPx() }
                     val xStartOffsetPx = with(density) { 16.dp.toPx() }
@@ -1234,8 +1245,6 @@ fun PlayerBottomSheetCompose(
                         animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f),
                         label = "AlbumArtYPosition"
                     )
-                    val targetAppBarCornerRadiusPx = with(density) { 10.dp.toPx() }
-                    val targetAppBarShadowPx = with(density) { 6.dp.toPx() }
                     val targetExpandedCornerRadiusPx = with(density) { 28.dp.toPx() } // Increased for Apple Music aesthetic
 
                     var lastCornerRadiusPx by remember { androidx.compose.runtime.mutableFloatStateOf(-1f) }
@@ -1255,42 +1264,33 @@ fun PlayerBottomSheetCompose(
                                 val normalX = androidx.compose.ui.util.lerp(xStartPx, xEndPx, t)
                                 val normalY = androidx.compose.ui.util.lerp(yStartPx, yEndPx, t)
                                 val normalCornerRadius = androidx.compose.ui.util.lerp(fullWidthPx / 2f, targetExpandedCornerRadiusPx, t)
-                                val normalShadow = androidx.compose.ui.util.lerp(0f, targetAppBarShadowPx, t)
+                                val normalShadow = androidx.compose.ui.util.lerp(0f, 6.dp.toPx(), t)
 
                                 val dismissOffsetPx = offsetAnimatable.value * (1f - t)
 
-                                scaleX = androidx.compose.ui.util.lerp(normalScale, appBarScale, lyricsT)
-                                scaleY = androidx.compose.ui.util.lerp(normalScale, appBarScale, lyricsT)
-                                translationX = androidx.compose.ui.util.lerp(normalX, appBarX, lyricsT) + dismissOffsetPx
-                                translationY = androidx.compose.ui.util.lerp(normalY, appBarY, lyricsT)
+                                scaleX = normalScale
+                                scaleY = normalScale
+                                translationX = normalX + dismissOffsetPx
+                                translationY = normalY
                                 transformOrigin = TransformOrigin(0f, 0f)
 
-                                val cornerRadius = androidx.compose.ui.util.lerp(normalCornerRadius, targetAppBarCornerRadiusPx, lyricsT)
-                                if (kotlin.math.abs(cornerRadius - lastCornerRadiusPx) > 0.2f) {
-                                    lastCornerRadiusPx = cornerRadius
-                                    cachedShape = RoundedCornerShape(cornerRadius)
+                                if (kotlin.math.abs(normalCornerRadius - lastCornerRadiusPx) > 0.2f) {
+                                    lastCornerRadiusPx = normalCornerRadius
+                                    cachedShape = RoundedCornerShape(normalCornerRadius)
                                 }
                                 shape = cachedShape
                                 clip = true
-                                shadowElevation = androidx.compose.ui.util.lerp(normalShadow, targetAppBarShadowPx, lyricsT)
+                                shadowElevation = normalShadow
 
                                 val canvasHideT = if (hasCanvas) {
                                     ((t - 0.75f).coerceAtLeast(0f) * 4f) * (1f - lyricsT)
                                 } else {
                                     0f
                                 }
-                                alpha = artworkAlpha * (1f - canvasHideT)
+                                val lyricsFade = if (isTablet) 1f else (1f - lyricsT)
+                                alpha = artworkAlpha * (1f - canvasHideT) * lyricsFade
                             }
-                            .zIndex(if (isQueueExpanded) 1f else if (isLyricsModeEnabled || lyricsArtworkProgress > 0f) 6f else if (playerTheme == "immersion" && !isMvMode && playerContentExpansionFraction.value > 0.5f) -1f else 3f)
-                            .then(
-                                if (isLyricsModeEnabled) {
-                                    Modifier.clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = { viewModel.setLyricsModeEnabled(false) }
-                                    )
-                                } else Modifier
-                            )
+                            .zIndex(if (isQueueExpanded) 1f else if (playerTheme == "immersion" && !isMvMode && playerContentExpansionFraction.value > 0.5f) -1f else 3f)
                     ) {
                         ArtworkPager(
                             viewModel = viewModel,

@@ -1,39 +1,34 @@
-
 @file:Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS",
     "TYPE_MISMATCH_BASED_ON_JAVA_ANNOTATIONS"
 )
 
 package com.codetrio.overdrive.ui.library
 
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.content.Intent
-import android.os.Build
-import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,39 +36,43 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.Stable
-
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Headset
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Podcasts
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -90,19 +89,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -115,13 +108,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -129,12 +121,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.palette.graphics.Palette
-import coil.ImageLoader
-import coil.imageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import coil.request.SuccessResult
 import com.codetrio.overdrive.MainActivity
 import com.codetrio.overdrive.R
 import com.codetrio.overdrive.data.db.PlaylistEntity
@@ -146,35 +134,24 @@ import com.codetrio.overdrive.model.SongItem
 import com.codetrio.overdrive.model.toSongItem
 import com.codetrio.overdrive.ui.CreateLocalPlaylistDialog
 import com.codetrio.overdrive.ui.LocalPlaylistPickerDialog
-import com.codetrio.overdrive.ui.SongActionsBottomSheet
 import com.codetrio.overdrive.ui.explore.AccountScreen
 import com.codetrio.overdrive.ui.explore.OnlineSongBottomSheet
 import com.codetrio.overdrive.ui.explore.SongCreditsScreen
+import com.codetrio.overdrive.ui.library.components.LibraryQuickAccessHero
+import com.codetrio.overdrive.ui.library.components.LibraryToolbar
+import com.codetrio.overdrive.ui.library.components.PlaylistCollageArt
+import com.codetrio.overdrive.ui.library.model.LibrarySortOrder
+import com.codetrio.overdrive.ui.library.model.LibraryViewMode
+import com.codetrio.overdrive.ui.statistics.StatisticsScreen
 import com.codetrio.overdrive.viewmodel.AccountViewModel
 import com.codetrio.overdrive.viewmodel.ExploreViewModel
 import com.codetrio.overdrive.viewmodel.PlayerSharedViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-enum class SortOrder {
-    A_Z,
-    DATE_ADDED,
-    ARTIST,
-    DURATION
-}
-
-@Stable
-sealed class DeviceSongEntry {
-    @Stable
-    data class Header(val title: String) : DeviceSongEntry()
-    @Stable
-    data class Song(
-        val song: SongItem,
-        val localIndex: Int,
-        val localCount: Int
-    ) : DeviceSongEntry()
-}
+data class LibraryTabItem(
+    val key: String,
+    val titleRes: Int
+)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -186,9 +163,7 @@ fun LibraryScreen(
     val context = LocalContext.current
     val mainActivity = remember(context) { getActivityFromContext(context) as? MainActivity }
     val fragmentActivity = remember(context) { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
-    val fragmentManager = remember(fragmentActivity) { fragmentActivity?.supportFragmentManager }
 
-    val isPlayerExpanded by viewModel.isPlayerExpanded.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     val accountViewModel = remember(fragmentActivity) {
@@ -201,13 +176,21 @@ fun LibraryScreen(
     val userProfile by accountViewModel?.userProfile?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
     val isLoggedIn = remember(userProfile) { com.codetrio.overdrive.data.innertube.AccountManager.isLoggedIn(context) }
 
-    var activeTab by remember(isLoggedIn) { mutableStateOf("") }
+    var activeTab by remember { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf("") }
-    var sortOrder by remember { mutableStateOf(SortOrder.A_Z) }
-    var isRefreshing by remember { mutableStateOf(false) }
+    var showInlineSearch by remember { mutableStateOf(false) }
+    var sortOrder by remember { mutableStateOf(LibrarySortOrder.RECENTLY_ADDED) }
+    var viewMode by remember { mutableStateOf(LibraryViewMode.getSavedMode(context)) }
 
+    fun updateViewMode(newMode: LibraryViewMode) {
+        viewMode = newMode
+        LibraryViewMode.saveMode(context, newMode)
+    }
+
+    var isRefreshing by remember { mutableStateOf(false) }
     var showAccountScreen by remember { mutableStateOf(false) }
     var showHistoryScreen by remember { mutableStateOf(false) }
+    var showStatsScreen by remember { mutableStateOf(false) }
 
     val history by accountViewModel?.history?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
     val currentOnlineSong by exploreViewModel?.currentOnlineSong?.collectAsStateWithLifecycle(null) ?: remember { mutableStateOf(null) }
@@ -216,13 +199,22 @@ fun LibraryScreen(
     val localSongs by viewModel.localSongs.collectAsStateWithLifecycle(emptyList())
     val favoriteIds by viewModel.favoriteSongIds.collectAsStateWithLifecycle(emptySet())
     val currentSong by viewModel.currentSong.collectAsStateWithLifecycle()
+    val localPlaylists by viewModel.localPlaylistsFlow.collectAsStateWithLifecycle(emptyList())
+
+    val onlinePlaylists by accountViewModel?.playlists?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
+    val onlineAlbums by accountViewModel?.albums?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
+    val onlineArtists by accountViewModel?.artists?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
+    val onlinePodcasts by accountViewModel?.podcasts?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
+    val onlineSongs by accountViewModel?.songs?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
 
     var selectedSongForMenu by remember { mutableStateOf<OnlineSong?>(null) }
     var songToAddPlaylist by remember { mutableStateOf<SongItem?>(null) }
     var showAddToPlaylistDialog by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showCreditsForSong by remember { mutableStateOf<OnlineSong?>(null) }
-    val localPlaylists by viewModel.localPlaylistsFlow.collectAsStateWithLifecycle(emptyList())
+    var selectedLocalPlaylist by remember { mutableStateOf<PlaylistEntity?>(null) }
+    var selectedSongItems by remember { mutableStateOf<Set<SongItem>>(emptySet()) }
+    var showBatchAddToPlaylistDialog by remember { mutableStateOf(false) }
 
     // Trigger local files scan on first composition
     LaunchedEffect(Unit) {
@@ -235,7 +227,7 @@ fun LibraryScreen(
 
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
-    
+
     LaunchedEffect(viewModel.scrollToTopEvent) {
         viewModel.scrollToTopEvent.collect {
             launch { listState.animateScrollToItem(0) }
@@ -269,8 +261,21 @@ fun LibraryScreen(
         }
     }
 
+    val filterTabs = remember(isLoggedIn) {
+        listOf(
+            LibraryTabItem("", R.string.lib_tab_all),
+            LibraryTabItem("playlists", R.string.lib_tab_playlists),
+            LibraryTabItem("albums", R.string.lib_tab_albums),
+            LibraryTabItem("songs", R.string.lib_tab_songs),
+            LibraryTabItem("artists", R.string.lib_tab_artists),
+            LibraryTabItem("downloads", R.string.lib_tab_downloads),
+            LibraryTabItem("device_files", R.string.lib_tab_device_files),
+            LibraryTabItem("podcasts", R.string.lib_tab_podcasts),
+            LibraryTabItem("recap", R.string.lib_tab_recap)
+        )
+    }
+
     Scaffold(
-        // snackbarHost = { SnackbarHost(hostState = snackbarHostState) }, // Replaced by global SnackbarController
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Box(
@@ -281,944 +286,2033 @@ fun LibraryScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Header Row (Hides in Device Files)
-                AnimatedVisibility(
-                    visible = activeTab != "Device Files",
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
+                // Header Bar with Title and Actions (Animated for Multi-Selection)
+                AnimatedContent(
+                    targetState = selectedSongItems.isNotEmpty(),
+                    label = "LibraryHeaderTransition"
+                ) { isSelecting ->
+                    if (isSelecting) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { selectedSongItems = emptySet() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel selection",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "${selectedSongItems.size} 選択中",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = {
+                                    val currentSongs: List<SongItem> = when (activeTab) {
+                                        "songs" -> onlineSongs.map { s ->
+                                            SongItem.createOnlineSong(s.videoId, s.title, s.artist, "", s.durationMs, s.thumbnailUrl, s.artistId)
+                                        }
+                                        "downloads", "device_files" -> localSongs
+                                        else -> localSongs + onlineSongs.map { s ->
+                                            SongItem.createOnlineSong(s.videoId, s.title, s.artist, "", s.durationMs, s.thumbnailUrl, s.artistId)
+                                        }
+                                    }
+                                    if (selectedSongItems.size == currentSongs.size) {
+                                        selectedSongItems = emptySet()
+                                    } else {
+                                        selectedSongItems = currentSongs.toSet()
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.SelectAll,
+                                        contentDescription = "Select All",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.text_library),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                IconButton(onClick = { showInlineSearch = !showInlineSearch }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "Search",
+                                        tint = if (showInlineSearch) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+
+                                IconButton(onClick = { showStatsScreen = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.BarChart,
+                                        contentDescription = "Stats",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+
+                                IconButton(onClick = { showHistoryScreen = true }) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_history),
+                                        contentDescription = "History",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+
+                                if (userProfile?.avatarUrl != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(userProfile?.avatarUrl)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Account Settings",
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .clickable { showAccountScreen = true },
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    IconButton(onClick = { showAccountScreen = true }) {
+                                        Icon(
+                                            imageVector = Icons.Default.AccountCircle,
+                                            contentDescription = "Account Settings",
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Filter Tabs Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    filterTabs.forEach { tabItem ->
+                        val isSelected = activeTab == tabItem.key
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                activeTab = tabItem.key
+                            },
+                            label = {
+                                Text(
+                                    text = stringResource(tabItem.titleRes),
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            border = null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+                }
+
+                // Content Routing
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(nestedScrollConnection)
+                ) {
+                    when (activeTab) {
+                        "" -> {
+                            // "All" / Overview Tab
+                            AllOverviewTabContent(
+                                listState = listState,
+                                gridState = gridState,
+                                nestedScrollConnection = nestedScrollConnection,
+                                viewModel = viewModel,
+                                accountViewModel = accountViewModel,
+                                exploreViewModel = exploreViewModel,
+                                isLoggedIn = isLoggedIn,
+                                onlineSongs = onlineSongs,
+                                onlinePlaylists = onlinePlaylists,
+                                onlineAlbums = onlineAlbums,
+                                onlineArtists = onlineArtists,
+                                localPlaylists = localPlaylists,
+                                localSongs = localSongs,
+                                history = history,
+                                favoriteIds = favoriteIds,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                showSearch = showInlineSearch,
+                                sortOrder = sortOrder,
+                                onSortOrderChange = { sortOrder = it },
+                                viewMode = viewMode,
+                                onViewModeChange = { updateViewMode(it) },
+                                onCreatePlaylist = { showCreatePlaylistDialog = true },
+                                onLocalPlaylistClick = { selectedLocalPlaylist = it },
+                                onOnlinePlaylistClick = { playlist ->
+                                    exploreViewModel?.cameFromLibrary = true
+                                    exploreViewModel?.loadPlaylist(playlist.playlistId)
+                                    navigateToExplore(fragmentActivity)
+                                },
+                                onAlbumClick = { album ->
+                                    exploreViewModel?.cameFromLibrary = true
+                                    exploreViewModel?.loadAlbum(album.browseId)
+                                    navigateToExplore(fragmentActivity)
+                                },
+                                onArtistClick = { artist ->
+                                    exploreViewModel?.cameFromLibrary = true
+                                    exploreViewModel?.loadArtist(artist.browseId, artist.thumbnailUrl)
+                                    navigateToExplore(fragmentActivity)
+                                },
+                                onLikedSongsClick = {
+                                    exploreViewModel?.cameFromLibrary = true
+                                    exploreViewModel?.loadPlaylist("LM")
+                                    navigateToExplore(fragmentActivity)
+                                },
+                                onLikedSongsShuffle = {
+                                    if (onlineSongs.isNotEmpty()) {
+                                        val list = onlineSongs.map { s ->
+                                            SongItem.createOnlineSong(s.videoId, s.title, s.artist, "", s.durationMs, s.thumbnailUrl, s.artistId)
+                                        }.shuffled()
+                                        viewModel.setSongList(list)
+                                        viewModel.playSong(list.first())
+                                    }
+                                },
+                                onDownloadsClick = { activeTab = "downloads" },
+                                onStatsClick = { showStatsScreen = true },
+                                onRecentSongClick = { song, queue, index ->
+                                    exploreViewModel?.playOnlineSongWithQueue(song, queue, index)
+                                }
+                            )
+                        }
+                        "playlists" -> {
+                            PlaylistsOverviewContent(
+                                gridState = gridState,
+                                listState = listState,
+                                nestedScrollConnection = nestedScrollConnection,
+                                localPlaylists = localPlaylists,
+                                onlinePlaylists = onlinePlaylists,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                showSearch = showInlineSearch,
+                                sortOrder = sortOrder,
+                                onSortOrderChange = { sortOrder = it },
+                                viewMode = viewMode,
+                                onViewModeChange = { updateViewMode(it) },
+                                onCreatePlaylist = { showCreatePlaylistDialog = true },
+                                onLocalPlaylistClick = { selectedLocalPlaylist = it },
+                                onOnlinePlaylistClick = { playlist ->
+                                    exploreViewModel?.cameFromLibrary = true
+                                    exploreViewModel?.loadPlaylist(playlist.playlistId)
+                                    navigateToExplore(fragmentActivity)
+                                }
+                            )
+                        }
+                        "albums" -> {
+                            AlbumsOverviewContent(
+                                gridState = gridState,
+                                listState = listState,
+                                nestedScrollConnection = nestedScrollConnection,
+                                albums = onlineAlbums,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                showSearch = showInlineSearch,
+                                sortOrder = sortOrder,
+                                onSortOrderChange = { sortOrder = it },
+                                viewMode = viewMode,
+                                onViewModeChange = { updateViewMode(it) },
+                                onAlbumClick = { album ->
+                                    exploreViewModel?.cameFromLibrary = true
+                                    exploreViewModel?.loadAlbum(album.browseId)
+                                    navigateToExplore(fragmentActivity)
+                                }
+                            )
+                        }
+                        "songs" -> {
+                            SongsOverviewContent(
+                                listState = listState,
+                                gridState = gridState,
+                                nestedScrollConnection = nestedScrollConnection,
+                                songs = onlineSongs,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                showSearch = showInlineSearch,
+                                sortOrder = sortOrder,
+                                onSortOrderChange = { sortOrder = it },
+                                viewMode = viewMode,
+                                onViewModeChange = { updateViewMode(it) },
+                                viewModel = viewModel,
+                                selectedSongItems = selectedSongItems,
+                                onToggleSelect = { songItem ->
+                                    selectedSongItems = if (selectedSongItems.any { it.id == songItem.id }) {
+                                        selectedSongItems.filter { it.id != songItem.id }.toSet()
+                                    } else {
+                                        selectedSongItems + songItem
+                                    }
+                                },
+                                onSongMenuClick = { selectedSongForMenu = it }
+                            )
+                        }
+                        "artists" -> {
+                            ArtistsOverviewContent(
+                                gridState = gridState,
+                                listState = listState,
+                                nestedScrollConnection = nestedScrollConnection,
+                                artists = onlineArtists,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                showSearch = showInlineSearch,
+                                sortOrder = sortOrder,
+                                onSortOrderChange = { sortOrder = it },
+                                viewMode = viewMode,
+                                onViewModeChange = { updateViewMode(it) },
+                                onArtistClick = { artist ->
+                                    exploreViewModel?.cameFromLibrary = true
+                                    exploreViewModel?.loadArtist(artist.browseId, artist.thumbnailUrl)
+                                    navigateToExplore(fragmentActivity)
+                                }
+                            )
+                        }
+                        "downloads" -> {
+                            DownloadsTabContent(
+                                listState = listState,
+                                gridState = gridState,
+                                nestedScrollConnection = nestedScrollConnection,
+                                viewModel = viewModel,
+                                favoriteIds = favoriteIds,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                showSearch = showInlineSearch,
+                                sortOrder = sortOrder,
+                                onSortOrderChange = { sortOrder = it },
+                                viewMode = viewMode,
+                                onViewModeChange = { updateViewMode(it) },
+                                selectedSongItems = selectedSongItems,
+                                onToggleSelect = { songItem ->
+                                    selectedSongItems = if (selectedSongItems.any { it.id == songItem.id }) {
+                                        selectedSongItems.filter { it.id != songItem.id }.toSet()
+                                    } else {
+                                        selectedSongItems + songItem
+                                    }
+                                }
+                            )
+                        }
+                        "device_files" -> {
+                            val onRefreshAction = {
+                                scope.launch {
+                                    isRefreshing = true
+                                    scanLocalFiles(context, viewModel)
+                                    isRefreshing = false
+                                }
+                            }
+                            val pullToRefreshState = rememberPullToRefreshState()
+
+                            PullToRefreshBox(
+                                isRefreshing = isRefreshing,
+                                onRefresh = { onRefreshAction() },
+                                state = pullToRefreshState,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                DeviceFilesTabContent(
+                                    listState = listState,
+                                    gridState = gridState,
+                                    nestedScrollConnection = nestedScrollConnection,
+                                    localSongs = localSongs,
+                                    searchQuery = searchQuery,
+                                    onSearchQueryChange = { searchQuery = it },
+                                    showSearch = showInlineSearch,
+                                    sortOrder = sortOrder,
+                                    onSortOrderChange = { sortOrder = it },
+                                    viewMode = viewMode,
+                                    onViewModeChange = { updateViewMode(it) },
+                                    viewModel = viewModel,
+                                    currentSong = currentSong,
+                                    favoriteIds = favoriteIds,
+                                    selectedSongItems = selectedSongItems,
+                                    onToggleSelect = { songItem ->
+                                        selectedSongItems = if (selectedSongItems.any { it.id == songItem.id }) {
+                                            selectedSongItems.filter { it.id != songItem.id }.toSet()
+                                        } else {
+                                            selectedSongItems + songItem
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        "podcasts" -> {
+                            PodcastsOverviewContent(
+                                gridState = gridState,
+                                listState = listState,
+                                nestedScrollConnection = nestedScrollConnection,
+                                podcasts = onlinePodcasts,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                showSearch = showInlineSearch,
+                                sortOrder = sortOrder,
+                                onSortOrderChange = { sortOrder = it },
+                                viewMode = viewMode,
+                                onViewModeChange = { updateViewMode(it) },
+                                onPodcastClick = { podcast ->
+                                    exploreViewModel?.cameFromLibrary = true
+                                    exploreViewModel?.loadPlaylist(podcast.playlistId)
+                                    navigateToExplore(fragmentActivity)
+                                }
+                            )
+                        }
+                        "recap" -> {
+                            StatisticsScreen(
+                                playerViewModel = viewModel,
+                                onNavigateToExplore = onNavigateToExplore
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Dialogs & Bottom Sheets
+            if (showCreatePlaylistDialog) {
+                var name by remember { mutableStateOf("") }
+                AlertDialog(
+                    onDismissRequest = { showCreatePlaylistDialog = false },
+                    title = { Text(stringResource(R.string.text_create_new_playlist), fontWeight = FontWeight.Bold) },
+                    text = {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text(stringResource(R.string.text_playlist_name)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                if (name.isNotBlank()) {
+                                    viewModel.createLocalPlaylist(name)
+                                    showCreatePlaylistDialog = false
+                                }
+                            },
+                            enabled = name.isNotBlank()
+                        ) {
+                            Text(stringResource(R.string.text_create))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showCreatePlaylistDialog = false }) {
+                            Text(stringResource(R.string.action_cancel))
+                        }
+                    }
+                )
+            }
+
+            selectedLocalPlaylist?.let { playlist ->
+                LocalPlaylistDetailsBottomSheet(
+                    playlist = playlist,
+                    viewModel = viewModel,
+                    onDismiss = { selectedLocalPlaylist = null }
+                )
+            }
+
+            // Song 3-Dot Menu Bottom Sheet
+            selectedSongForMenu?.let { song ->
+                val isPinned = exploreViewModel?.uiState?.collectAsState()?.value?.pinnedSpeedDialIds?.contains(song.videoId) == true
+                if (exploreViewModel != null) {
+                    OnlineSongBottomSheet(
+                        song = song,
+                        isPinned = isPinned,
+                        onDismissRequest = { selectedSongForMenu = null },
+                        playerSharedViewModel = viewModel,
+                        exploreViewModel = exploreViewModel,
+                        onPlaylistAddClick = { onlineSongItem ->
+                            songToAddPlaylist = onlineSongItem
+                            showAddToPlaylistDialog = true
+                        },
+                        onViewCreditsClick = { s ->
+                            showCreditsForSong = s
+                        }
+                    )
+                }
+            }
+
+            if (showAddToPlaylistDialog && songToAddPlaylist != null) {
+                LocalPlaylistPickerDialog(
+                    playlists = localPlaylists,
+                    onCreateNew = {
+                        showCreatePlaylistDialog = true
+                        showAddToPlaylistDialog = false
+                    },
+                    onPlaylistSelected = { playlist ->
+                        viewModel.addSongToLocalPlaylist(playlist.id, songToAddPlaylist!!)
+                        showAddToPlaylistDialog = false
+                        songToAddPlaylist = null
+                        com.codetrio.overdrive.ui.SnackbarController.showMessage("Added to playlist: ${playlist.title}")
+                    },
+                    onDismiss = {
+                        showAddToPlaylistDialog = false
+                        songToAddPlaylist = null
+                    }
+                )
+            }
+
+            if (showBatchAddToPlaylistDialog && selectedSongItems.isNotEmpty()) {
+                LocalPlaylistPickerDialog(
+                    playlists = localPlaylists,
+                    onCreateNew = {
+                        showCreatePlaylistDialog = true
+                        showBatchAddToPlaylistDialog = false
+                    },
+                    onPlaylistSelected = { playlist ->
+                        viewModel.addSongsToLocalPlaylist(playlist.id, selectedSongItems.toList())
+                        com.codetrio.overdrive.ui.SnackbarController.showMessage("${selectedSongItems.size}曲を「${playlist.title}」に追加しました")
+                        showBatchAddToPlaylistDialog = false
+                        selectedSongItems = emptySet()
+                    },
+                    onDismiss = {
+                        showBatchAddToPlaylistDialog = false
+                    }
+                )
+            }
+
+            // Material 3 Expressive Multi-Selection Floating Action Bar
+            AnimatedVisibility(
+                visible = selectedSongItems.isNotEmpty(),
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 100.dp, start = 16.dp, end = 16.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    shadowElevation = 8.dp,
+                    tonalElevation = 6.dp,
+                    modifier = Modifier.height(56.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_library),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            text = "${selectedSongItems.size}曲",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 4.dp)
                         )
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            IconButton(onClick = { showHistoryScreen = true }) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_history),
-                                    contentDescription = "Listening History",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                        VerticalDivider(
+                            modifier = Modifier
+                                .height(24.dp)
+                                .padding(horizontal = 4.dp)
+                        )
 
-                            if (userProfile?.avatarUrl != null) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(userProfile?.avatarUrl)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = "Account Settings",
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .clickable { showAccountScreen = true },
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                IconButton(onClick = { showAccountScreen = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.AccountCircle,
-                                        contentDescription = "Account Settings",
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
+                        // Add to Local Playlist
+                        IconButton(onClick = { showBatchAddToPlaylistDialog = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                                contentDescription = "Add to playlist",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        // Play Next
+                        IconButton(onClick = {
+                            val count = selectedSongItems.size
+                            viewModel.addSongsToQueueNext(selectedSongItems.toList())
+                            com.codetrio.overdrive.ui.SnackbarController.showMessage("${count}曲を次に再生に追加しました")
+                            selectedSongItems = emptySet()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Play Next",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        // Add to Queue End
+                        IconButton(onClick = {
+                            val count = selectedSongItems.size
+                            viewModel.addSongsToQueue(selectedSongItems.toList())
+                            com.codetrio.overdrive.ui.SnackbarController.showMessage("${count}曲をキューに追加しました")
+                            selectedSongItems = emptySet()
+                        }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                                contentDescription = "Add to Queue",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        // Share
+                        IconButton(onClick = {
+                            val shareText = selectedSongItems.joinToString("\n") { "${it.title} - ${it.artist}" }
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
                             }
+                            context.startActivity(android.content.Intent.createChooser(intent, "Share Songs"))
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
+            }
 
-                // Horizontal scroll chips row
-            val tabs = if (isLoggedIn) {
-                listOf(
-                    "Playlists",
-                    "Recap",
-                    "Podcasts",
-                    "Songs",
-                    "Albums",
-                    "Artists",
-                    "Device Files"
-                )
-            } else {
-                listOf(
-                    "Playlists",
-                    "Recap",
-                    "Device Files"
+            // Overlay Fullscreen Screens (Stats, Account, History, Credits)
+            AnimatedVisibility(
+                visible = showStatsScreen,
+                enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                StatisticsScreen(
+                    playerViewModel = viewModel,
+                    onNavigateToExplore = {
+                        showStatsScreen = false
+                        onNavigateToExplore()
+                    }
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
+            AnimatedVisibility(
+                visible = showAccountScreen && accountViewModel != null,
+                enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+                modifier = Modifier.fillMaxSize()
             ) {
-                tabs.forEach { tabName ->
-                    val isSelected = activeTab == tabName
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = {
-                            activeTab = if (isSelected) "" else tabName
+                if (accountViewModel != null) {
+                    AccountScreen(
+                        viewModel = accountViewModel,
+                        onBack = { showAccountScreen = false },
+                        onSongClick = { song, queue, index ->
+                            exploreViewModel?.playOnlineSongWithQueue(song, queue, index)
                         },
-                        label = { Text(tabName, fontWeight = FontWeight.SemiBold) },
-                        shape = RoundedCornerShape(8.dp),
-                        border = null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        onNavigateToSignIn = {
+                            showAccountScreen = false
+                            mainActivity?.navigateToGoogleSignIn()
+                        }
                     )
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(nestedScrollConnection)
+            AnimatedVisibility(
+                visible = showHistoryScreen,
+                enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+                modifier = Modifier.fillMaxSize()
             ) {
-                when (activeTab) {
-                    "Playlists" -> PlaylistsTabContent(
-                                        listState = listState,
-                                        gridState = gridState,
-                                        nestedScrollConnection = nestedScrollConnection, viewModel, isLoggedIn)
-                    "Podcasts" -> PodcastsTabContent(gridState, nestedScrollConnection)
-                    "Songs" -> SongsTabContent(listState, nestedScrollConnection, viewModel)
-                    "Albums" -> AlbumsTabContent(gridState, nestedScrollConnection)
-                    "Artists" -> ArtistsTabContent(gridState, nestedScrollConnection)
-
-                    "Device Files" -> {
-                        // Scan Local Files helper
-                        val onRefreshAction = {
-                            scope.launch {
-                                isRefreshing = true
-                                scanLocalFiles(context, viewModel)
-                                isRefreshing = false
-                            }
-                        }
-
-                        val pullToRefreshState = rememberPullToRefreshState()
-
-                        PullToRefreshBox(
-                            isRefreshing = isRefreshing,
-                            onRefresh = { onRefreshAction() },
-                            state = pullToRefreshState,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                // Search Bar
-                                OutlinedTextField(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
-                                    placeholder = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_search_local_songs)) },
-                                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                                    trailingIcon = {
-                                        if (searchQuery.isNotEmpty()) {
-                                            IconButton(onClick = { searchQuery = "" }) {
-                                                Icon(Icons.Default.Clear, null)
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                                    shape = CircleShape,
-                                    singleLine = true,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                                    )
-                                )
-
-                                // Sorting chips
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState())
-                                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    SortOrder.entries.forEach { order ->
-                                        val isSel = sortOrder == order
-                                        FilterChip(
-                                            selected = isSel,
-                                            onClick = { sortOrder = order },
-                                            label = {
-                                                Text(
-                                                    text = order.name.replace("_", " "),
-                                                    fontWeight = FontWeight.SemiBold
-                                                )
-                                            },
-                                            shape = RoundedCornerShape(8.dp),
-                                            border = null,
-                                            colors = FilterChipDefaults.filterChipColors(
-                                                containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                // Filter, Sort, and Group local songs
-                                val filteredSongs = remember(localSongs, searchQuery) {
-                                    localSongs.filter {
-                                        it.title.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true)
-                                    }
-                                }
-
-                                val sortedAndGrouped = remember(filteredSongs, sortOrder) {
-                                    if (filteredSongs.isEmpty()) return@remember emptyList()
-
-                                    val sorted = when (sortOrder) {
-                                        SortOrder.A_Z -> filteredSongs.sortedWith(compareBy { it.title.lowercase() })
-                                        SortOrder.DATE_ADDED -> filteredSongs.sortedWith(compareByDescending { it.dateAdded })
-                                        SortOrder.ARTIST -> filteredSongs.sortedWith(compareBy { it.artist.lowercase() })
-                                        SortOrder.DURATION -> filteredSongs.sortedWith(compareByDescending { it.duration })
-                                    }
-
-                                    val groups = LinkedHashMap<String, MutableList<SongItem>>()
-                                    when (sortOrder) {
-                                        SortOrder.A_Z -> {
-                                            for (song in sorted) {
-                                                val header = if (song.title.isEmpty()) "#" else {
-                                                    val char = song.title.uppercase().first()
-                                                    if (char.isLetter()) char.toString() else "#"
-                                                }
-                                                groups.getOrPut(header) { mutableListOf() }.add(song)
-                                            }
-                                        }
-                                        SortOrder.DATE_ADDED -> {
-                                            for (song in sorted) {
-                                                val diff = (System.currentTimeMillis() / 1000) - song.dateAdded
-                                                val days = diff / (60 * 60 * 24)
-                                                val header = when {
-                                                    days < 1 -> "Today"
-                                                    days < 2 -> "Yesterday"
-                                                    days < 7 -> "This Week"
-                                                    days < 30 -> "This Month"
-                                                    days < 365 -> "This Year"
-                                                    else -> "Older"
-                                                }
-                                                groups.getOrPut(header) { mutableListOf() }.add(song)
-                                            }
-                                        }
-                                        SortOrder.ARTIST -> {
-                                            for (song in sorted) {
-                                                val header = song.artist.ifBlank { "Unknown Artist" }
-                                                groups.getOrPut(header) { mutableListOf() }.add(song)
-                                            }
-                                        }
-                                        SortOrder.DURATION -> {
-                                            for (song in sorted) {
-                                                val min = song.duration / 60000
-                                                val header = when {
-                                                    min < 2 -> "Under 2 min"
-                                                    min < 4 -> "2-4 min"
-                                                    min < 6 -> "4-6 min"
-                                                    min < 10 -> "6-10 min"
-                                                    else -> "Over 10 min"
-                                                }
-                                                groups.getOrPut(header) { mutableListOf() }.add(song)
-                                            }
-                                        }
-                                    }
-
-                                    val list = mutableListOf<DeviceSongEntry>()
-                                    for ((header, groupSongs) in groups) {
-                                        list.add(DeviceSongEntry.Header(header))
-                                        val count = groupSongs.size
-                                        groupSongs.forEachIndexed { idx, song ->
-                                            list.add(DeviceSongEntry.Song(song, idx, count))
-                                        }
-                                    }
-                                    list
-                                }
-
-                                if (sortedAndGrouped.isEmpty()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .weight(1f),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            if (searchQuery.isNotEmpty()) "No matching songs found" else "Scan device files to load songs",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                } else {
-                                    LazyColumn(
-                    state = listState,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .weight(1f),
-                                        contentPadding = PaddingValues(bottom = 160.dp),
-                                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                                    ) {
-                                        items(
-                                            items = sortedAndGrouped,
-                                            key = { item ->
-                                                when (item) {
-                                                    is DeviceSongEntry.Header -> "header-${item.title}"
-                                                    is DeviceSongEntry.Song -> "song-${item.song.id}"
-                                                }
-                                            }
-                                        ) { item ->
-                                            when (item) {
-                                                is DeviceSongEntry.Header -> {
-                                                    Text(
-                                                        text = item.title,
-                                                        style = MaterialTheme.typography.titleSmall,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .padding(horizontal = 20.dp, vertical = 10.dp)
-                                                    )
-                                                }
-                                                is DeviceSongEntry.Song -> {
-                                                    val songItem = item.song
-                                                    val isPlaying = currentSong?.id == songItem.id
-                                                    val isFav = favoriteIds.contains(songItem.id)
-                                                    val localIndex = item.localIndex
-                                                    val count = item.localCount
-
-                                                    // SwipeToDismissBox implementation
-                                                    val dismissState = rememberSwipeToDismissBoxState()
-                                                    LaunchedEffect(dismissState.currentValue) {
-                                                        when (dismissState.currentValue) {
-                                                            SwipeToDismissBoxValue.StartToEnd -> {
-                                                                viewModel.addToQueueNext(songItem)
-                                                                com.codetrio.overdrive.ui.SnackbarController.showMessage("Playing next: ${songItem.title}")
-                                                                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-                                                            }
-                                                            SwipeToDismissBoxValue.EndToStart -> {
-                                                                viewModel.addToQueue(songItem)
-                                                                com.codetrio.overdrive.ui.SnackbarController.showMessage("Added to queue: ${songItem.title}")
-                                                                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-                                                            }
-                                                            SwipeToDismissBoxValue.Settled -> {}
-                                                        }
-                                                    }
-
-                                                    SwipeToDismissBox(
-                                                        state = dismissState,
-                                                        backgroundContent = {
-                                                            val color = when (dismissState.dismissDirection) {
-                                                                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primaryContainer
-                                                                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.secondaryContainer
-                                                                else -> Color.Transparent
-                                                            }
-                                                            val icon = when (dismissState.dismissDirection) {
-                                                                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.SkipNext
-                                                                SwipeToDismissBoxValue.EndToStart -> Icons.AutoMirrored.Filled.QueueMusic
-                                                                else -> null
-                                                            }
-                                                            val alignment = when (dismissState.dismissDirection) {
-                                                                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                                                                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                                                                else -> Alignment.Center
-                                                            }
-                                                            val topRadius = if (localIndex == 0) 24.dp else 4.dp
-                                                            val bottomRadius = if (localIndex == count - 1) 24.dp else 4.dp
-                                                            val backgroundShape = RoundedCornerShape(
-                                                                topStart = topRadius, topEnd = topRadius,
-                                                                bottomStart = bottomRadius, bottomEnd = bottomRadius
-                                                            )
-                                                            Box(
-                                                                modifier = Modifier
-                                                                    .fillMaxSize()
-                                                                    .padding(horizontal = 8.dp, vertical = 1.dp)
-                                                                    .clip(backgroundShape)
-                                                                    .background(color.copy(alpha = dismissState.progress.coerceIn(0f, 1f))),
-                                                                contentAlignment = alignment
-                                                            ) {
-                                                                if (icon != null) {
-                                                                    Icon(
-                                                                        imageVector = icon,
-                                                                        contentDescription = null,
-                                                                        modifier = Modifier
-                                                                            .padding(horizontal = 24.dp)
-                                                                            .graphicsLayer {
-                                                                                val p = dismissState.progress
-                                                                                scaleX = (p * 1.2f).coerceIn(0.6f, 1.1f)
-                                                                                scaleY = (p * 1.2f).coerceIn(0.6f, 1.1f)
-                                                                                alpha = p.coerceIn(0.3f, 1.0f)
-                                                                            },
-                                                                        tint = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
-                                                                            MaterialTheme.colorScheme.onPrimaryContainer
-                                                                        } else {
-                                                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                                                        }
-                                                                    )
-                                                                }
-                                                            }
-                                                        },
-                                                        content = {
-                                                            val onSongClick = remember(songItem.id, filteredSongs) {
-                                                                {
-                                                                    viewModel.setSongList(filteredSongs)
-                                                                    viewModel.playSong(songItem)
-                                                                }
-                                                            }
-                                                            val onSongLongClick = remember(songItem.id) {
-                                                                {
-                                                                    val bs = SongActionsBottomSheet.newInstance(songItem)
-                                                                    bs.setActionListener(object : SongActionsBottomSheet.ActionListener {
-                                                                        override fun onPlay(song: SongItem) {
-                                                                            viewModel.playSong(song)
-                                                                        }
-                                                                        override fun onPlayNext(song: SongItem) {
-                                                                            viewModel.addToQueueNext(song)
-                                                                            scope.launch {
-                                                                                com.codetrio.overdrive.ui.SnackbarController.showMessage("Playing next: ${song.title}")
-                                                                            }
-                                                                        }
-                                                                        override fun onAddToQueue(song: SongItem) {
-                                                                            viewModel.addToQueue(song)
-                                                                            scope.launch {
-                                                                                com.codetrio.overdrive.ui.SnackbarController.showMessage("Added to queue: ${song.title}")
-                                                                            }
-                                                                        }
-                                                                        override fun onDelete(song: SongItem) {
-                                                                            try {
-                                                                                val file = java.io.File(song.path)
-                                                                                if (file.exists()) file.delete()
-                                                                                scope.launch {
-                                                                                    scanLocalFiles(context, viewModel)
-                                                                                }
-                                                                            } catch (_: Exception) {}
-                                                                        }
-                                                                        override fun onEdit(song: SongItem) {
-                                                                            onEditSong(song)
-                                                                        }
-                                                                        override fun onFavorite(song: SongItem, isFav: Boolean) {
-                                                                            viewModel.toggleFavorite(song.id)
-                                                                        }
-                                                                        override fun onShare(song: SongItem) {
-                                                                            try {
-                                                                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                                                                    type = "audio/*"
-                                                                                    putExtra(Intent.EXTRA_STREAM, song.contentUri)
-                                                                                    putExtra(Intent.EXTRA_TEXT, "Listen to ${song.title}")
-                                                                                }
-                                                                                context.startActivity(Intent.createChooser(intent, "Share Song"))
-                                                                            } catch (_: Exception) {}
-                                                                        }
-                                                                    })
-                                                                    fragmentManager?.let { bs.show(it, "SongActionsBottomSheet") }
-                                                                    Unit
-                                                                }
-                                                            }
-
-                                                            SongListItem(
-                                                                song = songItem,
-                                                                isPlaying = isPlaying,
-                                                                isFavorite = isFav,
-                                                                localIndex = localIndex,
-                                                                localCount = count,
-                                                                onClick = onSongClick,
-                                                                onLongClick = onSongLongClick
-                                                            )
-                                                        }
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    "" -> UnifiedLibraryContent(
-                        listState = listState,
-                        gridState = gridState,
-                        nestedScrollConnection = nestedScrollConnection,
-                        isLoggedIn = isLoggedIn,
-                        onSignInClick = { mainActivity?.navigateToGoogleSignIn() }
-                    )
-                }
-            }
-        }
-
-        // Overlay AccountScreen
-        AnimatedVisibility(
-            visible = showAccountScreen && accountViewModel != null,
-            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            if (accountViewModel != null) {
-                AccountScreen(
-                    viewModel = accountViewModel,
-                    onBack = { showAccountScreen = false },
+                HistoryScreen(
+                    history = history,
+                    currentOnlineSong = currentOnlineSong,
+                    isLoadingStream = isLoadingStream,
+                    isRefreshing = accountViewModel?.isLoading?.collectAsStateWithLifecycle()?.value == true,
+                    onRefresh = { accountViewModel?.loadLibrary() },
+                    onBack = { showHistoryScreen = false },
                     onSongClick = { song, queue, index ->
                         exploreViewModel?.playOnlineSongWithQueue(song, queue, index)
                     },
-                    onNavigateToSignIn = {
-                        showAccountScreen = false
-                        mainActivity?.navigateToGoogleSignIn()
+                    onSongMenuClick = { song ->
+                        selectedSongForMenu = song
                     }
                 )
             }
-        }
 
-        // Overlay HistoryScreen
-        AnimatedVisibility(
-            visible = showHistoryScreen,
-            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            HistoryScreen(
-                history = history,
-                currentOnlineSong = currentOnlineSong,
-                isLoadingStream = isLoadingStream,
-                isRefreshing = accountViewModel?.isLoading?.collectAsStateWithLifecycle()?.value == true,
-                onRefresh = { accountViewModel?.loadLibrary() },
-                onBack = { showHistoryScreen = false },
-                onSongClick = { song, queue, index ->
-                    exploreViewModel?.playOnlineSongWithQueue(song, queue, index)
-                },
-                onSongMenuClick = { song ->
-                    selectedSongForMenu = song
+            AnimatedVisibility(
+                visible = showCreditsForSong != null,
+                enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                showCreditsForSong?.let { song ->
+                    SongCreditsScreen(
+                        song = song,
+                        onBack = { showCreditsForSong = null }
+                    )
                 }
-            )
-        }
-
-        // Song 3-Dot Menu Bottom Sheet
-        selectedSongForMenu?.let { song ->
-            val isPinned = exploreViewModel?.uiState?.collectAsState()?.value?.pinnedSpeedDialIds?.contains(song.videoId) == true
-            if (exploreViewModel != null) {
-                OnlineSongBottomSheet(
-                    song = song,
-                    isPinned = isPinned,
-                    onDismissRequest = { selectedSongForMenu = null },
-                    playerSharedViewModel = viewModel,
-                    exploreViewModel = exploreViewModel,
-                    onPlaylistAddClick = { onlineSongItem ->
-                        songToAddPlaylist = onlineSongItem
-                        showAddToPlaylistDialog = true
-                    },
-                    onViewCreditsClick = { s ->
-                        showCreditsForSong = s
-                    }
-                )
-            }
-        }
-
-        if (showAddToPlaylistDialog && songToAddPlaylist != null) {
-            LocalPlaylistPickerDialog(
-                playlists = localPlaylists,
-                onCreateNew = {
-                    showCreatePlaylistDialog = true
-                    showAddToPlaylistDialog = false
-                },
-                onPlaylistSelected = { playlist ->
-                    viewModel.addSongToLocalPlaylist(playlist.id, songToAddPlaylist!!)
-                    showAddToPlaylistDialog = false
-                    songToAddPlaylist = null
-                    com.codetrio.overdrive.ui.SnackbarController.showMessage("Added to playlist: ${playlist.title}")
-                },
-                onDismiss = {
-                    showAddToPlaylistDialog = false
-                    songToAddPlaylist = null
-                }
-            )
-        }
-
-        if (showCreatePlaylistDialog) {
-            CreateLocalPlaylistDialog(
-                onConfirm = { name ->
-                    viewModel.createLocalPlaylist(name)
-                    showCreatePlaylistDialog = false
-                    showAddToPlaylistDialog = true
-                },
-                onDismiss = {
-                    showCreatePlaylistDialog = false
-                    showAddToPlaylistDialog = true
-                }
-            )
-        }
-
-        // Overlay SongCreditsScreen
-        AnimatedVisibility(
-            visible = showCreditsForSong != null,
-            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            showCreditsForSong?.let { song ->
-                SongCreditsScreen(
-                    song = song,
-                    onBack = { showCreditsForSong = null }
-                )
             }
         }
     }
 }
+
+// -------------------------------------------------------------
+// Tab Contents & Adaptive Renderers
+// -------------------------------------------------------------
+
+interface UnifiedItem {
+    val id: String
+    val title: String
+    val subtitle: String
+    val thumbnailUrl: String?
+    val thumbnails: List<String>
+    val isCircle: Boolean
+    val onClick: () -> Unit
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun SongListItem(
-    song: SongItem,
-    isPlaying: Boolean,
-    isFavorite: Boolean,
-    localIndex: Int,
-    localCount: Int,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
-) {
-    val shapes = ListItemDefaults.segmentedShapes(index = localIndex, count = localCount)
-    val defaultBg = MaterialTheme.colorScheme.surfaceContainer
-    val playingBg = MaterialTheme.colorScheme.primaryContainer
-
-    val contentColor = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-    val subTextColor = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
-    val accentColor = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
-
-    ListItem(
-        onClick = onClick,
-        onLongClick = onLongClick,
-        shapes = shapes,
-        colors = ListItemDefaults.colors(
-            containerColor = if (isPlaying) playingBg else defaultBg,
-            headlineColor = contentColor,
-            supportingColor = subTextColor,
-            leadingIconColor = accentColor
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 1.dp),
-        leadingContent = {
-            val context = LocalContext.current
-            val artModel = remember(song) { song.getAlbumArtUri() ?: R.drawable.ic_music_note }
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(artModel)
-                    .crossfade(true)
-                    .error(R.drawable.ic_music_note)
-                    .placeholder(R.drawable.ic_music_note)
-                    .fallback(R.drawable.ic_music_note)
-                    .build(),
-                contentDescription = "Album Art",
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(MaterialTheme.shapes.medium),
-                contentScale = ContentScale.Crop
-            )
-        },
-        trailingContent = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                if (isFavorite) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "Favorite",
-                        tint = accentColor,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                if (isPlaying) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Now Playing",
-                        tint = accentColor,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-        },
-        content = {
-            Column {
-                Text(
-                    text = song.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = contentColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = song.artist,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = subTextColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+private fun getAdaptiveColumns(mode: LibraryViewMode, screenWidth: Int): Int {
+    return when (mode) {
+        LibraryViewMode.LARGE_GRID -> when {
+            screenWidth >= 1200 -> 6
+            screenWidth >= 840 -> 4
+            screenWidth >= 600 -> 3
+            else -> 2
         }
-    )
+        LibraryViewMode.COMPACT_GRID -> when {
+            screenWidth >= 1200 -> 9
+            screenWidth >= 840 -> 6
+            screenWidth >= 600 -> 4
+            else -> 3
+        }
+        LibraryViewMode.STANDARD_LIST,
+        LibraryViewMode.COMPACT_LIST -> when {
+            screenWidth >= 840 -> 2
+            else -> 1
+        }
+    }
 }
 
 @Composable
-private fun UnifiedLibraryContent(
+private fun AllOverviewTabContent(
     listState: androidx.compose.foundation.lazy.LazyListState,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
+    viewModel: PlayerSharedViewModel,
+    accountViewModel: AccountViewModel?,
+    exploreViewModel: ExploreViewModel?,
     isLoggedIn: Boolean,
-    onSignInClick: () -> Unit
+    onlineSongs: List<OnlineSong>,
+    onlinePlaylists: List<OnlinePlaylist>,
+    onlineAlbums: List<OnlineAlbum>,
+    onlineArtists: List<OnlineArtist>,
+    localPlaylists: List<PlaylistEntity>,
+    localSongs: List<SongItem>,
+    history: List<OnlineSong>,
+    favoriteIds: Set<Long>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    showSearch: Boolean,
+    sortOrder: LibrarySortOrder,
+    onSortOrderChange: (LibrarySortOrder) -> Unit,
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
+    onCreatePlaylist: () -> Unit,
+    onLocalPlaylistClick: (PlaylistEntity) -> Unit,
+    onOnlinePlaylistClick: (OnlinePlaylist) -> Unit,
+    onAlbumClick: (OnlineAlbum) -> Unit,
+    onArtistClick: (OnlineArtist) -> Unit,
+    onLikedSongsClick: () -> Unit,
+    onLikedSongsShuffle: () -> Unit,
+    onDownloadsClick: () -> Unit,
+    onStatsClick: () -> Unit,
+    onRecentSongClick: (OnlineSong, List<OnlineSong>, Int) -> Unit
 ) {
-    if (!isLoggedIn) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_access_youtube_music),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sign_in_to_access_your_online_playlists_saved_songs_listening_history_and_personalized_recommendations),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = onSignInClick,
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_sign_in), fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-        return
-    }
+    val allUnifiedItems = remember(
+        onlinePlaylists, onlineAlbums, onlineArtists, localPlaylists, localSongs, searchQuery, sortOrder
+    ) {
+        val list = mutableListOf<UnifiedItem>()
 
-    val context = LocalContext.current
-    val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
-    val accountViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[AccountViewModel::class.java] }
-    }
-    val exploreViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[ExploreViewModel::class.java] }
-    }
-
-    val onlinePlaylists by accountViewModel?.playlists?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-    val onlineAlbums by accountViewModel?.albums?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-    val onlineArtists by accountViewModel?.artists?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-    val onlinePodcasts by accountViewModel?.podcasts?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-    val onlineSongs by accountViewModel?.songs?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        accountViewModel?.refreshAll()
-    }
-
-    val unifiedItems = remember(onlinePlaylists, onlineAlbums, onlineArtists, onlinePodcasts, onlineSongs) {
-        val list = mutableListOf<UnifiedLibraryItem>()
-
-        if (onlineSongs.isNotEmpty()) {
-            list.add(object : UnifiedLibraryItem {
-                override val title = "Liked Songs"
-                override val thumbnailUrl = onlineSongs.firstOrNull()?.thumbnailUrl
-                override val subtitle = "Auto playlist • ${onlineSongs.size} songs"
-                override val onClick = {
-                    exploreViewModel?.cameFromLibrary = true
-                    exploreViewModel?.loadPlaylist("LM")
-                    navigateToExplore(activity)
-                }
+        localPlaylists.forEach { playlist ->
+            list.add(object : UnifiedItem {
+                override val id = "local_pl_${playlist.id}"
+                override val title = playlist.title
+                override val subtitle = "Local Playlist"
+                override val thumbnailUrl = null
+                override val thumbnails = emptyList<String>()
                 override val isCircle = false
+                override val onClick = { onLocalPlaylistClick(playlist) }
             })
         }
 
         onlinePlaylists.forEach { playlist ->
-            list.add(object : UnifiedLibraryItem {
+            list.add(object : UnifiedItem {
+                override val id = "online_pl_${playlist.playlistId}"
                 override val title = playlist.title
+                override val subtitle = playlist.songCount ?: "Playlist"
                 override val thumbnailUrl = playlist.thumbnailUrl
-                override val subtitle = "Playlist" + (if (playlist.songCount?.isNotEmpty() == true) " • ${playlist.songCount}" else "")
-                override val onClick = {
-                    exploreViewModel?.cameFromLibrary = true
-                    exploreViewModel?.loadPlaylist(playlist.playlistId)
-                    navigateToExplore(activity)
-                }
+                override val thumbnails = listOfNotNull(playlist.thumbnailUrl)
                 override val isCircle = false
+                override val onClick = { onOnlinePlaylistClick(playlist) }
             })
         }
 
         onlineAlbums.forEach { album ->
-            list.add(object : UnifiedLibraryItem {
+            list.add(object : UnifiedItem {
+                override val id = "online_al_${album.browseId}"
                 override val title = album.title
+                override val subtitle = album.artists.firstOrNull()?.name ?: "Album"
                 override val thumbnailUrl = album.thumbnailUrl
-                override val subtitle = "Album" + (if (album.artists.isNotEmpty()) " • ${album.artists.firstOrNull()?.name}" else "")
-                override val onClick = {
-                    exploreViewModel?.cameFromLibrary = true
-                    exploreViewModel?.loadAlbum(album.browseId)
-                    navigateToExplore(activity)
-                }
+                override val thumbnails = listOfNotNull(album.thumbnailUrl)
                 override val isCircle = false
+                override val onClick = { onAlbumClick(album) }
             })
         }
 
         onlineArtists.forEach { artist ->
-            list.add(object : UnifiedLibraryItem {
+            list.add(object : UnifiedItem {
+                override val id = "online_ar_${artist.browseId}"
                 override val title = artist.title
-                override val thumbnailUrl = artist.thumbnailUrl
                 override val subtitle = "Artist"
-                override val onClick = {
-                    exploreViewModel?.cameFromLibrary = true
-                    exploreViewModel?.loadArtist(artist.browseId, artist.thumbnailUrl)
-                    navigateToExplore(activity)
-                }
+                override val thumbnailUrl = artist.thumbnailUrl
+                override val thumbnails = listOfNotNull(artist.thumbnailUrl)
                 override val isCircle = true
+                override val onClick = { onArtistClick(artist) }
             })
         }
 
-        onlinePodcasts.forEach { podcast ->
-            list.add(object : UnifiedLibraryItem {
-                override val title = podcast.title
-                override val thumbnailUrl = podcast.thumbnailUrl
-                override val subtitle = "Podcast"
-                override val onClick = {
-                    exploreViewModel?.cameFromLibrary = true
-                    exploreViewModel?.loadPlaylist(podcast.playlistId)
-                    navigateToExplore(activity)
-                }
-                override val isCircle = false
-            })
+        val filtered = if (searchQuery.isBlank()) list else {
+            list.filter { it.title.contains(searchQuery, ignoreCase = true) || it.subtitle.contains(searchQuery, ignoreCase = true) }
         }
 
-        list.sortBy { it.title.lowercase() }
-        list
+        when (sortOrder) {
+            LibrarySortOrder.TITLE -> filtered.sortedBy { it.title.lowercase() }
+            LibrarySortOrder.ARTIST -> filtered.sortedBy { it.subtitle.lowercase() }
+            else -> filtered
+        }
     }
 
-    if (unifiedItems.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_items_found_in_your_library), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val columns = getAdaptiveColumns(viewMode, screenWidth)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        contentPadding = PaddingValues(bottom = 160.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // 1. Hero Quick Access Section (Visible when no search active)
+        if (searchQuery.isBlank()) {
+            item {
+                LibraryQuickAccessHero(
+                    likedSongsCount = onlineSongs.size + localSongs.count { favoriteIds.contains(it.id) },
+                    likedSongsThumbnails = onlineSongs.take(4).mapNotNull { it.thumbnailUrl },
+                    onLikedSongsClick = onLikedSongsClick,
+                    onLikedSongsShuffle = onLikedSongsShuffle,
+                    downloadedCount = localSongs.size,
+                    onDownloadsClick = onDownloadsClick,
+                    onStatsClick = onStatsClick,
+                    recentSongs = history,
+                    onRecentSongClick = onRecentSongClick
+                )
+            }
         }
-    } else {
-        LazyVerticalGrid(
-                    state = gridState,
-            columns = GridCells.Adaptive(minSize = 160.dp),
-            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 160.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(nestedScrollConnection)
-        ) {
-            items(unifiedItems) { item ->
-                UnifiedLibraryCard(item)
+
+        // 2. Universal Toolbar (Search & Sort & 4-tier ViewMode Switcher)
+        item {
+            LibraryToolbar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                sortOrder = sortOrder,
+                onSortOrderChange = onSortOrderChange,
+                viewMode = viewMode,
+                onViewModeChange = onViewModeChange,
+                onCreatePlaylist = onCreatePlaylist,
+                showSearch = showSearch
+            )
+        }
+
+        // 3. Adaptive Items Rendering based on ViewMode (Large Grid / Compact Grid / Standard List / Compact List)
+        when (viewMode) {
+            LibraryViewMode.LARGE_GRID -> {
+                val chunked = allUnifiedItems.chunked(columns)
+                items(chunked.size, key = { "all_lg_row_$it" }) { rowIndex ->
+                    val rowItems = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        rowItems.forEach { item ->
+                            Box(modifier = Modifier.weight(1f)) {
+                                LargeGridCard(item)
+                            }
+                        }
+                        repeat(columns - rowItems.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+            LibraryViewMode.COMPACT_GRID -> {
+                val chunked = allUnifiedItems.chunked(columns)
+                items(chunked.size, key = { "all_cg_row_$it" }) { rowIndex ->
+                    val rowItems = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        rowItems.forEach { item ->
+                            Box(modifier = Modifier.weight(1f)) {
+                                CompactGridCard(item)
+                            }
+                        }
+                        repeat(columns - rowItems.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+            LibraryViewMode.STANDARD_LIST -> {
+                if (columns > 1) {
+                    val chunked = allUnifiedItems.chunked(columns)
+                    items(chunked.size, key = { "all_sl_row_$it" }) { rowIndex ->
+                        val rowItems = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowItems.forEach { item ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    StandardListItem(item)
+                                }
+                            }
+                            repeat(columns - rowItems.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                } else {
+                    items(allUnifiedItems, key = { it.id }) { item ->
+                        StandardListItem(item)
+                    }
+                }
+            }
+            LibraryViewMode.COMPACT_LIST -> {
+                if (columns > 1) {
+                    val chunked = allUnifiedItems.chunked(columns)
+                    items(chunked.size, key = { "all_cl_row_$it" }) { rowIndex ->
+                        val rowItems = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 1.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowItems.forEach { item ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    CompactDensityListItem(item)
+                                }
+                            }
+                            repeat(columns - rowItems.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                } else {
+                    items(allUnifiedItems, key = { it.id }) { item ->
+                        CompactDensityListItem(item)
+                    }
+                }
             }
         }
     }
 }
 
-private interface UnifiedLibraryItem {
-    val title: String
-    val thumbnailUrl: String?
-    val subtitle: String
-    val onClick: () -> Unit
-    val isCircle: Boolean
+@Composable
+private fun PlaylistsOverviewContent(
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
+    localPlaylists: List<PlaylistEntity>,
+    onlinePlaylists: List<OnlinePlaylist>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    showSearch: Boolean,
+    sortOrder: LibrarySortOrder,
+    onSortOrderChange: (LibrarySortOrder) -> Unit,
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
+    onCreatePlaylist: () -> Unit,
+    onLocalPlaylistClick: (PlaylistEntity) -> Unit,
+    onOnlinePlaylistClick: (OnlinePlaylist) -> Unit
+) {
+    val items = remember(localPlaylists, onlinePlaylists, searchQuery, sortOrder) {
+        val list = mutableListOf<UnifiedItem>()
+        localPlaylists.forEach { playlist ->
+            list.add(object : UnifiedItem {
+                override val id = "local_${playlist.id}"
+                override val title = playlist.title
+                override val subtitle = "Local Playlist"
+                override val thumbnailUrl = null
+                override val thumbnails = emptyList<String>()
+                override val isCircle = false
+                override val onClick = { onLocalPlaylistClick(playlist) }
+            })
+        }
+        onlinePlaylists.forEach { playlist ->
+            list.add(object : UnifiedItem {
+                override val id = "online_${playlist.playlistId}"
+                override val title = playlist.title
+                override val subtitle = playlist.songCount ?: "Playlist"
+                override val thumbnailUrl = playlist.thumbnailUrl
+                override val thumbnails = listOfNotNull(playlist.thumbnailUrl)
+                override val isCircle = false
+                override val onClick = { onOnlinePlaylistClick(playlist) }
+            })
+        }
+
+        val filtered = if (searchQuery.isBlank()) list else {
+            list.filter { it.title.contains(searchQuery, ignoreCase = true) }
+        }
+        when (sortOrder) {
+            LibrarySortOrder.TITLE -> filtered.sortedBy { it.title.lowercase() }
+            else -> filtered
+        }
+    }
+
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val columns = getAdaptiveColumns(viewMode, screenWidth)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        contentPadding = PaddingValues(bottom = 160.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            LibraryToolbar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                sortOrder = sortOrder,
+                onSortOrderChange = onSortOrderChange,
+                viewMode = viewMode,
+                onViewModeChange = onViewModeChange,
+                onCreatePlaylist = onCreatePlaylist,
+                showSearch = showSearch
+            )
+        }
+
+        when (viewMode) {
+            LibraryViewMode.LARGE_GRID -> {
+                val chunked = items.chunked(columns)
+                items(chunked.size, key = { "pl_lg_row_$it" }) { rowIndex ->
+                    val row = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        row.forEach { item -> Box(Modifier.weight(1f)) { LargeGridCard(item) } }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+            LibraryViewMode.COMPACT_GRID -> {
+                val chunked = items.chunked(columns)
+                items(chunked.size, key = { "pl_cg_row_$it" }) { rowIndex ->
+                    val row = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        row.forEach { item -> Box(Modifier.weight(1f)) { CompactGridCard(item) } }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+            LibraryViewMode.STANDARD_LIST -> {
+                if (columns > 1) {
+                    val chunked = items.chunked(columns)
+                    items(chunked.size, key = { "pl_sl_row_$it" }) { rowIndex ->
+                        val row = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { item -> Box(Modifier.weight(1f)) { StandardListItem(item) } }
+                            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else {
+                    items(items, key = { it.id }) { item -> StandardListItem(item) }
+                }
+            }
+            LibraryViewMode.COMPACT_LIST -> {
+                if (columns > 1) {
+                    val chunked = items.chunked(columns)
+                    items(chunked.size, key = { "pl_cl_row_$it" }) { rowIndex ->
+                        val row = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 1.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { item -> Box(Modifier.weight(1f)) { CompactDensityListItem(item) } }
+                            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else {
+                    items(items, key = { it.id }) { item -> CompactDensityListItem(item) }
+                }
+            }
+        }
+    }
 }
 
 @Composable
-private fun UnifiedLibraryCard(item: UnifiedLibraryItem) {
-    Column(
+private fun AlbumsOverviewContent(
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
+    albums: List<OnlineAlbum>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    showSearch: Boolean,
+    sortOrder: LibrarySortOrder,
+    onSortOrderChange: (LibrarySortOrder) -> Unit,
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
+    onAlbumClick: (OnlineAlbum) -> Unit
+) {
+    val items = remember(albums, searchQuery, sortOrder) {
+        val list = albums.map { album ->
+            object : UnifiedItem {
+                override val id = "album_${album.browseId}"
+                override val title = album.title
+                override val subtitle = album.artists.firstOrNull()?.name ?: "Album"
+                override val thumbnailUrl = album.thumbnailUrl
+                override val thumbnails = listOfNotNull(album.thumbnailUrl)
+                override val isCircle = false
+                override val onClick = { onAlbumClick(album) }
+            }
+        }
+        val filtered = if (searchQuery.isBlank()) list else list.filter { it.title.contains(searchQuery, ignoreCase = true) || it.subtitle.contains(searchQuery, ignoreCase = true) }
+        when (sortOrder) {
+            LibrarySortOrder.TITLE -> filtered.sortedBy { it.title.lowercase() }
+            LibrarySortOrder.ARTIST -> filtered.sortedBy { it.subtitle.lowercase() }
+            else -> filtered
+        }
+    }
+
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val columns = getAdaptiveColumns(viewMode, screenWidth)
+
+    LazyColumn(
+        state = listState,
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { item.onClick() }
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        contentPadding = PaddingValues(bottom = 160.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .aspectRatio(1f)
-                .fillMaxWidth()
-                .clip(if (item.isCircle) CircleShape else RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-            contentAlignment = Alignment.Center
-        ) {
-            if (item.thumbnailUrl?.isNotEmpty() == true) {
-                androidx.compose.foundation.Image(
-                    painter = coil.compose.rememberAsyncImagePainter(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(item.thumbnailUrl)
-                            .crossfade(true)
-                            .build()
-                    ),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+        item {
+            LibraryToolbar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                sortOrder = sortOrder,
+                onSortOrderChange = onSortOrderChange,
+                viewMode = viewMode,
+                onViewModeChange = onViewModeChange,
+                onCreatePlaylist = {},
+                showSearch = showSearch,
+                showNewPlaylist = false
+            )
+        }
+
+        when (viewMode) {
+            LibraryViewMode.LARGE_GRID -> {
+                val chunked = items.chunked(columns)
+                items(chunked.size, key = { "al_lg_row_$it" }) { rowIndex ->
+                    val row = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        row.forEach { item -> Box(Modifier.weight(1f)) { LargeGridCard(item) } }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+            LibraryViewMode.COMPACT_GRID -> {
+                val chunked = items.chunked(columns)
+                items(chunked.size, key = { "al_cg_row_$it" }) { rowIndex ->
+                    val row = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        row.forEach { item -> Box(Modifier.weight(1f)) { CompactGridCard(item) } }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+            LibraryViewMode.STANDARD_LIST -> {
+                if (columns > 1) {
+                    val chunked = items.chunked(columns)
+                    items(chunked.size, key = { "al_sl_row_$it" }) { rowIndex ->
+                        val row = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { item -> Box(Modifier.weight(1f)) { StandardListItem(item) } }
+                            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else {
+                    items(items, key = { it.id }) { item -> StandardListItem(item) }
+                }
+            }
+            LibraryViewMode.COMPACT_LIST -> {
+                if (columns > 1) {
+                    val chunked = items.chunked(columns)
+                    items(chunked.size, key = { "al_cl_row_$it" }) { rowIndex ->
+                        val row = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 1.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { item -> Box(Modifier.weight(1f)) { CompactDensityListItem(item) } }
+                            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else {
+                    items(items, key = { it.id }) { item -> CompactDensityListItem(item) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SongsOverviewContent(
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
+    songs: List<OnlineSong>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    showSearch: Boolean,
+    sortOrder: LibrarySortOrder,
+    onSortOrderChange: (LibrarySortOrder) -> Unit,
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
+    viewModel: PlayerSharedViewModel,
+    selectedSongItems: Set<SongItem>,
+    onToggleSelect: (SongItem) -> Unit,
+    onSongMenuClick: (OnlineSong) -> Unit
+) {
+    val filteredSongs = remember(songs, searchQuery, sortOrder) {
+        val list = if (searchQuery.isBlank()) songs else songs.filter {
+            it.title.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true)
+        }
+        when (sortOrder) {
+            LibrarySortOrder.TITLE -> list.sortedBy { it.title.lowercase() }
+            LibrarySortOrder.ARTIST -> list.sortedBy { it.artist.lowercase() }
+            LibrarySortOrder.DURATION -> list.sortedByDescending { it.durationMs }
+            else -> list
+        }
+    }
+
+    val isMultiSelectMode = selectedSongItems.isNotEmpty()
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val columns = getAdaptiveColumns(viewMode, screenWidth)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        contentPadding = PaddingValues(bottom = 160.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        item {
+            LibraryToolbar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                sortOrder = sortOrder,
+                onSortOrderChange = onSortOrderChange,
+                viewMode = viewMode,
+                onViewModeChange = onViewModeChange,
+                onCreatePlaylist = {},
+                showSearch = showSearch,
+                showNewPlaylist = false
+            )
+        }
+
+        if (columns > 1 && (viewMode == LibraryViewMode.STANDARD_LIST || viewMode == LibraryViewMode.COMPACT_LIST)) {
+            val chunked = filteredSongs.chunked(columns)
+            items(chunked.size, key = { "songs_row_$it" }) { rowIndex ->
+                val row = chunked[rowIndex]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { song ->
+                        val isCompact = viewMode == LibraryViewMode.COMPACT_LIST
+                        val songItem = remember(song) {
+                            SongItem.createOnlineSong(song.videoId, song.title, song.artist, "", song.durationMs, song.thumbnailUrl, song.artistId)
+                        }
+                        val isSelected = selectedSongItems.any { it.id == songItem.id }
+                        Box(modifier = Modifier.weight(1f)) {
+                            SongItemRow(
+                                song = song,
+                                isCompact = isCompact,
+                                isMultiSelectMode = isMultiSelectMode,
+                                isSelected = isSelected,
+                                onClick = {
+                                    if (isMultiSelectMode) {
+                                        onToggleSelect(songItem)
+                                    } else {
+                                        val queue = filteredSongs.map { s ->
+                                            SongItem.createOnlineSong(s.videoId, s.title, s.artist, "", s.durationMs, s.thumbnailUrl, s.artistId)
+                                        }
+                                        viewModel.setSongList(queue)
+                                        val idx = queue.indexOfFirst { it.videoId == song.videoId }
+                                        if (idx != -1) viewModel.playSongAtIndex(idx)
+                                    }
+                                },
+                                onLongClick = {
+                                    onToggleSelect(songItem)
+                                },
+                                onMenuClick = { onSongMenuClick(song) }
+                            )
+                        }
+                    }
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        } else {
+            items(filteredSongs, key = { it.videoId }) { song ->
+                val isCompact = viewMode == LibraryViewMode.COMPACT_LIST
+                val songItem = remember(song) {
+                    SongItem.createOnlineSong(song.videoId, song.title, song.artist, "", song.durationMs, song.thumbnailUrl, song.artistId)
+                }
+                val isSelected = selectedSongItems.any { it.id == songItem.id }
+
+                SongItemRow(
+                    song = song,
+                    isCompact = isCompact,
+                    isMultiSelectMode = isMultiSelectMode,
+                    isSelected = isSelected,
+                    onClick = {
+                        if (isMultiSelectMode) {
+                            onToggleSelect(songItem)
+                        } else {
+                            val queue = filteredSongs.map { s ->
+                                SongItem.createOnlineSong(s.videoId, s.title, s.artist, "", s.durationMs, s.thumbnailUrl, s.artistId)
+                            }
+                            viewModel.setSongList(queue)
+                            val idx = queue.indexOfFirst { it.videoId == song.videoId }
+                            if (idx != -1) viewModel.playSongAtIndex(idx)
+                        }
+                    },
+                    onLongClick = {
+                        onToggleSelect(songItem)
+                    },
+                    onMenuClick = { onSongMenuClick(song) }
                 )
-            } else {
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistsOverviewContent(
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
+    artists: List<OnlineArtist>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    showSearch: Boolean,
+    sortOrder: LibrarySortOrder,
+    onSortOrderChange: (LibrarySortOrder) -> Unit,
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
+    onArtistClick: (OnlineArtist) -> Unit
+) {
+    val items = remember(artists, searchQuery, sortOrder) {
+        val list = artists.map { artist ->
+            object : UnifiedItem {
+                override val id = "artist_${artist.browseId}"
+                override val title = artist.title
+                override val subtitle = "Artist"
+                override val thumbnailUrl = artist.thumbnailUrl
+                override val thumbnails = listOfNotNull(artist.thumbnailUrl)
+                override val isCircle = true
+                override val onClick = { onArtistClick(artist) }
+            }
+        }
+        val filtered = if (searchQuery.isBlank()) list else list.filter { it.title.contains(searchQuery, ignoreCase = true) }
+        when (sortOrder) {
+            LibrarySortOrder.TITLE -> filtered.sortedBy { it.title.lowercase() }
+            else -> filtered
+        }
+    }
+
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val columns = getAdaptiveColumns(viewMode, screenWidth)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        contentPadding = PaddingValues(bottom = 160.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            LibraryToolbar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                sortOrder = sortOrder,
+                onSortOrderChange = onSortOrderChange,
+                viewMode = viewMode,
+                onViewModeChange = onViewModeChange,
+                onCreatePlaylist = {},
+                showSearch = showSearch,
+                showNewPlaylist = false
+            )
+        }
+
+        when (viewMode) {
+            LibraryViewMode.LARGE_GRID -> {
+                val chunked = items.chunked(columns)
+                items(chunked.size, key = { "ar_lg_row_$it" }) { rowIndex ->
+                    val row = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        row.forEach { item -> Box(Modifier.weight(1f)) { LargeGridCard(item) } }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+            LibraryViewMode.COMPACT_GRID -> {
+                val chunked = items.chunked(columns)
+                items(chunked.size, key = { "ar_cg_row_$it" }) { rowIndex ->
+                    val row = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        row.forEach { item -> Box(Modifier.weight(1f)) { CompactGridCard(item) } }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+            LibraryViewMode.STANDARD_LIST -> {
+                if (columns > 1) {
+                    val chunked = items.chunked(columns)
+                    items(chunked.size, key = { "ar_sl_row_$it" }) { rowIndex ->
+                        val row = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { item -> Box(Modifier.weight(1f)) { StandardListItem(item) } }
+                            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else {
+                    items(items, key = { it.id }) { item -> StandardListItem(item) }
+                }
+            }
+            LibraryViewMode.COMPACT_LIST -> {
+                if (columns > 1) {
+                    val chunked = items.chunked(columns)
+                    items(chunked.size, key = { "ar_cl_row_$it" }) { rowIndex ->
+                        val row = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 1.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { item -> Box(Modifier.weight(1f)) { CompactDensityListItem(item) } }
+                            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else {
+                    items(items, key = { it.id }) { item -> CompactDensityListItem(item) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadsTabContent(
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
+    viewModel: PlayerSharedViewModel,
+    favoriteIds: Set<Long>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    showSearch: Boolean,
+    sortOrder: LibrarySortOrder,
+    onSortOrderChange: (LibrarySortOrder) -> Unit,
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
+    selectedSongItems: Set<SongItem>,
+    onToggleSelect: (SongItem) -> Unit
+) {
+    val localSongs by viewModel.localSongs.collectAsStateWithLifecycle(emptyList())
+
+    val filtered = remember(localSongs, searchQuery, sortOrder) {
+        val list = if (searchQuery.isBlank()) localSongs else localSongs.filter {
+            it.title.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true)
+        }
+        when (sortOrder) {
+            LibrarySortOrder.TITLE -> list.sortedBy { it.title.lowercase() }
+            LibrarySortOrder.ARTIST -> list.sortedBy { it.artist.lowercase() }
+            LibrarySortOrder.DATE_ADDED -> list.sortedByDescending { it.dateAdded }
+            LibrarySortOrder.DURATION -> list.sortedByDescending { it.duration }
+            else -> list
+        }
+    }
+
+    val isMultiSelectMode = selectedSongItems.isNotEmpty()
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val columns = getAdaptiveColumns(viewMode, screenWidth)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        contentPadding = PaddingValues(bottom = 160.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        item {
+            LibraryToolbar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                sortOrder = sortOrder,
+                onSortOrderChange = onSortOrderChange,
+                viewMode = viewMode,
+                onViewModeChange = onViewModeChange,
+                onCreatePlaylist = {},
+                showSearch = showSearch,
+                showNewPlaylist = false
+            )
+        }
+
+        if (filtered.isEmpty()) {
+            item {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = if (item.isCircle) Icons.Default.Person else Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(36.dp)
+                    Text(
+                        text = stringResource(R.string.lib_empty_library),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            if (columns > 1 && (viewMode == LibraryViewMode.STANDARD_LIST || viewMode == LibraryViewMode.COMPACT_LIST)) {
+                val chunked = filtered.chunked(columns)
+                items(chunked.size, key = { "dl_row_$it" }) { rowIndex ->
+                    val row = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        row.forEach { song ->
+                            val isCompact = viewMode == LibraryViewMode.COMPACT_LIST
+                            val isFav = favoriteIds.contains(song.id)
+                            val isSelected = selectedSongItems.any { it.id == song.id }
+                            Box(modifier = Modifier.weight(1f)) {
+                                LocalSongItemRow(
+                                    song = song,
+                                    isCompact = isCompact,
+                                    isFavorite = isFav,
+                                    isMultiSelectMode = isMultiSelectMode,
+                                    isSelected = isSelected,
+                                    onClick = {
+                                        if (isMultiSelectMode) {
+                                            onToggleSelect(song)
+                                        } else {
+                                            viewModel.setSongList(filtered)
+                                            viewModel.playSong(song)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        onToggleSelect(song)
+                                    }
+                                )
+                            }
+                        }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            } else {
+                items(filtered, key = { it.id }) { song ->
+                    val isCompact = viewMode == LibraryViewMode.COMPACT_LIST
+                    val isFav = favoriteIds.contains(song.id)
+                    val isSelected = selectedSongItems.any { it.id == song.id }
+                    LocalSongItemRow(
+                        song = song,
+                        isCompact = isCompact,
+                        isFavorite = isFav,
+                        isMultiSelectMode = isMultiSelectMode,
+                        isSelected = isSelected,
+                        onClick = {
+                            if (isMultiSelectMode) {
+                                onToggleSelect(song)
+                            } else {
+                                viewModel.setSongList(filtered)
+                                viewModel.playSong(song)
+                            }
+                        },
+                        onLongClick = {
+                            onToggleSelect(song)
+                        }
                     )
                 }
             }
         }
-        Spacer(modifier = Modifier.height(10.dp))
+    }
+}
+
+@Composable
+private fun DeviceFilesTabContent(
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
+    localSongs: List<SongItem>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    showSearch: Boolean,
+    sortOrder: LibrarySortOrder,
+    onSortOrderChange: (LibrarySortOrder) -> Unit,
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
+    viewModel: PlayerSharedViewModel,
+    currentSong: SongItem?,
+    favoriteIds: Set<Long>,
+    selectedSongItems: Set<SongItem>,
+    onToggleSelect: (SongItem) -> Unit
+) {
+    val filteredSongs = remember(localSongs, searchQuery, sortOrder) {
+        val list = if (searchQuery.isBlank()) localSongs else localSongs.filter {
+            it.title.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true)
+        }
+        when (sortOrder) {
+            LibrarySortOrder.TITLE -> list.sortedBy { it.title.lowercase() }
+            LibrarySortOrder.ARTIST -> list.sortedBy { it.artist.lowercase() }
+            LibrarySortOrder.DATE_ADDED -> list.sortedByDescending { it.dateAdded }
+            LibrarySortOrder.DURATION -> list.sortedByDescending { it.duration }
+            else -> list
+        }
+    }
+
+    val isMultiSelectMode = selectedSongItems.isNotEmpty()
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val columns = getAdaptiveColumns(viewMode, screenWidth)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        contentPadding = PaddingValues(bottom = 160.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        item {
+            LibraryToolbar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                sortOrder = sortOrder,
+                onSortOrderChange = onSortOrderChange,
+                viewMode = viewMode,
+                onViewModeChange = onViewModeChange,
+                onCreatePlaylist = {},
+                showSearch = showSearch,
+                showNewPlaylist = false
+            )
+        }
+
+        if (filteredSongs.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.lib_empty_library),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            if (columns > 1 && (viewMode == LibraryViewMode.STANDARD_LIST || viewMode == LibraryViewMode.COMPACT_LIST)) {
+                val chunked = filteredSongs.chunked(columns)
+                items(chunked.size, key = { "dev_row_$it" }) { rowIndex ->
+                    val row = chunked[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        row.forEach { song ->
+                            val isPlaying = currentSong?.id == song.id
+                            val isCompact = viewMode == LibraryViewMode.COMPACT_LIST
+                            val isFav = favoriteIds.contains(song.id)
+                            val isSelected = selectedSongItems.any { it.id == song.id }
+                            Box(modifier = Modifier.weight(1f)) {
+                                LocalSongItemRow(
+                                    song = song,
+                                    isPlaying = isPlaying,
+                                    isCompact = isCompact,
+                                    isFavorite = isFav,
+                                    isMultiSelectMode = isMultiSelectMode,
+                                    isSelected = isSelected,
+                                    onClick = {
+                                        if (isMultiSelectMode) {
+                                            onToggleSelect(song)
+                                        } else {
+                                            viewModel.setSongList(filteredSongs)
+                                            viewModel.playSong(song)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        onToggleSelect(song)
+                                    }
+                                )
+                            }
+                        }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            } else {
+                items(filteredSongs, key = { it.id }) { song ->
+                    val isPlaying = currentSong?.id == song.id
+                    val isCompact = viewMode == LibraryViewMode.COMPACT_LIST
+                    val isFav = favoriteIds.contains(song.id)
+                    val isSelected = selectedSongItems.any { it.id == song.id }
+                    LocalSongItemRow(
+                        song = song,
+                        isPlaying = isPlaying,
+                        isCompact = isCompact,
+                        isFavorite = isFav,
+                        isMultiSelectMode = isMultiSelectMode,
+                        isSelected = isSelected,
+                        onClick = {
+                            if (isMultiSelectMode) {
+                                onToggleSelect(song)
+                            } else {
+                                viewModel.setSongList(filteredSongs)
+                                viewModel.playSong(song)
+                            }
+                        },
+                        onLongClick = {
+                            onToggleSelect(song)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PodcastsOverviewContent(
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
+    podcasts: List<OnlinePlaylist>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    showSearch: Boolean,
+    sortOrder: LibrarySortOrder,
+    onSortOrderChange: (LibrarySortOrder) -> Unit,
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
+    onPodcastClick: (OnlinePlaylist) -> Unit
+) {
+    val items = remember(podcasts, searchQuery, sortOrder) {
+        val list = podcasts.map { podcast ->
+            object : UnifiedItem {
+                override val id = "podcast_${podcast.playlistId}"
+                override val title = podcast.title
+                override val subtitle = "Podcast"
+                override val thumbnailUrl = podcast.thumbnailUrl
+                override val thumbnails = listOfNotNull(podcast.thumbnailUrl)
+                override val isCircle = false
+                override val onClick = { onPodcastClick(podcast) }
+            }
+        }
+        if (searchQuery.isBlank()) list else list.filter { it.title.contains(searchQuery, ignoreCase = true) }
+    }
+
+    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val columns = getAdaptiveColumns(viewMode, screenWidth)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        contentPadding = PaddingValues(bottom = 160.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            LibraryToolbar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                sortOrder = sortOrder,
+                onSortOrderChange = onSortOrderChange,
+                viewMode = viewMode,
+                onViewModeChange = onViewModeChange,
+                onCreatePlaylist = {},
+                showSearch = showSearch,
+                showNewPlaylist = false
+            )
+        }
+
+        if (items.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.text_no_podcasts_found),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            when (viewMode) {
+                LibraryViewMode.LARGE_GRID -> {
+                    val chunked = items.chunked(columns)
+                    items(chunked.size, key = { "pod_lg_row_$it" }) { rowIndex ->
+                        val row = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 5.dp),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            row.forEach { item -> Box(Modifier.weight(1f)) { LargeGridCard(item) } }
+                            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+                LibraryViewMode.COMPACT_GRID -> {
+                    val chunked = items.chunked(columns)
+                    items(chunked.size, key = { "pod_cg_row_$it" }) { rowIndex ->
+                        val row = chunked[rowIndex]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            row.forEach { item -> Box(Modifier.weight(1f)) { CompactGridCard(item) } }
+                            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+                LibraryViewMode.STANDARD_LIST -> {
+                    if (columns > 1) {
+                        val chunked = items.chunked(columns)
+                        items(chunked.size, key = { "pod_sl_row_$it" }) { rowIndex ->
+                            val row = chunked[rowIndex]
+                            Row(
+                                modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                row.forEach { item -> Box(Modifier.weight(1f)) { StandardListItem(item) } }
+                                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                    } else {
+                        items(items, key = { it.id }) { item -> StandardListItem(item) }
+                    }
+                }
+                LibraryViewMode.COMPACT_LIST -> {
+                    if (columns > 1) {
+                        val chunked = items.chunked(columns)
+                        items(chunked.size, key = { "pod_cl_row_$it" }) { rowIndex ->
+                            val row = chunked[rowIndex]
+                            Row(
+                                modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 1.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                row.forEach { item -> Box(Modifier.weight(1f)) { CompactDensityListItem(item) } }
+                                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                    } else {
+                        items(items, key = { it.id }) { item -> CompactDensityListItem(item) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// Visual Item Cards (Large Grid, Compact Grid, Standard, Compact)
+// -------------------------------------------------------------
+
+@Composable
+private fun LargeGridCard(item: UnifiedItem) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = item.onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            PlaylistCollageArt(
+                thumbnails = item.thumbnails,
+                modifier = Modifier
+                    .aspectRatio(1f)
+                    .fillMaxWidth(),
+                isCircle = item.isCircle,
+                shape = if (item.isCircle) CircleShape else RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = item.title,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = item.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactGridCard(item: UnifiedItem) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = item.onClick)
+            .padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        PlaylistCollageArt(
+            thumbnails = item.thumbnails,
+            modifier = Modifier
+                .aspectRatio(1f)
+                .fillMaxWidth(),
+            isCircle = item.isCircle,
+            shape = if (item.isCircle) CircleShape else RoundedCornerShape(10.dp),
+            iconSize = 24.dp
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            item.title,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.bodyMedium,
+            text = item.title,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(2.dp))
+
         Text(
-            item.subtitle,
-            style = MaterialTheme.typography.bodySmall,
+            text = item.subtitle,
+            style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1227,208 +2321,299 @@ private fun UnifiedLibraryCard(item: UnifiedLibraryItem) {
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun PlaylistsTabContent(
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
-    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
-    viewModel: PlayerSharedViewModel,
-    isLoggedIn: Boolean
-) {
-    val context = LocalContext.current
-    val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
-
-    val accountViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[AccountViewModel::class.java] }
-    }
-    val exploreViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[ExploreViewModel::class.java] }
-    }
-
-    val onlinePlaylists by accountViewModel?.playlists?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-    val localPlaylists by viewModel.localPlaylistsFlow.collectAsStateWithLifecycle(emptyList())
-
-    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
-    var selectedLocalPlaylist by remember { mutableStateOf<PlaylistEntity?>(null) }
-
-    LaunchedEffect(isLoggedIn) {
-        if (isLoggedIn) {
-            accountViewModel?.refreshAll()
-        }
-    }
-
-    if (showCreatePlaylistDialog) {
-        var name by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showCreatePlaylistDialog = false },
-            title = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_create_new_playlist), fontWeight = FontWeight.Bold) },
-            text = {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_playlist_name)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (name.isNotBlank()) {
-                            viewModel.createLocalPlaylist(name)
-                            showCreatePlaylistDialog = false
-                        }
-                    },
-                    enabled = name.isNotBlank()
-                ) {
-                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_create))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCreatePlaylistDialog = false }) {
-                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.action_cancel))
-                }
-            }
-        )
-    }
-
-    selectedLocalPlaylist?.let { playlist ->
-        LocalPlaylistDetailsBottomSheet(
-            playlist = playlist,
-            viewModel = viewModel,
-            onDismiss = { selectedLocalPlaylist = null }
-        )
-    }
-
-    Column(
+private fun StandardListItem(item: UnifiedItem) {
+    Surface(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = item.onClick),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(14.dp)
     ) {
-        // My Playlists Section Header
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_my_playlists),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+            PlaylistCollageArt(
+                thumbnails = item.thumbnails,
+                modifier = Modifier.size(54.dp),
+                isCircle = item.isCircle,
+                shape = if (item.isCircle) CircleShape else RoundedCornerShape(10.dp)
             )
-            IconButton(onClick = { showCreatePlaylistDialog = true }) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Create Playlist",
-                    tint = MaterialTheme.colorScheme.primary
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = item.subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+    }
+}
 
-        // Local Playlists horizontal list
-        if (localPlaylists.isEmpty()) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .clickable { showCreatePlaylistDialog = true },
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer
-            ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_create_a_playlist_to_get_started),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        } else {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(localPlaylists) { playlist ->
-                    Column(
-                        modifier = Modifier
-                            .width(120.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { selectedLocalPlaylist = playlist }
-                            .padding(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(96.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.PlaylistPlay,
-                                null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            playlist.title,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-        }
-
-        if (isLoggedIn) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_yt_music_playlists),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+@Composable
+private fun CompactDensityListItem(item: UnifiedItem) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 1.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = item.onClick),
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PlaylistCollageArt(
+                thumbnails = item.thumbnails,
+                modifier = Modifier.size(40.dp),
+                isCircle = item.isCircle,
+                shape = if (item.isCircle) CircleShape else RoundedCornerShape(8.dp),
+                iconSize = 20.dp
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            if (onlinePlaylists.isEmpty()) {
-                Box(
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = item.subtitle,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SongItemRow(
+    song: OnlineSong,
+    isCompact: Boolean,
+    isMultiSelectMode: Boolean = false,
+    isSelected: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
+    onMenuClick: () -> Unit
+) {
+    val artSize = if (isCompact) 36.dp else 48.dp
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = if (isCompact) 1.dp else 2.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = if (isCompact) 4.dp else 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isMultiSelectMode) {
+                Icon(
+                    imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
+                        .padding(end = 10.dp)
+                        .size(22.dp)
+                )
+            }
+
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(song.thumbnailUrl)
+                    .crossfade(true)
+                    .error(R.drawable.ic_music_note)
+                    .build(),
+                contentDescription = song.title,
+                modifier = Modifier
+                    .size(artSize)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = song.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = if (isCompact) 14.sp else 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = song.artist,
+                    fontSize = if (isCompact) 12.sp else 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (!isMultiSelectMode) {
+                IconButton(
+                    onClick = onMenuClick,
+                    modifier = Modifier.size(32.dp)
                 ) {
-                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_online_playlists_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Adaptive(minSize = 160.dp),
-                    contentPadding = PaddingValues(bottom = 160.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f)
-                        .nestedScroll(nestedScrollConnection)
-                ) {
-                    items(onlinePlaylists) { playlist ->
-                        OnlinePlaylistCard(playlist, onClick = {
-                            exploreViewModel?.cameFromLibrary = true
-                            exploreViewModel?.loadPlaylist(playlist.playlistId)
-                            navigateToExplore(activity)
-                        })
-                    }
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Options",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
     }
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun LocalSongItemRow(
+    song: SongItem,
+    isCompact: Boolean,
+    isPlaying: Boolean = false,
+    isFavorite: Boolean = false,
+    isMultiSelectMode: Boolean = false,
+    isSelected: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {}
+) {
+    val artSize = if (isCompact) 36.dp else 48.dp
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = if (isCompact) 1.dp else 2.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        color = when {
+            isSelected -> MaterialTheme.colorScheme.secondaryContainer
+            isPlaying -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceContainer
+        },
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = if (isCompact) 4.dp else 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isMultiSelectMode) {
+                Icon(
+                    imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(end = 10.dp)
+                        .size(22.dp)
+                )
+            }
+
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(song.getAlbumArtUri() ?: R.drawable.ic_music_note)
+                    .crossfade(true)
+                    .error(R.drawable.ic_music_note)
+                    .build(),
+                contentDescription = song.title,
+                modifier = Modifier
+                    .size(artSize)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = song.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = if (isCompact) 14.sp else 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = when {
+                        isSelected -> MaterialTheme.colorScheme.onSecondaryContainer
+                        isPlaying -> MaterialTheme.colorScheme.onPrimaryContainer
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+                )
+                Text(
+                    text = song.artist,
+                    fontSize = if (isCompact) 12.sp else 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = when {
+                        isSelected -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                        isPlaying -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+
+            if (isFavorite && !isMultiSelectMode) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = null,
+                    tint = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// Helper BottomSheet & Functions
+// -------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1450,7 +2635,6 @@ private fun LocalPlaylistDetailsBottomSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
-            // Header Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1470,7 +2654,6 @@ private fun LocalPlaylistDetailsBottomSheet(
                     )
                 }
 
-                // Delete entire playlist button
                 IconButton(
                     onClick = {
                         viewModel.deleteLocalPlaylist(playlist.id)
@@ -1487,7 +2670,6 @@ private fun LocalPlaylistDetailsBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Action Buttons (Play & Shuffle)
             if (songs.isNotEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1496,9 +2678,7 @@ private fun LocalPlaylistDetailsBottomSheet(
                     Button(
                         onClick = {
                             viewModel.setSongList(songs)
-                            if (songs.isNotEmpty()) {
-                                viewModel.playSong(songs.first())
-                            }
+                            if (songs.isNotEmpty()) viewModel.playSong(songs.first())
                             onDismiss()
                         },
                         modifier = Modifier.weight(1f),
@@ -1516,37 +2696,34 @@ private fun LocalPlaylistDetailsBottomSheet(
                         onClick = {
                             val shuffled = songs.shuffled()
                             viewModel.setSongList(shuffled)
-                            if (shuffled.isNotEmpty()) {
-                                viewModel.playSong(shuffled.first())
-                            }
+                            if (shuffled.isNotEmpty()) viewModel.playSong(shuffled.first())
                             onDismiss()
                         },
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Default.Shuffle, null)
                         Spacer(Modifier.width(8.dp))
-                        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_shuffle))
+                        Text(stringResource(R.string.text_shuffle))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Songs List
             if (songs.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp),
+                        .height(150.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_this_playlist_is_empty),
+                    Text(
+                        stringResource(R.string.text_this_playlist_is_empty),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
                 LazyColumn(
-                    
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f, fill = false)
@@ -1571,7 +2748,6 @@ private fun LocalPlaylistDetailsBottomSheet(
                                     .padding(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Mini Thumbnail
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
@@ -1580,13 +2756,11 @@ private fun LocalPlaylistDetailsBottomSheet(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (song.thumbnailUrl?.isNotEmpty() == true) {
-                                        androidx.compose.foundation.Image(
-                                            painter = coil.compose.rememberAsyncImagePainter(
-                                                model = ImageRequest.Builder(LocalContext.current)
-                                                    .data(song.thumbnailUrl)
-                                                    .crossfade(true)
-                                                    .build()
-                                            ),
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(song.thumbnailUrl)
+                                                .crossfade(true)
+                                                .build(),
                                             contentDescription = null,
                                             modifier = Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop
@@ -1620,7 +2794,6 @@ private fun LocalPlaylistDetailsBottomSheet(
                                     )
                                 }
 
-                                // Delete single song from playlist button
                                 IconButton(
                                     onClick = {
                                         viewModel.removeSongFromLocalPlaylist(playlist.id, song.videoId ?: song.id.toString())
@@ -1641,517 +2814,6 @@ private fun LocalPlaylistDetailsBottomSheet(
     }
 }
 
-@Composable
-private fun OnlinePlaylistCard(
-    playlist: OnlinePlaylist,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                if (playlist.thumbnailUrl?.isNotEmpty() == true) {
-                    androidx.compose.foundation.Image(
-                        painter = coil.compose.rememberAsyncImagePainter(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(playlist.thumbnailUrl)
-                                .crossfade(true)
-                                .build()
-                        ),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.MusicNote,
-                            null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
-                }
-            }
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    playlist.title,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    playlist.songCount ?: "Playlist",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PodcastsTabContent(gridState: androidx.compose.foundation.lazy.grid.LazyGridState, nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection) {
-    val context = LocalContext.current
-    val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
-
-    val accountViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[AccountViewModel::class.java] }
-    }
-    val exploreViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[ExploreViewModel::class.java] }
-    }
-
-    val onlinePodcasts by accountViewModel?.podcasts?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        accountViewModel?.refreshAll()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_subscribed_podcasts),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (onlinePodcasts.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Podcasts,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .alpha(0.6f),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_podcasts_found),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        } else {
-            LazyVerticalGrid(
-                    state = gridState,
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                contentPadding = PaddingValues(bottom = 160.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f)
-                    .nestedScroll(nestedScrollConnection)
-            ) {
-                items(onlinePodcasts) { podcast ->
-                    OnlinePlaylistCard(podcast, onClick = {
-                        exploreViewModel?.cameFromLibrary = true
-                        exploreViewModel?.loadPlaylist(podcast.playlistId)
-                        navigateToExplore(activity)
-                    })
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SongsTabContent(listState: androidx.compose.foundation.lazy.LazyListState, nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection, viewModel: PlayerSharedViewModel) {
-    val context = LocalContext.current
-    val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
-
-    val accountViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[AccountViewModel::class.java] }
-    }
-
-    val onlineSongs by accountViewModel?.songs?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        accountViewModel?.refreshAll()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_liked_songs_yt_music),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (onlineSongs.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_online_songs_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(
-                    state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f)
-                    .nestedScroll(nestedScrollConnection),
-                contentPadding = PaddingValues(bottom = 160.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(onlineSongs) { song ->
-                    ListItem(
-                        headlineContent = { Text(song.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        supportingContent = { Text(song.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        leadingContent = {
-                            if (song.thumbnailUrl?.isNotEmpty() == true) {
-                                androidx.compose.foundation.Image(
-                                    painter = coil.compose.rememberAsyncImagePainter(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(song.thumbnailUrl)
-                                            .crossfade(true)
-                                            .build()
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(48.dp))
-                            }
-                        },
-                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable {
-                                val list = onlineSongs.map { s ->
-                                    SongItem.createOnlineSong(
-                                        s.videoId,
-                                        s.title,
-                                        s.artist,
-                                        "",
-                                        s.durationMs,
-                                        s.thumbnailUrl,
-                                        s.artistId
-                                    )
-                                }
-                                viewModel.setSongList(list)
-                                val idx = list.indexOfFirst { it.videoId == song.videoId }
-                                if (idx != -1) {
-                                    viewModel.playSongAtIndex(idx)
-                                }
-                            }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AlbumsTabContent(gridState: androidx.compose.foundation.lazy.grid.LazyGridState, nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection) {
-    val context = LocalContext.current
-    val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
-
-    val accountViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[AccountViewModel::class.java] }
-    }
-    val exploreViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[ExploreViewModel::class.java] }
-    }
-
-    val onlineAlbums by accountViewModel?.albums?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        accountViewModel?.refreshAll()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_yt_music_albums),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (onlineAlbums.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_online_albums_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyVerticalGrid(
-                    state = gridState,
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                contentPadding = PaddingValues(bottom = 160.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f)
-                    .nestedScroll(nestedScrollConnection)
-            ) {
-                items(onlineAlbums) { album ->
-                    OnlineAlbumCard(album, onClick = {
-                        exploreViewModel?.cameFromLibrary = true
-                        exploreViewModel?.loadAlbum(album.browseId)
-                        navigateToExplore(activity)
-                    })
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun OnlineAlbumCard(
-    album: OnlineAlbum,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                if (album.thumbnailUrl?.isNotEmpty() == true) {
-                    androidx.compose.foundation.Image(
-                        painter = coil.compose.rememberAsyncImagePainter(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(album.thumbnailUrl)
-                                .crossfade(true)
-                                .build()
-                        ),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Album,
-                            null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
-                }
-            }
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    album.title,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    album.artists.firstOrNull()?.name ?: "Unknown Artist",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArtistsTabContent(gridState: androidx.compose.foundation.lazy.grid.LazyGridState, nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection) {
-    val context = LocalContext.current
-    val activity = remember { getActivityFromContext(context) as? androidx.fragment.app.FragmentActivity }
-
-    val accountViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[AccountViewModel::class.java] }
-    }
-    val exploreViewModel = remember(activity) {
-        activity?.let { ViewModelProvider(it)[ExploreViewModel::class.java] }
-    }
-
-    val onlineArtists by accountViewModel?.artists?.collectAsStateWithLifecycle(emptyList()) ?: remember { mutableStateOf(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        accountViewModel?.refreshAll()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_followed_artists_yt_music),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (onlineArtists.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_no_online_artists_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyVerticalGrid(
-                    state = gridState,
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                contentPadding = PaddingValues(bottom = 160.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f)
-                    .nestedScroll(nestedScrollConnection)
-            ) {
-                items(onlineArtists) { artist ->
-                    OnlineArtistCard(artist, onClick = {
-                        exploreViewModel?.cameFromLibrary = true
-                        exploreViewModel?.loadArtist(artist.browseId, artist.thumbnailUrl)
-                        navigateToExplore(activity)
-                    })
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun OnlineArtistCard(
-    artist: OnlineArtist,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() }
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .aspectRatio(1f)
-                .fillMaxWidth()
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-            contentAlignment = Alignment.Center
-        ) {
-            if (artist.thumbnailUrl?.isNotEmpty() == true) {
-                androidx.compose.foundation.Image(
-                    painter = coil.compose.rememberAsyncImagePainter(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(artist.thumbnailUrl)
-                            .crossfade(true)
-                            .build()
-                    ),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            artist.title,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_artist),
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-// Background scanner helper
 private suspend fun scanLocalFiles(context: Context, viewModel: PlayerSharedViewModel) {
     viewModel.rescanLocalFiles()
 }
@@ -2168,4 +2830,3 @@ private fun getActivityFromContext(context: Context): Activity? {
 private fun navigateToExplore(activity: Activity?) {
     (activity as? MainActivity)?.showArtistPage(null, null)
 }
-

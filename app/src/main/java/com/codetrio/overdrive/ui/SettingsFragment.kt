@@ -2258,10 +2258,14 @@ private fun AppearanceScreen(
                 add {
                     var showThemeSheet by remember { mutableStateOf(false) }
                     val fluidStr = stringResource(R.string.text_fluid_theme)
+                    val meshStr = stringResource(R.string.text_fluid_mesh_theme)
                     val staticStr = stringResource(R.string.text_static_theme)
+                    val immersionStr = stringResource(R.string.text_immersion_theme)
                     val themeText = when (playerTheme) {
                         "fluid" -> fluidStr
+                        "mesh" -> meshStr
                         "static" -> staticStr
+                        "immersion" -> immersionStr
                         else -> fluidStr
                     }
                     ListItem(
@@ -4426,8 +4430,32 @@ private fun DeveloperOptionsScreen(navController: androidx.navigation.NavControl
             Spacer(modifier = Modifier.height(16.dp))
             
             SettingsHeader(stringResource(R.string.developer_playback_diagnostics))
+            var showPlayerStats by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getBoolean("show_player_stats", false)) }
             SettingsGroupCard(
                 items = listOf(
+                    {
+                        androidx.compose.material3.ListItem(
+                            headlineContent = { Text(stringResource(R.string.developer_show_player_stats)) },
+                            supportingContent = { Text(stringResource(R.string.developer_show_player_stats_desc)) },
+                            leadingContent = {
+                                Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_stats), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            },
+                            trailingContent = {
+                                androidx.compose.material3.Switch(
+                                    checked = showPlayerStats,
+                                    onCheckedChange = { checked ->
+                                        showPlayerStats = checked
+                                        prefs.edit().putBoolean("show_player_stats", checked).apply()
+                                    }
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                val next = !showPlayerStats
+                                showPlayerStats = next
+                                prefs.edit().putBoolean("show_player_stats", next).apply()
+                            }
+                        )
+                    },
                     {
                         androidx.compose.material3.ListItem(
                             headlineContent = { Text(stringResource(R.string.developer_playback_logs)) },

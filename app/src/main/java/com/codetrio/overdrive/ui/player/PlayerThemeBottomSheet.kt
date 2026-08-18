@@ -90,6 +90,40 @@ fun PlayerThemeBottomSheet(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
+            // Option 2: Dynamic Fluid Canvas (Living Mesh Gradient)
+            ListItem(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onThemeSelect("mesh") },
+                headlineContent = {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_fluid_mesh_theme),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_fluid_mesh_theme_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                trailingContent = {
+                    RadioButton(
+                        selected = currentTheme == "mesh",
+                        onClick = { onThemeSelect("mesh") }
+                    )
+                },
+                colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                thickness = 1.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
             // Option 2: Static Theme
             ListItem(
                 modifier = Modifier

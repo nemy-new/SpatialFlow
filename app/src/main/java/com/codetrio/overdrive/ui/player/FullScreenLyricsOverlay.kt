@@ -167,55 +167,68 @@ internal fun FullScreenLyricsOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Top-Left Album Art + Song Title + Artist (Clickable to collapse to normal player)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable(
-                            enabled = onCollapse != null,
-                            onClick = { onCollapse?.invoke() }
-                        )
-                        .padding(vertical = 4.dp, horizontal = 6.dp)
-                ) {
-                    Box(
+                val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+                val isTabletMode = isEmbedded || configuration.screenWidthDp >= 600
+
+                if (!isTabletMode) {
+                    // Top-Left: Spacer for animated ArtworkPager + Song Title + Artist (Clickable to collapse to normal player)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                    ) {
-                        if (currentSong?.thumbnailUrl != null) {
-                            coil.compose.AsyncImage(
-                                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
-                                    .data(currentSong.thumbnailUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Return to Player",
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable(
+                                enabled = onCollapse != null,
+                                onClick = { onCollapse?.invoke() }
                             )
-                        } else {
-                            Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.2f)))
+                            .padding(vertical = 4.dp, horizontal = 6.dp)
+                    ) {
+                        // Self-contained, cleanly clipped mini album art thumbnail
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        ) {
+                            val artUri = currentSong?.getAlbumArtUri() ?: currentSong?.thumbnailUrl
+                            if (artUri != null) {
+                                coil.compose.AsyncImage(
+                                    model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                                        .data(artUri)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Return to Player",
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(contentColor.copy(alpha = 0.12f))
+                                )
+                            }
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = currentSong?.title ?: "",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = contentColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = currentSong?.artist ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = contentColor.copy(alpha = 0.7f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = currentSong?.title ?: "",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = contentColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = currentSong?.artist ?: "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = contentColor.copy(alpha = 0.7f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
 
                 val context = androidx.compose.ui.platform.LocalContext.current
