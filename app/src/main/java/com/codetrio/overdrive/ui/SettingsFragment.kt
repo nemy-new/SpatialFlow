@@ -3720,7 +3720,8 @@ private fun AboutScreen(
                 // Version Pills
                 Row(
                     modifier = Modifier.padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
                         shape = CircleShape,
@@ -3736,7 +3737,30 @@ private fun AboutScreen(
                                     interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                                     indication = null
                                 ) { handleVersionTap() }
-                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        )
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f)
+                    ) {
+                        Text(
+                            text = "Build #${BuildConfig.BUILD_NUMBER} (${BuildConfig.GIT_COMMIT_HASH})",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .clickable {
+                                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                    val clip = android.content.ClipData.newPlainText(
+                                        "OverDrive Build Info",
+                                        "OverDrive ${BuildConfig.VERSION_NAME} (Build #${BuildConfig.BUILD_NUMBER}, Commit ${BuildConfig.GIT_COMMIT_HASH}, Built ${BuildConfig.BUILD_TIME})"
+                                    )
+                                    clipboard?.setPrimaryClip(clip)
+                                    com.codetrio.overdrive.ui.SnackbarController.showMessage(context.getString(R.string.about_build_copied))
+                                }
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
                         )
                     }
                 }
@@ -3765,6 +3789,40 @@ private fun AboutScreen(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
+            SettingsHeader(stringResource(R.string.about_build_info_title))
+            SettingsGroupCard(
+                items = listOf(
+                    {
+                        androidx.compose.material3.ListItem(
+                            headlineContent = { Text(stringResource(R.string.about_build_number)) },
+                            supportingContent = { Text("#${BuildConfig.BUILD_NUMBER}") },
+                            leadingContent = {
+                                Icon(Icons.Rounded.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        )
+                    },
+                    {
+                        androidx.compose.material3.ListItem(
+                            headlineContent = { Text(stringResource(R.string.about_build_commit)) },
+                            supportingContent = { Text(BuildConfig.GIT_COMMIT_HASH) },
+                            leadingContent = {
+                                Icon(Icons.Rounded.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        )
+                    },
+                    {
+                        androidx.compose.material3.ListItem(
+                            headlineContent = { Text(stringResource(R.string.about_build_time)) },
+                            supportingContent = { Text(BuildConfig.BUILD_TIME) },
+                            leadingContent = {
+                                Icon(Icons.Rounded.Update, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        )
+                    }
+                )
+            )
             
             if (isDeveloperMode) {
                 Spacer(modifier = Modifier.height(32.dp))
@@ -3782,8 +3840,6 @@ private fun AboutScreen(
             }
             
             Spacer(modifier = Modifier.height(32.dp))
-            
-
         }
     }
 }

@@ -52,6 +52,11 @@
     <string name="settings_cat_feedback_sub">不具合の報告、機能の要望、ログの出力</string>
     <string name="settings_cat_about">アプリ情報</string>
     <string name="settings_cat_about_sub">アプリバージョン、クレジット、更新の確認</string>
+    <string name="about_build_info_title">ビルド情報</string>
+    <string name="about_build_number">ビルド番号</string>
+    <string name="about_build_commit">コミットハッシュ</string>
+    <string name="about_build_time">ビルド日時</string>
+    <string name="about_build_copied">ビルド情報をクリップボードにコピーしました</string>
 
     <!-- Language Settings -->
     <string name="setting_app_language">言語</string>

@@ -46,6 +46,24 @@ def myKeyPassword = localProps.getProperty('KEY_PASSWORD') ?: System.getenv("AND
 // Check if all required signing properties are available
 def isReleaseSigningReady = myKeystoreFile != null && myKeystorePassword != null && myKeyAlias != null && myKeyPassword != null
 
+// Git & Build Metadata (Configuration-Cache Compatible)
+def commitCount = providers.exec {
+    it.workingDir(rootProject.projectDir)
+    it.commandLine("git", "rev-list", "--count", "HEAD")
+}.standardOutput.asText.map { it.trim() }.getOrElse("1")
+
+def commitHash = providers.exec {
+    it.workingDir(rootProject.projectDir)
+    it.commandLine("git", "rev-parse", "--short", "HEAD")
+}.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
+
+def getBuildTimestamp = { ->
+    return new java.text.SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date())
+}
+
+def buildTime = getBuildTimestamp()
+def buildNumber = "${currentVersionCode}.${commitCount}"
+
 android {
     namespace 'com.codetrio.overdrive'
     compileSdk 37
@@ -59,6 +77,11 @@ android {
         targetSdk 37
         versionCode currentVersionCode
         versionName currentVersionName
+
+        buildConfigField "String", "BUILD_NUMBER", "\"${buildNumber}\""
+        buildConfigField "String", "GIT_COMMIT_HASH", "\"${commitHash}\""
+        buildConfigField "String", "BUILD_TIME", "\"${buildTime}\""
+        buildConfigField "int", "GIT_COMMIT_COUNT", "${commitCount}"
     }
 
     dependenciesInfo {
