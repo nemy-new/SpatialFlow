@@ -344,21 +344,20 @@ class AudioPlaybackService : MediaSessionService() {
             // ------------------------------------
 
             com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.logRecovery(
-                action = "Auto-skip to next track",
-                details = "Unrecoverable playback error occurred. Skipping track..."
+                action = "Playback error stopped",
+                details = "Unrecoverable playback error occurred. Stopping playback to prevent skip loop."
             )
             viewModel?.setIsPlaying(false)
+            viewModel?.setPlaybackReady(false)
             
-            // Auto-recovery: reset player and attempt to skip to next song
+            // Safe stop without runaway skipping
             try {
                 player.stop()
                 player.clearMediaItems()
             } catch (e: Exception) {
                 Log.w(TAG, "Player reset during error recovery failed: ${e.message}")
             }
-            handler.postDelayed({
-                viewModel?.playNextSong(true)
-            }, 200)
+            com.codetrio.overdrive.ui.SnackbarController.showMessage("再生エラーが発生しました")
         }
 
         override fun onPositionDiscontinuity(
@@ -860,10 +859,13 @@ class AudioPlaybackService : MediaSessionService() {
                     com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
                         level = com.codetrio.overdrive.data.diagnostics.LogLevel.ERROR,
                         tag = "PlaybackService",
-                        message = "Failed to resolve stream URL upfront for: $videoId. Auto-skipping..."
+                        message = "Failed to resolve stream URL upfront for: $videoId"
                     )
-                    // Auto-skip on resolution failure
-                    viewModel?.playNextSong(true)
+                    withContext(Dispatchers.Main) {
+                        viewModel?.setIsPlaying(false)
+                        viewModel?.setPlaybackReady(false)
+                        com.codetrio.overdrive.ui.SnackbarController.showMessage("ストリームの取得に失敗しました。YouTubeログインまたはネットワークをご確認ください")
+                    }
                 }
             }
         } else {
