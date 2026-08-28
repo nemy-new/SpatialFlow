@@ -741,6 +741,18 @@
     <string name="font_applied_badge">Selected</string>
     <string name="font_download_success">Downloaded \"%s\" successfully</string>
     <string name="font_download_failure">Failed to download \"%s\". Please check your network.</string>
+    <string name="font_available_fonts">Available Fonts</string>
+    <string name="action_add">Add</string>
+    <string name="font_builtin_system">Built-in System Font</string>
+    <string name="font_custom_size">Custom Font • %d KB</string>
+    <string name="font_deleted_toast">Font removed successfully</string>
+    <string name="font_import_failed_toast">Failed to import font. Please verify the font file.</string>
+    <string name="font_imported_toast">Imported font \"%s\"</string>
+    <string name="font_preview_now_playing">Now Playing Preview</string>
+    <string name="font_preview_headings_sample">Listen Again • Favorites</string>
+    <string name="font_preview_headings_sub">TOP CHARTS &amp; EXPLORE 2026</string>
+    <string name="font_preview_global_sub">Next-generation high-resolution expressive audio experience.</string>
+    <string name="font_sample_alphabet">0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ</string>
 
     <!-- Developer Setup & Onboarding -->
     <string name="developer_setup_and_onboarding">Setup &amp; Onboarding</string>

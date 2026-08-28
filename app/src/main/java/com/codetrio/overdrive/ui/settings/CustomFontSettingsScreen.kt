@@ -106,6 +106,14 @@ fun CustomFontSettingsScreen(
     var currentTarget by remember { mutableStateOf(FontTarget.GLOBAL) }
     var fontToDelete by remember { mutableStateOf<CustomFontItem?>(null) }
 
+    // Retrieve active playing song for real-time player preview
+    val activity = LocalContext.current as? androidx.activity.ComponentActivity
+    val playerViewModel: com.codetrio.overdrive.viewmodel.PlayerSharedViewModel? = activity?.let {
+        androidx.lifecycle.viewmodel.compose.viewModel(viewModelStoreOwner = it)
+    }
+    val currentSongFromVm by playerViewModel?.currentSong?.collectAsStateWithLifecycle(initialValue = null) ?: remember { mutableStateOf(null) }
+    val effectiveSong = currentSongFromVm ?: remember { com.codetrio.overdrive.util.PlaybackStateManager.getLastSong(context) }
+
     // SAF Font file picker launcher (.ttf, .otf, .ttc, .woff2)
     val fontPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -115,12 +123,13 @@ fun CustomFontSettingsScreen(
                 val result = fontManager.importFontFromUri(uri)
                 if (result.isSuccess) {
                     val item = result.getOrNull()
-                    Toast.makeText(context, "${item?.name ?: "Font"} をインポートしました", Toast.LENGTH_SHORT).show()
+                    val fontName = item?.name ?: "Font"
+                    Toast.makeText(context, context.getString(R.string.font_imported_toast, fontName), Toast.LENGTH_SHORT).show()
                     if (item != null) {
                         fontManager.setFontForTarget(currentTarget, item.id)
                     }
                 } else {
-                    Toast.makeText(context, "フォントのインポートに失敗しました", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.font_import_failed_toast), Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -186,7 +195,8 @@ fun CustomFontSettingsScreen(
                 target = currentTarget,
                 fontName = selectedFont?.name ?: "Google Sans Flex",
                 previewFontFamily = previewFontFamily,
-                config = currentConfig
+                config = currentConfig,
+                currentSong = effectiveSong
             )
 
             // ── 3. Variable Font Tuning Section (Native Group Card) ──────
@@ -309,7 +319,7 @@ fun CustomFontSettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "利用可能なフォント",
+                    text = stringResource(R.string.font_available_fonts),
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -331,7 +341,7 @@ fun CustomFontSettingsScreen(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("追加", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(stringResource(R.string.action_add), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                 }
             }
 
@@ -342,6 +352,7 @@ fun CustomFontSettingsScreen(
                         NativeFontListItem(
                             font = fontItem,
                             isSelected = isSelected,
+                            fontManager = fontManager,
                             onSelect = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 fontManager.setFontForTarget(currentTarget, fontItem.id)
@@ -387,6 +398,8 @@ fun CustomFontSettingsScreen(
                             isDownloaded = isDownloaded,
                             isSelected = isSelected,
                             isDownloading = isDownloading,
+                            fontManager = fontManager,
+                            downloadedItem = downloadedItem,
                             onDownloadClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 scope.launch {
@@ -426,7 +439,7 @@ fun CustomFontSettingsScreen(
                     onClick = {
                         fontManager.deleteFont(font.id)
                         fontToDelete = null
-                        Toast.makeText(context, "フォントを削除しました", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.font_deleted_toast), Toast.LENGTH_SHORT).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -490,6 +503,7 @@ private fun NativePreviewCard(
     fontName: String,
     previewFontFamily: FontFamily,
     config: FontVariationConfig,
+    currentSong: com.codetrio.overdrive.model.SongItem?,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -550,11 +564,14 @@ private fun NativePreviewCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Sample typography text rendered in the preview font
+            // Sample typography text rendered in the preview font based on active playing song
+            val displayTitle = currentSong?.title?.takeIf { it.isNotBlank() } ?: "夜に駆ける / Shelter"
+            val displayArtist = currentSong?.artist?.takeIf { it.isNotBlank() } ?: "YOASOBI • Porter Robinson"
+
             when (target) {
                 FontTarget.LYRICS -> {
                     Text(
-                        text = "溢れ出す想いと旋律が、\n心を満たしていく。",
+                        text = stringResource(R.string.font_preview_lyrics_sample),
                         fontFamily = previewFontFamily,
                         fontSize = 22.sp,
                         fontWeight = FontWeight(config.weight.toInt().coerceIn(100, 1000)),
@@ -572,24 +589,42 @@ private fun NativePreviewCard(
                 }
                 FontTarget.PLAYER_TITLE -> {
                     Text(
-                        text = "夜に駆ける / WannaCry",
+                        text = displayTitle,
                         fontFamily = previewFontFamily,
                         fontSize = 24.sp,
                         fontWeight = FontWeight(config.weight.toInt().coerceIn(100, 1000)),
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "YOASOBI • Porter Robinson",
+                        text = displayArtist,
                         fontFamily = previewFontFamily,
                         fontSize = 16.sp,
                         fontWeight = FontWeight(config.weight.toInt().coerceIn(100, 1000)),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
+                    if (currentSong != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.font_preview_now_playing),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
                 }
                 FontTarget.HEADINGS -> {
                     Text(
-                        text = "もう一度聴く / お気に入りの曲",
+                        text = stringResource(R.string.font_preview_headings_sample),
                         fontFamily = previewFontFamily,
                         fontSize = 22.sp,
                         fontWeight = FontWeight(config.weight.toInt().coerceIn(100, 1000)),
@@ -597,7 +632,7 @@ private fun NativePreviewCard(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "TOP CHARTS & EXPLORE 2026",
+                        text = stringResource(R.string.font_preview_headings_sub),
                         fontFamily = previewFontFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight(config.weight.toInt().coerceIn(100, 1000)),
@@ -607,7 +642,7 @@ private fun NativePreviewCard(
                 }
                 FontTarget.GLOBAL -> {
                     Text(
-                        text = "OverDrive Audiophile 2026",
+                        text = stringResource(R.string.font_preview_sample),
                         fontFamily = previewFontFamily,
                         fontSize = 20.sp,
                         fontWeight = FontWeight(config.weight.toInt().coerceIn(100, 1000)),
@@ -615,7 +650,7 @@ private fun NativePreviewCard(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "美しく響く次世代ハイレゾ・オーディオ体験をあなたに。",
+                        text = stringResource(R.string.font_preview_global_sub),
                         fontFamily = previewFontFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight(config.weight.toInt().coerceIn(100, 1000)),
@@ -623,7 +658,7 @@ private fun NativePreviewCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                        text = stringResource(R.string.font_sample_alphabet),
                         fontFamily = previewFontFamily,
                         fontSize = 12.sp,
                         fontWeight = FontWeight(config.weight.toInt().coerceIn(100, 1000)),
@@ -689,10 +724,16 @@ private fun NativeSliderListItem(
 private fun NativeFontListItem(
     font: CustomFontItem,
     isSelected: Boolean,
+    fontManager: CustomFontManager,
     onSelect: () -> Unit,
     onDelete: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
+    // Instantiate actual font family for rendering this item in its specific font
+    val itemFontFamily = remember(font) {
+        fontManager.createPreviewFontFamily(font, FontVariationConfig(weight = 500f))
+    }
+
     ListItem(
         headlineContent = {
             Row(
@@ -702,6 +743,7 @@ private fun NativeFontListItem(
             ) {
                 Text(
                     text = font.name,
+                    fontFamily = itemFontFamily,
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                     ),
@@ -728,17 +770,28 @@ private fun NativeFontListItem(
             }
         },
         supportingContent = {
-            val subtitle = if (font.isBuiltIn) {
-                "組み込みシステムフォント"
-            } else {
-                val sizeKb = font.fileSize / 1024
-                "カスタムフォント • ${sizeKb} KB"
+            Column(modifier = Modifier.padding(top = 2.dp)) {
+                val subtitle = if (font.isBuiltIn) {
+                    stringResource(R.string.font_builtin_system)
+                } else {
+                    val sizeKb = font.fileSize / 1024
+                    stringResource(R.string.font_custom_size, sizeKb)
+                }
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "あふれ出す旋律 • OverDrive 2026",
+                    fontFamily = itemFontFamily,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
             }
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         },
         leadingContent = {
             RadioButton(
@@ -768,10 +821,21 @@ private fun NativeCloudFontListItem(
     isDownloaded: Boolean,
     isSelected: Boolean,
     isDownloading: Boolean,
+    fontManager: CustomFontManager,
+    downloadedItem: CustomFontItem?,
     onDownloadClick: () -> Unit,
     onApplyClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // If downloaded, render in the downloaded font family
+    val cloudFontFamily = remember(downloadedItem) {
+        if (downloadedItem != null) {
+            fontManager.createPreviewFontFamily(downloadedItem, FontVariationConfig(weight = 500f))
+        } else {
+            FontFamily.Default
+        }
+    }
+
     ListItem(
         headlineContent = {
             Row(
@@ -781,6 +845,7 @@ private fun NativeCloudFontListItem(
             ) {
                 Text(
                     text = cloudFont.name,
+                    fontFamily = cloudFontFamily,
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                     ),
@@ -818,6 +883,7 @@ private fun NativeCloudFontListItem(
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
                     text = "「${cloudFont.sampleText}」",
+                    fontFamily = cloudFontFamily,
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     ),

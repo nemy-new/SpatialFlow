@@ -741,6 +741,18 @@
     <string name="font_applied_badge">適用中</string>
     <string name="font_download_success">「%s」のダウンロードが完了しました</string>
     <string name="font_download_failure">「%s」のダウンロードに失敗しました。通信環境をご確認ください。</string>
+    <string name="font_available_fonts">利用可能なフォント</string>
+    <string name="action_add">追加</string>
+    <string name="font_builtin_system">組み込みシステムフォント</string>
+    <string name="font_custom_size">カスタムフォント • %d KB</string>
+    <string name="font_deleted_toast">フォントを削除しました</string>
+    <string name="font_import_failed_toast">フォントのインポートに失敗しました</string>
+    <string name="font_imported_toast">フォント「%s」をインポートしました</string>
+    <string name="font_preview_now_playing">再生中プレビュー</string>
+    <string name="font_preview_headings_sample">もう一度聴く / お気に入りの曲</string>
+    <string name="font_preview_headings_sub">TOP CHARTS &amp; EXPLORE 2026</string>
+    <string name="font_preview_global_sub">美しく響く次世代ハイレゾ・オーディオ体験をあなたに。</string>
+    <string name="font_sample_alphabet">0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ</string>
 
     <!-- Developer Setup & Onboarding -->
     <string name="developer_setup_and_onboarding">セットアップ &amp; オンボーディング</string>
