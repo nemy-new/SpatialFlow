@@ -422,8 +422,10 @@ internal fun LyricsMetadataFooter(
     val albumName = activeResult?.matchedAlbum
     val providerName = activeResult?.providerName ?: selectedProvider
 
+    val playerTitleFont = com.codetrio.overdrive.ui.theme.rememberCustomFontFamily(com.codetrio.overdrive.data.font.FontTarget.PLAYER_TITLE)
     val mutedColor = contentColor.copy(alpha = 0.35f)
     val metaStyle = MaterialTheme.typography.labelSmall.copy(
+        fontFamily = playerTitleFont,
         fontWeight = FontWeight.Normal,
         letterSpacing = 0.3.sp,
         color = mutedColor

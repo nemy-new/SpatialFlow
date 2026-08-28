@@ -1711,6 +1711,8 @@ private fun MiniPlayerContentInternal(
         Spacer(modifier = Modifier.width(20.dp))
 
         // Song Info
+        val playerTitleFont = com.codetrio.overdrive.ui.theme.rememberCustomFontFamily(com.codetrio.overdrive.data.font.FontTarget.PLAYER_TITLE)
+
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -1723,6 +1725,7 @@ private fun MiniPlayerContentInternal(
             Text(
                 text = currentSong.title,
                 style = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = playerTitleFont,
                     fontWeight = FontWeight.Bold,
                     color = contentColor
                 ),
@@ -1756,6 +1759,7 @@ private fun MiniPlayerContentInternal(
                         Text(
                             text = "$deviceName • ",
                             style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = playerTitleFont,
                                 color = accentColor,
                                 fontWeight = FontWeight.SemiBold
                             ),
@@ -1766,6 +1770,7 @@ private fun MiniPlayerContentInternal(
                 Text(
                     text = currentSong.artist,
                     style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = playerTitleFont,
                         color = contentSecondary
                     ),
                     maxLines = 1,
