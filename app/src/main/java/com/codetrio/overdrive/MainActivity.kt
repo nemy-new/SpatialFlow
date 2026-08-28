@@ -708,13 +708,13 @@ class MainActivity : AppCompatActivity() {
                                     if (targetIndex > initialIndex) {
                                         slideInHorizontally(
                                             initialOffsetX = { it },
-                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                                        ) + fadeIn(animationSpec = tween(220))
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+                                        ) + fadeIn(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                                     } else {
                                         slideInHorizontally(
                                             initialOffsetX = { -it },
-                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                                        ) + fadeIn(animationSpec = tween(220))
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+                                        ) + fadeIn(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                                     }
                                 },
                                 exitTransition = {
@@ -726,13 +726,13 @@ class MainActivity : AppCompatActivity() {
                                     if (targetIndex > initialIndex) {
                                         slideOutHorizontally(
                                             targetOffsetX = { -it / 3 },
-                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                                        ) + fadeOut(animationSpec = tween(220))
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+                                        ) + fadeOut(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                                     } else {
                                         slideOutHorizontally(
                                             targetOffsetX = { it / 3 },
-                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                                        ) + fadeOut(animationSpec = tween(220))
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+                                        ) + fadeOut(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                                     }
                                 },
                                 popEnterTransition = {
@@ -744,13 +744,13 @@ class MainActivity : AppCompatActivity() {
                                     if (targetIndex > initialIndex) {
                                         slideInHorizontally(
                                             initialOffsetX = { it },
-                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                                        ) + fadeIn(animationSpec = tween(220))
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+                                        ) + fadeIn(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                                     } else {
                                         slideInHorizontally(
                                             initialOffsetX = { -it },
-                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                                        ) + fadeIn(animationSpec = tween(220))
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+                                        ) + fadeIn(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                                     }
                                 },
                                 popExitTransition = {
@@ -762,13 +762,13 @@ class MainActivity : AppCompatActivity() {
                                     if (targetIndex > initialIndex) {
                                         slideOutHorizontally(
                                             targetOffsetX = { -it / 3 },
-                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                                        ) + fadeOut(animationSpec = tween(220))
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+                                        ) + fadeOut(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                                     } else {
                                         slideOutHorizontally(
                                             targetOffsetX = { it / 3 },
-                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                                        ) + fadeOut(animationSpec = tween(220))
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+                                        ) + fadeOut(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                                     }
                                 }
                             ) {

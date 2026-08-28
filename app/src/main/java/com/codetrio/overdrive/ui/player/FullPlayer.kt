@@ -119,6 +119,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.palette.graphics.Palette
 import coil.ImageLoader
+import coil.imageLoader
 import coil.request.ImageRequest
 import com.codetrio.overdrive.MainActivity
 import com.codetrio.overdrive.R
@@ -649,7 +650,7 @@ fun FullPlayer(
                 ?: song.videoId?.let { "https://img.youtube.com/vi/$it/hqdefault.jpg" }
                 ?: return@withContext
 
-            val loader = ImageLoader(paletteContext)
+            val loader = paletteContext.imageLoader
             try {
                 val request = ImageRequest.Builder(paletteContext)
                     .data(artworkData)

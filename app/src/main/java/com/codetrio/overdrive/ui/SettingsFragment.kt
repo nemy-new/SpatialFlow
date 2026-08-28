@@ -198,7 +198,7 @@ import kotlin.math.roundToInt
 
 private val SmoothSpring = spring<Float>(
     dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMediumLow
+    stiffness = Spring.StiffnessMedium
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1075,29 +1075,29 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
     val enterAnim: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.EnterTransition = {
         slideInHorizontally(
             initialOffsetX = { it },
-            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
-        ) + fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.95f, animationSpec = tween(220))
+            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+        ) + fadeIn(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing)) + scaleIn(initialScale = 0.95f, animationSpec = tween(180))
     }
 
     val exitAnim: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.ExitTransition = {
         slideOutHorizontally(
             targetOffsetX = { -it / 3 },
-            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
-        ) + fadeOut(animationSpec = tween(220)) + scaleOut(targetScale = 0.95f, animationSpec = tween(220))
+            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+        ) + fadeOut(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing)) + scaleOut(targetScale = 0.95f, animationSpec = tween(180))
     }
 
     val popEnterAnim: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.EnterTransition = {
         slideInHorizontally(
             initialOffsetX = { -it / 3 },
-            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
-        ) + fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.95f, animationSpec = tween(220))
+            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+        ) + fadeIn(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing)) + scaleIn(initialScale = 0.95f, animationSpec = tween(180))
     }
 
     val popExitAnim: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.ExitTransition = {
         slideOutHorizontally(
             targetOffsetX = { it },
-            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
-        ) + fadeOut(animationSpec = tween(220)) + scaleOut(targetScale = 0.95f, animationSpec = tween(220))
+            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+        ) + fadeOut(animationSpec = tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing)) + scaleOut(targetScale = 0.95f, animationSpec = tween(180))
     }
 
     composableWithBlur(SettingsRoute.Main.route) {
