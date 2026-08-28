@@ -646,6 +646,40 @@ object InnerTubeClient {
         post("$BASE_URL/like/removelike", body, ClientType.WEB_REMIX)
     }
 
+    /**
+     * Fetch real engagement votes (likes, dislikes, viewCount) via Return YouTube Dislike API.
+     * Extremely fast, reliable fallback for accurate likes/dislikes counts on all YouTube videos/tracks.
+     */
+    suspend fun fetchRydEngagement(videoId: String): RydEngagement? = withContext(Dispatchers.IO) {
+        if (videoId.isBlank()) return@withContext null
+        try {
+            val request = Request.Builder()
+                .url("https://returnyoutubedislikeapi.com/votes?videoId=$videoId")
+                .get()
+                .build()
+
+            val response = httpClient.executeSuspended(request)
+            if (!response.isSuccessful) return@withContext null
+
+            val bodyStr = response.body.string()
+            val json = JsonParser.parseString(bodyStr).asJsonObject
+            val likes = json.get("likes")?.asLong ?: return@withContext null
+            val dislikes = json.get("dislikes")?.asLong ?: 0L
+            val viewCount = json.get("viewCount")?.asLong
+            val rating = json.get("rating")?.asDouble
+
+            RydEngagement(
+                likes = likes,
+                dislikes = dislikes,
+                viewCount = viewCount,
+                rating = rating
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to fetch RYD engagement for $videoId: ${e.message}")
+            null
+        }
+    }
+
     // ========== Playlist Management ==========
 
     /**

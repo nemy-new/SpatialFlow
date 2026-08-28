@@ -96,6 +96,8 @@
     <string name="setting_sleep_timer">スリープタイマー</string>
     <string name="setting_sleep_timer_off">オフ</string>
     <string name="setting_streaming_quality">ストリーミング音質</string>
+    <string name="setting_live_updates">Live Updates（リアルタイム同期歌詞・進行状況）</string>
+    <string name="setting_live_updates_desc">ステータスバーや通知にリアルタイムの同期歌詞と再生進捗をライブ表示します</string>
 
     <!-- Haptics Settings -->
     <string name="settings_haptics_title">バイブレーション・触覚フィードバック</string>
@@ -208,10 +210,30 @@
     <string name="text_extract_theme_colors_from_the_currently_playing_album_art">現在再生中のアルバムアートからテーマカラーを抽出する</string>
     <string name="text_feature">注目</string>
     <string name="text_fluid_theme">流体テーマ</string>
+    <string name="text_fluid_v2_theme">流体 v2</string>
+    <string name="text_fluid_v2_theme_desc">多層ブラーによる深みのある多重オーガニックリキッドグラデーション。音楽に合わせて色彩が滑らかに溶け合います。</string>
     <string name="text_fluid_mesh_theme">流体メッシュグラデーション</string>
     <string name="text_fluid_mesh_theme_desc">アルバムアートの色から生成された複数のカラーノードが、音楽に合わせて優雅に漂い波打つ生きたメッシュキャンバス。</string>
-    <string name="text_followed_artists_yt_music">フォロー中のアーティスト</string>
-    <string name="text_force_a_runtime_exception_to_test_crash_report_dialog">実行時例外を発生させてクラッシュレポートダイアログをテストする</string>
+    <string name="text_mesh_v2_theme">リビング・メッシュ v2</string>
+    <string name="text_mesh_v2_theme_desc">8ノードの高精細リアルタイム流体力学シミュレーション。音楽のテンポに連動して波形が脈動します。</string>
+    <string name="text_immersion_theme">没入テーマ</string>
+    <string name="text_immersion_theme_desc">アートワークの上下からスマートに色を抽出し、背景全体に溶け込ませる没入体験。</string>
+    <string name="text_immersion_v2_theme_desc">全面アンビエント発光グラデーションと半透明フロストピルボタンによる次世代の没入体験。</string>
+    <string name="text_oled_theme">OLED ピュアブラック</string>
+    <string name="text_oled_theme_desc">完全な漆黒（#000000）背景と繊細なネオンリムライト。OLED画面のバッテリー消費を極限まで抑えます。</string>
+    <string name="text_aurora_theme">オーロラ・コズミック</string>
+    <string name="text_aurora_theme_desc">アルバムカラーから生成される神秘的な北極光のカーテンと、ゆっくり瞬く微細な星屑粒子。</string>
+    <string name="text_vinyl_theme">ヴィンテージ・レコード</string>
+    <string name="text_vinyl_theme_desc">温かみのあるスタジオアンバー照明と、回転するレコード盤の溝・光沢反射。アナログゴールドの操作系。</string>
+    <string name="text_cyberpunk_theme">サイバーパンク・ネオン</string>
+    <string name="text_cyberpunk_theme_desc">近未来的なダークグリッドと、シアン＆マゼンタの鮮やかなパルスネオングロー。</string>
+    <string name="text_glass_theme">フロスト・グラス</string>
+    <string name="text_glass_theme_desc">Appleスタイルの超高ブラー擦りガラスと光の屈折反射。透明感あふれるフローティングクリスタルUI。</string>
+    <string name="text_theme_category_classic">クラシック</string>
+    <string name="text_theme_category_v2">強化版 v2</string>
+    <string name="text_theme_category_premium">プレミアム</string>
+    <string name="text_followed_artists_yt_music">フォロー中のアーティスト（YT Music）</string>
+    <string name="text_force_a_runtime_exception_to_test_crash_report_dialog">クラッシュレポートダイアログテスト用の例外を強制</string>
     <string name="text_force_high_refresh_rate">高リフレッシュレートを強制</string>
     <string name="text_full_library_rescan">ライブラリのフル再スキャン</string>
     <string name="text_gain">ゲイン</string>
@@ -226,7 +248,6 @@
     <string name="text_high_uses_more_data_data_saver_uses_lowest_bitrate">高音質はデータ通信量を多く消費します</string>
     <string name="text_info">情報</string>
     <string name="text_ignore_short_audio_voice_notes">短い音声やボイスメモを無視</string>
-    <string name="text_immersion_theme">没入テーマ</string>
     <string name="text_import_settings_library">設定とライブラリをインポート</string>
     <string name="text_information">情報</string>
     <string name="text_inspect_background_security_context">バックグラウンドのセキュリティコンテキストを検査</string>
@@ -241,6 +262,8 @@
     <string name="text_lets_setup_the_everything_for_you">あなたのための準備を始めます</string>
     <string name="text_library">ライブラリ</string>
     <string name="text_liked_songs_yt_music">高く評価した曲</string>
+    <string name="text_like">高評価</string>
+    <string name="text_dislike">低評価</string>
     <string name="text_listening_history">再生履歴</string>
     <string name="text_load_home_feed">ホームフィードを読み込む</string>
     <string name="text_log_in_to_youtube_music">YouTube Musicにログイン</string>
@@ -317,6 +340,36 @@
     <string name="text_set">設定</string>
     <string name="text_settings">設定</string>
     <string name="text_setup_complete">セットアップ完了</string>
+    <string name="text_setup_welcome_title">OverDriveへ\nようこそ</string>
+    <string name="text_setup_welcome_subtitle">あなただけの表現力豊かなスタイルで、心地よい音楽体験を始めましょう。</string>
+    <string name="text_setup_theme_title">プレイヤーテーマ</string>
+    <string name="text_setup_theme_subtitle">再生画面のビジュアルスタイルを選択してください</string>
+    <string name="text_setup_color_title">カラー &amp; 外観</string>
+    <string name="text_setup_color_subtitle">お好みのアクセントカラーとテーマモードを選択してください</string>
+    <string name="text_setup_typography_title">タイポグラフィ</string>
+    <string name="text_setup_typography_subtitle">アプリ全体のフォントスタイルを選択してください</string>
+    <string name="text_setup_permissions_title">権限の許可</string>
+    <string name="text_setup_permissions_subtitle">音楽の再生と通知バーでの操作に必要な権限です</string>
+    <string name="text_setup_account_title">アカウント設定</string>
+    <string name="text_setup_account_subtitle">YouTube Musicと連携、またはゲストとしてそのまま開始できます</string>
+    <string name="text_setup_finish_title">準備が整いました！</string>
+    <string name="text_setup_finish_subtitle">あなた専用にカスタマイズされたOverDriveをお楽しみください</string>
+    <string name="text_start_music">音楽を聴き始める</string>
+    <string name="text_font_preset_rounded">丸みモダン (Rounded 100%)</string>
+    <string name="text_font_preset_rounded_desc">Google Sans Flex の角丸モダンフォント</string>
+    <string name="text_font_preset_bold">力強いボールド (Bold)</string>
+    <string name="text_font_preset_bold_desc">視認性が高く存在感のある太字スタイル</string>
+    <string name="text_font_preset_regular">標準 (Regular)</string>
+    <string name="text_font_preset_regular_desc">洗練された標準の Google Sans Flex</string>
+    <string name="text_font_preset_system">システムデフォルト</string>
+    <string name="text_font_preset_system_desc">お使いの端末の標準フォント</string>
+    <string name="text_grant_all_permissions">すべての権限を一括許可</string>
+    <string name="text_audio_permission_title">音楽・メディアファイル</string>
+    <string name="text_audio_permission_desc">端末内の音楽ファイルをスキャン・再生するために必要です</string>
+    <string name="text_notif_permission_title">通知</string>
+    <string name="text_notif_permission_desc">通知バーやロック画面で再生コントロールを表示するために必要です</string>
+    <string name="text_mic_permission_title">オーディオビジュアライザー</string>
+    <string name="text_mic_permission_desc">スペクトラムアナライザーや動的エフェクトに必要です</string>
     <string name="text_share">共有</string>
     <string name="text_share_raw_debug_logs_to_attach_to_an_issue">問題に添付する生のデバッグログを共有する</string>
     <string name="text_show_m3e_expressive_volume_slider_below_playback_controls">再生コントロールの下にM3Eエクスプレッシブ音量スライダーを表示する</string>
@@ -498,8 +551,10 @@
     <string name="settings_developer_options">開発者向けオプション</string>
     <string name="settings_developer_options_desc">高度なデバッグと設定</string>
     <string name="developer_playback_diagnostics">再生診断</string>
-    <string name="developer_show_player_stats">メディアプレイヤーにStatsを表示</string>
+    <string name="developer_show_player_stats">メディアプレイヤーに統計情報を表示</string>
     <string name="developer_show_player_stats_desc">再生画面の操作バーにStats for Nerds（統計情報）ボタンを表示します</string>
+    <string name="developer_show_player_theme_chip">プレイヤーテーマチップを表示</string>
+    <string name="developer_show_player_theme_chip_desc">メディアプレイヤーの操作バーにテーマ切り替えチップを表示します</string>
     <string name="developer_playback_logs">再生ログ</string>
     <string name="developer_playback_logs_desc">ストリーム解決、バッファ状況、エラー履歴の詳細</string>
     <string name="developer_performance">パフォーマンス最適化</string>
@@ -586,6 +641,7 @@
     <string name="setting_image_cache">画像キャッシュ</string>
 
     <!-- Appearance & Visual Effects -->
+    <string name="settings_header_theme_mode">テーマモード</string>
     <string name="setting_pure_black">完全な漆黒</string>
     <string name="setting_pure_black_desc">ダークモード時に背景を完全な黒にしてバッテリーを節約します</string>
     <string name="setting_force_high_refresh_rate">高リフレッシュレートの強制</string>
@@ -640,4 +696,174 @@
     <string name="lib_search_placeholder">ライブラリ内を検索…</string>
     <string name="lib_empty_search">「%s」に一致する項目はありません</string>
     <string name="lib_empty_library">ライブラリにアイテムがありません</string>
+
+    <!-- Performance & Lite Mode -->
+    <string name="settings_header_performance">パフォーマンスと省電力</string>
+    <string name="setting_performance_mode">動作モード（軽量化設定）</string>
+    <string name="setting_performance_mode_desc">端末スペックに応じた描画クオリティを調整し、常に滑らかな操作感を維持します</string>
+    <string name="performance_mode_auto">自動判定（端末に合わせて最適化）</string>
+    <string name="performance_mode_high">高画質（全エフェクトを有効化）</string>
+    <string name="performance_mode_lite">軽量・省電力モード（常時スムーズ・低負荷）</string>
+    <string name="setting_disable_realtime_blur">リアルタイムブラー（ぼかし）を無効化</string>
+    <string name="setting_disable_realtime_blur_desc">重いGPUブラー処理を高効率なダーク透過レイヤーに置き換え、フレーム落ちを防ぎます</string>
+
+    <!-- Custom Fonts & Typography -->
+    <string name="setting_custom_fonts">カスタムフォントとタイポグラフィ</string>
+    <string name="setting_custom_fonts_desc">お好みのフォント（.ttf / .otf）のインポート、適用先の個別指定、バリアブルフォントの軸調整</string>
+    <string name="font_target_global">アプリ全体</string>
+    <string name="font_target_global_desc">アプリ内の全画面・基本テキストに適用される標準フォント</string>
+    <string name="font_target_lyrics">歌詞表示</string>
+    <string name="font_target_lyrics_desc">同期歌詞・通常歌詞の表示に専用で使用されるフォント</string>
+    <string name="font_target_player_title">曲タイトル・アーティスト</string>
+    <string name="font_target_player_title_desc">フルプレイヤーおよびミニプレイヤーの曲名・アーティスト名表示用フォント</string>
+    <string name="font_target_headings">見出し・タイトル</string>
+    <string name="font_target_headings_desc">画面タイトル、カテゴリ見出し、セクションヘッダー用フォント</string>
+    <string name="font_import_button">フォントを追加 (.ttf / .otf)</string>
+    <string name="font_variable_badge">Variable</string>
+    <string name="font_variable_tuning">バリアブルフォント詳細調整</string>
+    <string name="font_weight">太さ・ウェイト (wght)</string>
+    <string name="font_width">幅・伸縮 (wdth)</string>
+    <string name="font_slant">傾き・スラント (slnt)</string>
+    <string name="font_roundness">丸み・ラウンド (ROND)</string>
+    <string name="font_optical_size">光学サイズ (opsz)</string>
+    <string name="font_reset_defaults">デフォルト値に戻す</string>
+    <string name="font_preview_title">リアルタイム プレビュー</string>
+    <string name="font_preview_sample">OverDrive 響き渡る音の美学 2026</string>
+    <string name="font_preview_lyrics_sample">溢れ出す想いと旋律が、心を満たしていく。</string>
+    <string name="font_delete_title">フォントの削除</string>
+    <string name="font_delete_message">フォント「%s」を削除しますか？\nこのフォントが設定されていた箇所はデフォルトに戻ります。</string>
+    <string name="font_cloud_catalog_title">おすすめ日本語フォント (Google Fonts)</string>
+    <string name="font_cloud_catalog_desc">歌詞やタイトル、見出しに最適な高品質日本語フォント。ワンタップでダウンロードして適用できます。</string>
+    <string name="font_download_action">ダウンロード</string>
+    <string name="font_downloading_action">ダウンロード中…</string>
+    <string name="font_downloaded_badge">ダウンロード済み</string>
+    <string name="font_apply_action">この対象に適用</string>
+    <string name="font_applied_badge">適用中</string>
+    <string name="font_download_success">「%s」のダウンロードが完了しました</string>
+    <string name="font_download_failure">「%s」のダウンロードに失敗しました。通信環境をご確認ください。</string>
+
+    <!-- Developer Setup & Onboarding -->
+    <string name="developer_setup_and_onboarding">セットアップ &amp; オンボーディング</string>
+    <string name="developer_start_onboarding">セットアップを開始</string>
+    <string name="developer_start_onboarding_desc">初期セットアップ画面を起動し、テーマ、カラー、フォントスタイルを再設定・テストします</string>
+
+    <!-- Onboarding Localization Strings -->
+    <string name="onboarding_lang_system">システム</string>
+    <string name="onboarding_lang_ja">日本語</string>
+    <string name="onboarding_lang_en">English</string>
+
+    <string name="onboarding_welcome_title">OverDrive へようこそ</string>
+    <string name="onboarding_welcome_subtitle">あなた好みの音楽体験をはじめましょう。いくつかの簡単な初期設定を行います。</string>
+    <string name="onboarding_welcome_get_started">開始する</string>
+    <string name="onboarding_bgm_volume">BGM 音量</string>
+    <string name="onboarding_btn_next">次へ</string>
+
+    <string name="onboarding_theme_title">プレイヤーテーマ</string>
+    <string name="onboarding_theme_subtitle">再生画面のビジュアルスタイルを選択してください</string>
+    <string name="onboarding_theme_fluid">Fluid (流体グラデーション)</string>
+    <string name="onboarding_theme_fluid_desc">リズムに合わせて有機的に揺らめく美しいメッシュグラデーション</string>
+    <string name="onboarding_theme_immersion">没入テーマ</string>
+    <string name="onboarding_theme_immersion_desc">上下からスマートに抽出された色が美しく背景と一体化するスタイル</string>
+    <string name="onboarding_theme_vinyl">Vinyl Turntable (レコード回転)</string>
+    <string name="onboarding_theme_vinyl_desc">アナログレコード盤が回転するプレミアムなクラシックスタイル</string>
+    <string name="onboarding_theme_mesh">Living Mesh Canvas (鮮やかメッシュ)</string>
+    <string name="onboarding_theme_mesh_desc">カラフルで表情豊かなダイナミックメッシュ背景</string>
+    <string name="onboarding_theme_static">Static (ミニマル・省電力)</string>
+    <string name="onboarding_theme_static_desc">シンプルでクリーンな単色背景（バッテリー消費を抑制）</string>
+
+    <string name="onboarding_color_title">アピアランス</string>
+    <string name="onboarding_color_subtitle">お好みのテーマモードを選択してください</string>
+    <string name="onboarding_accent_palette">アクセントカラー パレット</string>
+    <string name="onboarding_theme_mode">テーマモード</string>
+    <string name="onboarding_mode_system">システム連動</string>
+    <string name="onboarding_mode_system_desc">端末のシステム設定に自動で合わせます</string>
+    <string name="onboarding_mode_dark">ダークモード</string>
+    <string name="onboarding_mode_dark_desc">目に優しく深みのある黒基調のデザイン</string>
+    <string name="onboarding_mode_light">ライトモード</string>
+    <string name="onboarding_mode_light_desc">明るくすっきりとした清潔感のあるデザイン</string>
+
+    <string name="onboarding_palette_dynamic">ダイナミック (推奨)</string>
+    <string name="onboarding_palette_cyan">セレスティアル・アズール</string>
+    <string name="onboarding_palette_emerald">ノルディック・エメラルド</string>
+    <string name="onboarding_palette_violet">ベルベット・バイオレット</string>
+    <string name="onboarding_palette_sunset">サンセット・テラコッタ</string>
+    <string name="onboarding_palette_amber">ローズ・クォーツ</string>
+
+    <string name="onboarding_typography_title">タイポグラフィ</string>
+    <string name="onboarding_typography_subtitle">アプリ全体のフォントスタイルと太さを選択してください</string>
+    <string name="onboarding_typography_presets_header">フォントスタイル・太さプリセット</string>
+    <string name="onboarding_font_rounded_title">丸みモダン (Rounded 100%)</string>
+    <string name="onboarding_font_rounded_desc">Google Sans Flex の角丸モダンフォント</string>
+    <string name="onboarding_font_bold_title">力強いボールド (Bold)</string>
+    <string name="onboarding_font_bold_desc">視認性が高く存在感のある太字スタイル</string>
+    <string name="onboarding_font_regular_title">標準 (Regular)</string>
+    <string name="onboarding_font_regular_desc">洗練された標準の Google Sans Flex</string>
+    <string name="onboarding_font_system_title">システムデフォルト</string>
+    <string name="onboarding_font_system_desc">端末標準のシステムフォント</string>
+
+    <string name="onboarding_permissions_title">権限の許可</string>
+    <string name="onboarding_permissions_subtitle">音楽の再生や通知コントロールに必要な権限を許可してください</string>
+    <string name="onboarding_permission_audio_title">音楽 &amp; メディアファイル</string>
+    <string name="onboarding_permission_audio_desc">端末内の楽曲をスキャン・再生するために必要です</string>
+    <string name="onboarding_permission_notif_title">通知</string>
+    <string name="onboarding_permission_notif_desc">通知バーに再生コントロールを表示するために必要です</string>
+    <string name="onboarding_permission_mic_title">オーディオ ビジュアライザー</string>
+    <string name="onboarding_permission_mic_desc">リアルタイムのオーディオスペクトラム解析に必要です</string>
+    <string name="onboarding_grant_all">すべての権限を許可</string>
+    <string name="onboarding_all_permissions_granted">すべての権限が許可されました</string>
+    <string name="onboarding_permission_grant_btn">許可</string>
+
+    <string name="onboarding_account_title">YouTube Music 連携</string>
+    <string name="onboarding_account_subtitle">Google アカウントでサインインして、あなた専用の音楽ライブラリを同期しましょう</string>
+    <string name="onboarding_account_welcome_user">ようこそ、%s さん！</string>
+    <string name="onboarding_account_connected">アカウント連携完了</string>
+    <string name="onboarding_account_ready_desc">ライブラリとおすすめ楽曲の同期準備が整いました。</string>
+    <string name="onboarding_account_benefit_likes_title">いいねした曲の自動同期</string>
+    <string name="onboarding_account_benefit_likes_desc">YouTube Music で高評価した楽曲をシームレスに同期</string>
+    <string name="onboarding_account_benefit_playlists_title">プレイリストのインポート</string>
+    <string name="onboarding_account_benefit_playlists_desc">作成したプレイリストやお気に入りをそのまま再生可能</string>
+    <string name="onboarding_account_benefit_recs_title">あなたへのおすすめ</string>
+    <string name="onboarding_account_benefit_recs_desc">好みに合わせた最適な楽曲やアーティストをお届け</string>
+    <string name="onboarding_account_not_connected">ログインするとプレイリストやお気に入りが同期されます</string>
+    <string name="onboarding_sign_in_ytm">Google でサインイン</string>
+    <string name="onboarding_continue_guest">スキップして後で連携する</string>
+    <string name="onboarding_connected_badge">連携済み</string>
+
+    <string name="onboarding_finish_title">準備が完了しました！</string>
+    <string name="onboarding_finish_subtitle">あなた好みにカスタマイズされた OverDrive をお楽しみください</string>
+    <string name="onboarding_summary_theme">テーマ:</string>
+    <string name="onboarding_summary_color">アピアランス:</string>
+    <string name="onboarding_summary_font">フォント:</string>
+    <string name="onboarding_start_listening">音楽を始める</string>
+    <string name="onboarding_sample_track">Autumn Wind</string>
+    <string name="onboarding_sample_artist">Dyalla</string>
+
+    <!-- Player Chips Localization -->
+    <string name="text_stats">統計情報</string>
+    <string name="text_download">ダウンロード</string>
+    <string name="text_downloaded">保存済み</string>
+    <string name="text_downloading">保存中 %1$d%%</string>
+    <string name="text_cast">キャスト</string>
+    <string name="text_connecting">接続中...</string>
+
+    <!-- Search Categories -->
+    <string name="text_new_releases">新着リリース</string>
+    <string name="text_charts">チャート</string>
+    <string name="text_moods_and_genres">ムード＆ジャンル</string>
+    <string name="text_podcasts">ポッドキャスト</string>
+
+    <!-- Stats Localization -->
+    <string name="stat_time_minutes">%1$d 分</string>
+    <string name="stat_time_hours_mins">%1$d時間%2$d分</string>
+    <string name="stat_played_n_times">再生回数: %1$d回</string>
+    <string name="stat_n_plays">%1$d回 再生</string>
+    <string name="stat_mood_morning_title">モーニングスパーク</string>
+    <string name="stat_mood_morning_desc">朝のメロディーで1日の活力をチャージしています。</string>
+    <string name="stat_mood_afternoon_title">アフタヌーングルーヴ</string>
+    <string name="stat_mood_afternoon_desc">午後の軽快なリズムが集中力と推進力を高めます。</string>
+    <string name="stat_mood_evening_title">イブニングハーモニー</string>
+    <string name="stat_mood_evening_desc">夕暮れの落ち着いたサウンドで1日を締めくくります。</string>
+    <string name="stat_mood_night_title">ナイトセレナーデ</string>
+    <string name="stat_mood_night_desc">深夜の静かな空間に響くお気に入りの楽曲たち。</string>
+    <string name="stat_n_songs_played">%1$d曲 再生</string>
 </resources>

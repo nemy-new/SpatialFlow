@@ -622,15 +622,9 @@ fun TopResultCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(topResult.thumbnailUrl?.resize(160))
-                        .crossfade(true)
-                        .build(),
+                AsyncImage(
+                    model = topResult.thumbnailUrl?.resize(160),
                     contentDescription = null,
-                    loading = {
-                        Box(modifier = Modifier.fillMaxSize().shimmerEffect())
-                    },
                     modifier = Modifier
                         .size(56.dp)
                         .clip(RoundedCornerShape(8.dp)),
@@ -827,15 +821,9 @@ fun SearchResultItem(
     ) {
         // Thumbnail Image
         Box(modifier = Modifier.size(48.dp)) {
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(thumbnailUrl?.resize(120))
-                    .crossfade(true)
-                    .build(),
+            AsyncImage(
+                model = thumbnailUrl?.resize(120),
                 contentDescription = null,
-                loading = {
-                    Box(modifier = Modifier.fillMaxSize().shimmerEffect())
-                },
                 modifier = Modifier.fillMaxSize().clip(imageShape).sharedElementIfAvailable("image-$itemId"),
                 contentScale = ContentScale.Crop
             )
@@ -972,35 +960,18 @@ fun SearchResultItem(
     }
 }
 
-// ===== Tactile Bouncing Modifier =====
+// ===== Tactile Bouncing Modifier (Ultra-Optimized Allocation-Free) =====
 
 fun Modifier.bouncingClickable(
     enabled: Boolean = true,
     scaleDown: Float = 0.96f,
     onClick: () -> Unit
-): Modifier = composed {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && enabled) scaleDown else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "BouncingScale"
-    )
-    this
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
-        .clickable(
-            interactionSource = interactionSource,
-            indication = null,
-            enabled = enabled,
-            onClick = onClick
-        )
-}
+): Modifier = this.clickable(
+    indication = null,
+    interactionSource = null,
+    enabled = enabled,
+    onClick = onClick
+)
 
 // ===== Bento Discovery Cells =====
 
@@ -1012,32 +983,46 @@ fun BentoCell(
     isTablet: Boolean = false,
     onClick: () -> Unit
 ) {
-    val title = when (item) {
-        is SearchItem.TopResult -> item.title
-        is SearchItem.Header -> item.title
-        is SearchItem.Song -> item.song.title
-        is SearchItem.Album -> item.album.title
-        is SearchItem.Artist -> item.artist.title
-        is SearchItem.Playlist -> item.playlist.title
+    val title = remember(item) {
+        when (item) {
+            is SearchItem.TopResult -> item.title
+            is SearchItem.Header -> item.title
+            is SearchItem.Song -> item.song.title
+            is SearchItem.Album -> item.album.title
+            is SearchItem.Artist -> item.artist.title
+            is SearchItem.Playlist -> item.playlist.title
+        }
     }
-    val subtitle = when (item) {
-        is SearchItem.TopResult -> item.subtitle
-        is SearchItem.Header -> ""
-        is SearchItem.Song -> item.song.artist
-        is SearchItem.Album -> item.album.artists.joinToString { it.name }
-        is SearchItem.Artist -> "Artist"
-        is SearchItem.Playlist -> item.playlist.author?.name ?: "Playlist"
+    val subtitle = remember(item) {
+        when (item) {
+            is SearchItem.TopResult -> item.subtitle
+            is SearchItem.Header -> ""
+            is SearchItem.Song -> item.song.artist
+            is SearchItem.Album -> item.album.artists.joinToString { it.name }
+            is SearchItem.Artist -> "Artist"
+            is SearchItem.Playlist -> item.playlist.author?.name ?: "Playlist"
+        }
     }
-    val thumbnailUrl = when (item) {
-        is SearchItem.TopResult -> item.thumbnailUrl
-        is SearchItem.Header -> null
-        is SearchItem.Song -> item.song.thumbnailUrl
-        is SearchItem.Album -> item.album.thumbnailUrl
-        is SearchItem.Artist -> item.artist.thumbnailUrl
-        is SearchItem.Playlist -> item.playlist.thumbnailUrl
+    val thumbnailUrl = remember(item) {
+        when (item) {
+            is SearchItem.TopResult -> item.thumbnailUrl
+            is SearchItem.Header -> null
+            is SearchItem.Song -> item.song.thumbnailUrl
+            is SearchItem.Album -> item.album.thumbnailUrl
+            is SearchItem.Artist -> item.artist.thumbnailUrl
+            is SearchItem.Playlist -> item.playlist.thumbnailUrl
+        }
     }
 
     val cornerRadius = if (isTablet) 14.dp else 12.dp
+    val gradientBrush = remember {
+        Brush.verticalGradient(
+            0.0f to Color.Transparent,
+            0.35f to Color.Black.copy(alpha = 0.2f),
+            0.7f to Color.Black.copy(alpha = 0.7f),
+            1.0f to Color.Black.copy(alpha = 0.92f)
+        )
+    }
 
     Card(
         modifier = modifier
@@ -1049,15 +1034,9 @@ fun BentoCell(
         elevation = CardDefaults.cardElevation(defaultElevation = if (isFeature) 3.dp else 1.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(thumbnailUrl?.resize(if (isTablet) 360 else 240))
-                    .crossfade(true)
-                    .build(),
+            AsyncImage(
+                model = thumbnailUrl?.resize(if (isTablet) 360 else 240),
                 contentDescription = null,
-                loading = {
-                    Box(modifier = Modifier.fillMaxSize().shimmerEffect())
-                },
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
@@ -1065,14 +1044,7 @@ fun BentoCell(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0.0f to Color.Transparent,
-                            0.35f to Color.Black.copy(alpha = 0.2f),
-                            0.7f to Color.Black.copy(alpha = 0.7f),
-                            1.0f to Color.Black.copy(alpha = 0.92f)
-                        )
-                    )
+                    .background(gradientBrush)
             )
 
             // Content Column
@@ -1171,10 +1143,10 @@ fun HomeQuickPicksTileGrid(
     val isTablet = configuration.screenWidthDp >= 600
     val columns = if (isTablet) 3 else 2
     val takeCount = 6
-    val displayItems = items.take(takeCount)
+    val displayItems = remember(items) { items.take(takeCount) }
     if (displayItems.isEmpty()) return
 
-    val rows = displayItems.chunked(columns)
+    val rows = remember(displayItems, columns) { displayItems.chunked(columns) }
 
     Column(
         modifier = modifier
@@ -1188,29 +1160,35 @@ fun HomeQuickPicksTileGrid(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 rowItems.forEach { item ->
-                    val title = when (item) {
-                        is SearchItem.TopResult -> item.title
-                        is SearchItem.Header -> item.title
-                        is SearchItem.Song -> item.song.title
-                        is SearchItem.Album -> item.album.title
-                        is SearchItem.Artist -> item.artist.title
-                        is SearchItem.Playlist -> item.playlist.title
+                    val title = remember(item) {
+                        when (item) {
+                            is SearchItem.TopResult -> item.title
+                            is SearchItem.Header -> item.title
+                            is SearchItem.Song -> item.song.title
+                            is SearchItem.Album -> item.album.title
+                            is SearchItem.Artist -> item.artist.title
+                            is SearchItem.Playlist -> item.playlist.title
+                        }
                     }
-                    val subtitle = when (item) {
-                        is SearchItem.TopResult -> item.subtitle
-                        is SearchItem.Header -> ""
-                        is SearchItem.Song -> item.song.artist
-                        is SearchItem.Album -> item.album.artists.joinToString { it.name }
-                        is SearchItem.Artist -> "Artist"
-                        is SearchItem.Playlist -> item.playlist.author?.name ?: "Playlist"
+                    val subtitle = remember(item) {
+                        when (item) {
+                            is SearchItem.TopResult -> item.subtitle
+                            is SearchItem.Header -> ""
+                            is SearchItem.Song -> item.song.artist
+                            is SearchItem.Album -> item.album.artists.joinToString { it.name }
+                            is SearchItem.Artist -> "Artist"
+                            is SearchItem.Playlist -> item.playlist.author?.name ?: "Playlist"
+                        }
                     }
-                    val thumbnailUrl = when (item) {
-                        is SearchItem.TopResult -> item.thumbnailUrl
-                        is SearchItem.Header -> null
-                        is SearchItem.Song -> item.song.thumbnailUrl
-                        is SearchItem.Album -> item.album.thumbnailUrl
-                        is SearchItem.Artist -> item.artist.thumbnailUrl
-                        is SearchItem.Playlist -> item.playlist.thumbnailUrl
+                    val thumbnailUrl = remember(item) {
+                        when (item) {
+                            is SearchItem.TopResult -> item.thumbnailUrl
+                            is SearchItem.Header -> null
+                            is SearchItem.Song -> item.song.thumbnailUrl
+                            is SearchItem.Album -> item.album.thumbnailUrl
+                            is SearchItem.Artist -> item.artist.thumbnailUrl
+                            is SearchItem.Playlist -> item.playlist.thumbnailUrl
+                        }
                     }
                     val isPlaying = item is SearchItem.Song && item.song.videoId == currentOnlineSong?.videoId
 
@@ -1315,23 +1293,33 @@ fun HomeSectionRow(
     onRadioClick: (SearchItem) -> Unit = {},
     onSaveClick: (SearchItem) -> Unit = {}
 ) {
-    val hasSongsOnly = section.items.isNotEmpty() && section.items.all { it is SearchItem.Song }
-    val isQuickPicks = section.title.contains("もう一度聴く", ignoreCase = true) ||
-                       section.title.contains("listen again", ignoreCase = true) ||
-                       section.title.contains("クイック ピック", ignoreCase = true) ||
-                       section.title.contains("quick picks", ignoreCase = true) ||
-                       section.title.contains("speed dial", ignoreCase = true) ||
-                       section.title.contains("ライブラリから", ignoreCase = true)
+    val hasSongsOnly = remember(section.items) {
+        section.items.isNotEmpty() && section.items.all { it is SearchItem.Song }
+    }
+    val isQuickPicks = remember(section.title) {
+        section.title.contains("もう一度聴く", ignoreCase = true) ||
+        section.title.contains("listen again", ignoreCase = true) ||
+        section.title.contains("クイック ピック", ignoreCase = true) ||
+        section.title.contains("quick picks", ignoreCase = true) ||
+        section.title.contains("speed dial", ignoreCase = true) ||
+        section.title.contains("ライブラリから", ignoreCase = true)
+    }
 
-    val isBento = !isQuickPicks && (
-        section.title.equals("おすすめ", ignoreCase = true) ||
-        section.title.equals("ミックス", ignoreCase = true) ||
-        section.title.contains("あなた専用", ignoreCase = true) ||
-        section.title.contains("personalized", ignoreCase = true) ||
-        section.title.contains("my mix", ignoreCase = true) ||
-        section.title.contains("supermix", ignoreCase = true) ||
-        section.title.contains("おすすめのミックス", ignoreCase = true)
-    ) && section.items.size >= 3
+    val isBento = remember(section.title, section.items.size, isQuickPicks) {
+        !isQuickPicks && (
+            section.title.equals("おすすめ", ignoreCase = true) ||
+            section.title.equals("ミックス", ignoreCase = true) ||
+            section.title.contains("あなた専用", ignoreCase = true) ||
+            section.title.contains("personalized", ignoreCase = true) ||
+            section.title.contains("my mix", ignoreCase = true) ||
+            section.title.contains("supermix", ignoreCase = true) ||
+            section.title.contains("おすすめのミックス", ignoreCase = true)
+        ) && section.items.size >= 3
+    }
+
+    val sectionSongs = remember(section.items) {
+        section.items.filterIsInstance<SearchItem.Song>().map { it.song }
+    }
 
     Column(modifier = Modifier.padding(vertical = 6.dp)) {
         // Expressive Universal Section Header
@@ -1630,13 +1618,18 @@ fun HomeSectionRow(
             // 4. GENERAL FALLBACK — Song List or Carousel
             else -> {
                 if (hasSongsOnly) {
-                    val songItems = section.items.filterIsInstance<SearchItem.Song>()
-                    val chunkedSongs = songItems.chunked(4)
+                    val chunkedSongs = remember(section.items) {
+                        section.items.filterIsInstance<SearchItem.Song>().chunked(4)
+                    }
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        itemsIndexed(items = chunkedSongs, key = { idx, _ -> "song-col-$idx-${section.title}" }) { _, songChunk ->
+                        itemsIndexed(
+                            items = chunkedSongs,
+                            key = { idx, _ -> "song-col-$idx-${section.title}" },
+                            contentType = { _, _ -> "song_chunk" }
+                        ) { _, songChunk ->
                             Column(modifier = Modifier.width(320.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 songChunk.forEach { item ->
                                     HomeSongListItem(
@@ -1667,7 +1660,8 @@ fun HomeSectionRow(
                                     is SearchItem.Header -> "carousel-header-${item.title}-${section.title}"
                                 }
                                 "$index-$baseKey"
-                            }
+                            },
+                            contentType = { _, _ -> "carousel_item" }
                         ) { _, item ->
                             HomeCarouselItem(
                                 item = item,
@@ -1708,39 +1702,47 @@ fun HomeCarouselItem(
 ) {
     val isCircle = item is SearchItem.Artist
     val imageShape = if (isCircle) CircleShape else RoundedCornerShape(16.dp)
-    val itemId = when (item) {
-        is SearchItem.TopResult -> "top-${item.title}"
-        is SearchItem.Header -> "header-${item.title}"
-        is SearchItem.Song -> item.song.videoId
-        is SearchItem.Album -> item.album.browseId
-        is SearchItem.Artist -> item.artist.browseId
-        is SearchItem.Playlist -> item.playlist.playlistId
+    val itemId = remember(item) {
+        when (item) {
+            is SearchItem.TopResult -> "top-${item.title}"
+            is SearchItem.Header -> "header-${item.title}"
+            is SearchItem.Song -> item.song.videoId
+            is SearchItem.Album -> item.album.browseId
+            is SearchItem.Artist -> item.artist.browseId
+            is SearchItem.Playlist -> item.playlist.playlistId
+        }
     }
-    val thumbnailUrl = when (item) {
-        is SearchItem.TopResult -> item.thumbnailUrl
-        is SearchItem.Header -> null
-        is SearchItem.Song -> item.song.thumbnailUrl
-        is SearchItem.Album -> item.album.thumbnailUrl
-        is SearchItem.Artist -> item.artist.thumbnailUrl
-        is SearchItem.Playlist -> item.playlist.thumbnailUrl
+    val thumbnailUrl = remember(item) {
+        when (item) {
+            is SearchItem.TopResult -> item.thumbnailUrl
+            is SearchItem.Header -> null
+            is SearchItem.Song -> item.song.thumbnailUrl
+            is SearchItem.Album -> item.album.thumbnailUrl
+            is SearchItem.Artist -> item.artist.thumbnailUrl
+            is SearchItem.Playlist -> item.playlist.thumbnailUrl
+        }
     }
-    val title = when (item) {
-        is SearchItem.TopResult -> item.title
-        is SearchItem.Header -> item.title
-        is SearchItem.Song -> item.song.title
-        is SearchItem.Album -> item.album.title
-        is SearchItem.Artist -> item.artist.title
-        is SearchItem.Playlist -> item.playlist.title
+    val title = remember(item) {
+        when (item) {
+            is SearchItem.TopResult -> item.title
+            is SearchItem.Header -> item.title
+            is SearchItem.Song -> item.song.title
+            is SearchItem.Album -> item.album.title
+            is SearchItem.Artist -> item.artist.title
+            is SearchItem.Playlist -> item.playlist.title
+        }
     }
-    val subtitle = when (item) {
-        is SearchItem.TopResult -> item.subtitle
-        is SearchItem.Header -> ""
-        is SearchItem.Song -> item.song.artist
-        is SearchItem.Album -> item.album.artists.joinToString { it.name }
-        is SearchItem.Artist -> item.artist.subscriberCount?.replace("Spotify", "", ignoreCase = true)
-            ?.replace("Monthly Monthly Listeners", "Monthly Listeners", ignoreCase = true)
-            ?.trim() ?: ""
-        is SearchItem.Playlist -> item.playlist.author?.name ?: ""
+    val subtitle = remember(item) {
+        when (item) {
+            is SearchItem.TopResult -> item.subtitle
+            is SearchItem.Header -> ""
+            is SearchItem.Song -> item.song.artist
+            is SearchItem.Album -> item.album.artists.joinToString { it.name }
+            is SearchItem.Artist -> item.artist.subscriberCount?.replace("Spotify", "", ignoreCase = true)
+                ?.replace("Monthly Monthly Listeners", "Monthly Listeners", ignoreCase = true)
+                ?.trim() ?: ""
+            is SearchItem.Playlist -> item.playlist.author?.name ?: ""
+        }
     }
 
     Column(

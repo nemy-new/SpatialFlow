@@ -16,11 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ViewModule
@@ -204,7 +204,7 @@ fun LibraryToolbar(
                 val modes = listOf(
                     LibraryViewMode.LARGE_GRID to Pair(Icons.Default.GridView, stringResource(R.string.lib_view_large_grid)),
                     LibraryViewMode.COMPACT_GRID to Pair(Icons.Default.ViewModule, stringResource(R.string.lib_view_compact_grid)),
-                    LibraryViewMode.STANDARD_LIST to Pair(Icons.Default.FormatListBulleted, stringResource(R.string.lib_view_standard_list)),
+                    LibraryViewMode.STANDARD_LIST to Pair(Icons.AutoMirrored.Filled.FormatListBulleted, stringResource(R.string.lib_view_standard_list)),
                     LibraryViewMode.COMPACT_LIST to Pair(Icons.Default.ViewStream, stringResource(R.string.lib_view_compact_list))
                 )
 

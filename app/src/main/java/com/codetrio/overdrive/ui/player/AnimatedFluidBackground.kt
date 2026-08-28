@@ -121,9 +121,9 @@ fun Modifier.animatedFluidBackground(
             val height = size.height
             val diagonal = kotlin.math.hypot(width, height)
 
-            // Blob 1: Vibrant — primary punch
-            val blob1X = width * (0.35f + 0.25f * sin(timeSlow * 0.85f) + 0.10f * cos(timeFast * 0.65f))
-            val blob1Y = height * (0.30f + 0.20f * cos(timeSlow * 1.10f) + 0.08f * sin(timeFast * 0.80f))
+            // Blob 1: Vibrant — primary punch (100% seamless closed orbit)
+            val blob1X = width * (0.35f + 0.22f * sin(timeSlow) + 0.12f * cos(timeFast + 0.8f))
+            val blob1Y = height * (0.30f + 0.18f * cos(timeSlow + 1.2f) + 0.10f * sin(timeFast * 2f))
             val radius1 = diagonal * 0.85f // Very large for smooth blending
             drawCircle(
                 brush = Brush.radialGradient(
@@ -135,9 +135,9 @@ fun Modifier.animatedFluidBackground(
                 radius = radius1
             )
 
-            // Blob 2: Dark Vibrant — deep transition
-            val blob2X = width * (0.75f + 0.20f * cos(timeFast * 0.90f) + 0.12f * sin(timeSlow * 0.75f))
-            val blob2Y = height * (0.45f + 0.25f * sin(timeFast * 1.05f) + 0.09f * cos(timeSlow * 0.60f))
+            // Blob 2: Dark Vibrant — deep transition (100% seamless closed orbit)
+            val blob2X = width * (0.75f + 0.18f * cos(timeFast) + 0.14f * sin(timeSlow * 2f + 2.1f))
+            val blob2Y = height * (0.45f + 0.22f * sin(timeFast + 1.5f) + 0.10f * cos(timeSlow + 0.5f))
             val radius2 = diagonal * 0.90f
             drawCircle(
                 brush = Brush.radialGradient(
@@ -149,9 +149,9 @@ fun Modifier.animatedFluidBackground(
                 radius = radius2
             )
 
-            // Blob 3: Dark Muted — shadow depth
-            val blob3X = width * (0.45f + 0.22f * sin(timeSlow * 0.65f) + 0.15f * cos(timeFast * 1.00f))
-            val blob3Y = height * (0.80f + 0.15f * cos(timeSlow * 1.30f) + 0.10f * sin(timeFast * 0.55f))
+            // Blob 3: Dark Muted — shadow depth (100% seamless closed orbit)
+            val blob3X = width * (0.45f + 0.20f * sin(timeSlow + 3.0f) + 0.15f * cos(timeFast))
+            val blob3Y = height * (0.80f + 0.14f * cos(timeSlow * 2f) + 0.12f * sin(timeFast + 2.4f))
             val radius3 = diagonal * 0.75f
             drawCircle(
                 brush = Brush.radialGradient(

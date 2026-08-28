@@ -136,7 +136,7 @@ class YouLyPlusProvider : LyricsProvider {
 
                 client.newCall(req).execute().use { resp ->
                     if (resp.isSuccessful) {
-                        val body = resp.body?.string()
+                        val body = resp.body.string()
                         if (!body.isNullOrBlank()) {
                             val decoded = decode(body)
                             if (!decoded.isNullOrBlank()) {

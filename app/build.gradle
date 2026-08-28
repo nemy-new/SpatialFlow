@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
     id("com.github.ben-manes.versions") version "0.54.0"
 }
 
@@ -14,6 +16,25 @@ def localProps = new Properties()
 def localPropsFile = rootProject.file('local.properties')
 if (localPropsFile.exists()) {
     localProps.load(new FileInputStream(localPropsFile))
+}
+
+// Read & Manage Version Properties (Auto-increment versionCode)
+def versionPropsFile = rootProject.file('version.properties')
+def versionProps = new Properties()
+if (versionPropsFile.exists()) {
+    versionProps.load(new FileInputStream(versionPropsFile))
+}
+def currentVersionCode = (versionProps['VERSION_CODE'] ?: '13').toInteger()
+def currentVersionName = versionProps['VERSION_NAME'] ?: 'V0.0.1.1'
+def autoIncrementOnRelease = (versionProps['AUTO_INCREMENT_ON_RELEASE'] ?: 'true').toBoolean()
+
+// Check if running a release build task
+def isReleaseTask = gradle.startParameter.taskNames.any { it.contains("Release") || it.contains("release") }
+if (isReleaseTask && autoIncrementOnRelease) {
+    currentVersionCode = currentVersionCode + 1
+    versionProps['VERSION_CODE'] = currentVersionCode.toString()
+    versionProps.store(versionPropsFile.newWriter(), "Updated automatically during release build")
+    println ">>> [Auto-Increment] Incremented versionCode to ${currentVersionCode}"
 }
 
 // Use different variable names to avoid conflict with signing config properties
@@ -36,8 +57,8 @@ android {
         applicationId "com.codetrio.overdrive"
         minSdk 26
         targetSdk 37
-        versionCode 12
-        versionName "V0.0.1.1"
+        versionCode currentVersionCode
+        versionName currentVersionName
     }
 
     dependenciesInfo {
@@ -70,6 +91,9 @@ android {
                 signingConfig signingConfigs.release
             }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            firebaseCrashlytics {
+                mappingFileUploadEnabled true
+            }
         }
 
         debug {
@@ -102,6 +126,20 @@ android {
     }
 }
 
+tasks.register('incrementVersionCode') {
+    description = "Manually increments the versionCode in version.properties"
+    group = "versioning"
+    doLast {
+        def props = new Properties()
+        if (versionPropsFile.exists()) {
+            props.load(new FileInputStream(versionPropsFile))
+        }
+        def vCode = (props['VERSION_CODE'] ?: '13').toInteger() + 1
+        props['VERSION_CODE'] = vCode.toString()
+        props.store(versionPropsFile.newWriter(), "Updated by incrementVersionCode task")
+        println ">>> Manually incremented versionCode to ${vCode}"
+    }
+}
 
 configurations {
     configureEach {
@@ -111,6 +149,11 @@ configurations {
 }
 
 dependencies {
+    // Firebase BoM & Crashlytics
+    implementation platform(libs.firebase.bom)
+    implementation libs.firebase.crashlytics
+    implementation libs.firebase.analytics
+
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     coreLibraryDesugaring libs.desugar.jdk.libs.nio
     implementation fileTree(dir: 'libs', include: ['*.aar', '*.jar'], exclude: [
@@ -184,6 +227,11 @@ dependencies {
     implementation libs.media3.common
     implementation libs.media3.ui
     implementation libs.media3.ui.compose
+    implementation libs.media3.cast
+
+    // Google Cast & MediaRouter
+    implementation libs.play.services.cast.framework
+    implementation libs.androidx.mediarouter
 
     // NewPipe Extractor — local YouTube stream extraction (no proxy dependency)
     implementation libs.newpipeextractor

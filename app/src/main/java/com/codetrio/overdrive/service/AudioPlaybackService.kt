@@ -88,6 +88,9 @@ class AudioPlaybackService : MediaSessionService() {
     @Inject
     lateinit var streamRepository: com.codetrio.overdrive.domain.repository.StreamRepository
 
+    @Inject
+    lateinit var castPlaybackManager: com.codetrio.overdrive.cast.CastPlaybackManager
+
     companion object {
         private const val TAG = "AudioPlaybackService"
         
@@ -213,6 +216,8 @@ class AudioPlaybackService : MediaSessionService() {
                 handler.post(progressUpdateRunnable)
             } else {
                 handler.removeCallbacks(progressUpdateRunnable)
+                cancelLiveLyricsNotification()
+                resetMediaMetadataArtist()
             }
             com.codetrio.overdrive.data.diagnostics.PlaybackDiagnosticsLogger.log(
                 level = com.codetrio.overdrive.data.diagnostics.LogLevel.INFO,
@@ -449,10 +454,63 @@ class AudioPlaybackService : MediaSessionService() {
         
         initializePlayer()
         setupMediaSession()
+        cancelLiveLyricsNotification()
         loadAudioPreferences()
         setupPreferenceListener()
         setupProgressTracking()
         cleanCache()
+        setupCastIntegration()
+    }
+
+    private fun setupCastIntegration() {
+        castPlaybackManager.onCastSessionConnected = {
+            val currentSong = viewModel?.currentSong?.value
+            val currentPos = player.currentPosition
+            if (currentSong != null) {
+                val streamUri = currentSourceUri ?: viewModel?.songUri?.value
+                val streamUrl = streamUri?.toString() ?: ""
+                if (streamUrl.isNotEmpty()) {
+                    val artUrl = currentSong.thumbnailUrl ?: currentSong.getAlbumArtUri()?.toString()
+                    val lyricsLines = viewModel?.syncedLyrics?.value
+                    val vtt = lyricsLines?.let { com.codetrio.overdrive.cast.LrcToVttConverter.convertLinesToVtt(it) }
+                    castPlaybackManager.loadMedia(
+                        title = currentSong.title,
+                        artist = currentSong.artist,
+                        albumArtUrl = artUrl,
+                        mediaUrl = streamUrl,
+                        startPositionMs = currentPos,
+                        autoPlay = player.isPlaying,
+                        lyricsVtt = vtt
+                    )
+                }
+            }
+            player.pause()
+            viewModel?.postIsPlaying(true)
+        }
+
+        castPlaybackManager.onCastSessionDisconnected = { lastPos ->
+            Log.d(TAG, "Cast disconnected. Seamlessly resuming local playback from position ${lastPos}ms")
+            if (lastPos > 0) {
+                player.seekTo(lastPos)
+            }
+            player.play()
+            viewModel?.postIsPlaying(true)
+        }
+
+        castPlaybackManager.onRemotePlaybackStateChanged = { isPlaying ->
+            viewModel?.postIsPlaying(isPlaying)
+            if (isPlaying) {
+                handler.removeCallbacks(progressUpdateRunnable)
+                handler.post(progressUpdateRunnable)
+            }
+        }
+
+        castPlaybackManager.onSongFinished = {
+            Log.d(TAG, "⚡ Cast track completed! Auto-advancing to next song in queue...")
+            handler.post {
+                viewModel?.playNextSong(true)
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
@@ -514,6 +572,7 @@ class AudioPlaybackService : MediaSessionService() {
         nextPlayerListener = null
         nextPlayer?.release()
         mediaSession?.release()
+        cancelLiveLyricsNotification()
         effectsExecutor.shutdownNow()
     }
 
@@ -680,6 +739,17 @@ class AudioPlaybackService : MediaSessionService() {
                     player.shuffleModeEnabled = enabled
                 }
                 updateMediaSessionCustomLayout()
+            }
+        }
+        serviceScope.launch {
+            vm.syncedLyrics.collect { lyricsList ->
+                if (castPlaybackManager.isConnected) {
+                    val vtt = lyricsList?.let { com.codetrio.overdrive.cast.LrcToVttConverter.convertLinesToVtt(it) }
+                    castPlaybackManager.updateLyricsTrack(vtt)
+                }
+                if (!lyricsList.isNullOrEmpty() && player.isPlaying) {
+                    checkLiveUpdates(player.currentPosition)
+                }
             }
         }
     }
@@ -961,6 +1031,11 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     fun play() {
+        if (castPlaybackManager.isConnected) {
+            castPlaybackManager.play()
+            viewModel?.postIsPlaying(true)
+            return
+        }
         Log.d(TAG, "play: player.currentMediaItem = ${player.currentMediaItem}, isPlaying = ${player.isPlaying}")
         if (player.currentMediaItem == null) {
             val uri = viewModel?.songUri?.value
@@ -985,6 +1060,11 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     fun pause() {
+        if (castPlaybackManager.isConnected) {
+            castPlaybackManager.pause()
+            viewModel?.postIsPlaying(false)
+            return
+        }
         Log.d(TAG, "pause: isPlaying = ${player.isPlaying}, isCrossfading = $isCrossfading")
         player.pause()
         if (isCrossfading) {
@@ -1016,6 +1096,11 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     fun seekTo(position: Int) {
+        if (castPlaybackManager.isConnected) {
+            castPlaybackManager.seekTo(position.toLong())
+            viewModel?.setCurrentPosition(position)
+            return
+        }
         if (isCrossfading) {
             nextPlayerListener?.let {
                 nextPlayer?.removeListener(it)
@@ -1351,6 +1436,27 @@ class AudioPlaybackService : MediaSessionService() {
             if (currentSong != null && !currentSong.videoId.isNullOrEmpty()) {
                 telemetryManager.onSongChanged(currentSong.videoId!!, currentSong.duration)
             }
+
+            if (castPlaybackManager.isConnected) {
+                val title = currentSong?.title ?: currentSongName
+                val artist = currentSong?.artist ?: "Unknown Artist"
+                val artUrl = currentSong?.thumbnailUrl ?: currentSong?.getAlbumArtUri()?.toString()
+                val startPos = if (pendingSeekPos >= 0) pendingSeekPos else 0L
+                pendingSeekPos = -1
+                val lyricsLines = viewModel?.syncedLyrics?.value
+                val vtt = lyricsLines?.let { com.codetrio.overdrive.cast.LrcToVttConverter.convertLinesToVtt(it) }
+                castPlaybackManager.loadMedia(
+                    title = title,
+                    artist = artist,
+                    albumArtUrl = artUrl,
+                    mediaUrl = uri.toString(),
+                    startPositionMs = startPos,
+                    autoPlay = true,
+                    lyricsVtt = vtt
+                )
+                player.pause()
+                return
+            }
             
             player.setMediaItem(buildMediaItem(uri))
             
@@ -1491,7 +1597,16 @@ class AudioPlaybackService : MediaSessionService() {
     private fun setupProgressTracking() {
         progressUpdateRunnable = object : Runnable {
             override fun run() {
-                if (player.playbackState != Player.STATE_IDLE && player.playbackState != Player.STATE_ENDED) {
+                if (castPlaybackManager.isConnected) {
+                    val castPos = castPlaybackManager.getApproximateStreamPosition()
+                    val castDur = castPlaybackManager.getStreamDuration()
+                    viewModel?.setCurrentPosition(castPos.toInt())
+                    if (castDur > 0) {
+                        viewModel?.setDuration(castDur.toInt())
+                    }
+                    viewModel?.postIsPlaying(castPlaybackManager.isPlaying())
+                    telemetryManager.updateProgress(castPos, castDur)
+                } else if (player.playbackState != Player.STATE_IDLE && player.playbackState != Player.STATE_ENDED) {
                     val pos = if (isCrossfading && nextPlayer != null) nextPlayer!!.currentPosition else player.currentPosition
                     val dur = if (isCrossfading && nextPlayer != null) nextPlayer!!.duration else player.duration
                     viewModel?.setCurrentPosition(pos.toInt())
@@ -1505,8 +1620,6 @@ class AudioPlaybackService : MediaSessionService() {
                     if (player.isPlaying && (pos / 250) % 20L == 0L) {
                         com.codetrio.overdrive.util.PlaybackStateManager.savePosition(applicationContext, pos)
                     }
-
-
 
                     if (player.isPlaying && crossfadeDurationMs > 0 && dur > 0 && (dur - pos) <= crossfadeDurationMs && !isCrossfading) {
                         startCrossfadeOut()
@@ -1526,6 +1639,8 @@ class AudioPlaybackService : MediaSessionService() {
                             }
                         }
                     }
+                    // Live Updates & Synced Lyrics Status Bar Tracking
+                    checkLiveUpdates(pos)
                 }
                 val appPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
                 val dynamicPolling = appPrefs.getBoolean("pref_opt_dynamic_audio_polling", true)
@@ -1533,7 +1648,8 @@ class AudioPlaybackService : MediaSessionService() {
                     if (viewModel != null) {
                         val isExpanded = viewModel?.isPlayerExpanded?.value == true
                         val isLyrics = viewModel?.isLyricsModeEnabled?.value == true
-                        if (isExpanded || isLyrics) 200L else 350L
+                        val isMv = viewModel?.isMvMode?.value == true
+                        if (isMv) 100L else if (isExpanded || isLyrics) 200L else 350L
                     } else {
                         500L
                     }
@@ -1544,6 +1660,102 @@ class AudioPlaybackService : MediaSessionService() {
             }
         }
         handler.post(progressUpdateRunnable)
+    }
+
+    // ── Live Updates & Synced Lyrics Notification Tracking ─────────────────
+    private val LIVE_LYRICS_NOTIFICATION_ID = 1002
+    private val LIVE_LYRICS_CHANNEL_ID = "live_lyrics_channel"
+    private var currentLiveLyricText: String? = null
+    private var lastLiveLyricUpdateTimeMs: Long = 0L
+
+    private fun checkLiveUpdates(pos: Long) {
+        val appPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+        val liveUpdatesEnabled = appPrefs.getBoolean("pref_live_updates_enabled", true)
+        if (!liveUpdatesEnabled || !player.isPlaying) {
+            if (currentLiveLyricText != null) {
+                currentLiveLyricText = null
+                cancelLiveLyricsNotification()
+                resetMediaMetadataArtist()
+            }
+            return
+        }
+
+        val syncedLyrics = viewModel?.syncedLyrics?.value
+        if (!syncedLyrics.isNullOrEmpty()) {
+            val offset = viewModel?.currentLyricsOffsetMs?.value ?: 0L
+            val adjustedPos = pos + offset
+            val activeLine = syncedLyrics.lastOrNull { it.startTimeMs <= adjustedPos }
+            val newLyricText = activeLine?.content?.trim()
+            if (!newLyricText.isNullOrBlank() && newLyricText != currentLiveLyricText) {
+                currentLiveLyricText = newLyricText
+                lastLiveLyricUpdateTimeMs = System.currentTimeMillis()
+                Log.d("LiveUpdates", "🎤 Live Lyric Update: $newLyricText")
+                cancelLiveLyricsNotification()
+                updateMediaMetadataLiveLyric(newLyricText)
+                notifyLiveUpdate()
+            }
+        } else if (currentLiveLyricText != null) {
+            currentLiveLyricText = null
+            cancelLiveLyricsNotification()
+            resetMediaMetadataArtist()
+            notifyLiveUpdate()
+        }
+    }
+
+    private fun updateMediaMetadataLiveLyric(lyric: String) {
+        try {
+            val baseArtist = viewModel?.currentSong?.value?.artist ?: ""
+            val displayArtist = if (baseArtist.isNotEmpty()) "$baseArtist • 🎤 $lyric" else "🎤 $lyric"
+            val metadata = androidx.media3.common.MediaMetadata.Builder()
+                .setTitle(currentSongName)
+                .setArtist(displayArtist)
+                .setSubtitle("🎤 $lyric")
+                .setDisplayTitle(currentSongName)
+            currentAlbumArt?.let {
+                val stream = java.io.ByteArrayOutputStream()
+                it.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                metadata.setArtworkData(stream.toByteArray(), androidx.media3.common.MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+            }
+            player.playlistMetadata = metadata.build()
+        } catch (e: Exception) {
+            Log.d(TAG, "updateMediaMetadataLiveLyric skip: ${e.message}")
+        }
+    }
+
+    private fun resetMediaMetadataArtist() {
+        try {
+            val baseArtist = viewModel?.currentSong?.value?.artist ?: ""
+            val metadata = androidx.media3.common.MediaMetadata.Builder()
+                .setTitle(currentSongName)
+                .setArtist(baseArtist.ifEmpty { "OverDrive" })
+                .setDisplayTitle(currentSongName)
+            currentAlbumArt?.let {
+                val stream = java.io.ByteArrayOutputStream()
+                it.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                metadata.setArtworkData(stream.toByteArray(), androidx.media3.common.MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+            }
+            player.playlistMetadata = metadata.build()
+        } catch (e: Exception) {
+            Log.d(TAG, "resetMediaMetadataArtist skip: ${e.message}")
+        }
+    }
+
+    private fun cancelLiveLyricsNotification() {
+        try {
+            val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+            manager.cancel(LIVE_LYRICS_NOTIFICATION_ID)
+        } catch (e: Exception) {
+            Log.d("LiveUpdates", "cancelLiveLyricsNotification failed: ${e.message}")
+        }
+    }
+
+    private fun notifyLiveUpdate() {
+        try {
+            // Trigger media notification refresh in Media3
+            mediaSession?.setCustomLayout(mediaSession?.customLayout ?: com.google.common.collect.ImmutableList.of())
+        } catch (e: Exception) {
+            Log.d(TAG, "Live update refresh skipped: ${e.message}")
+        }
     }
 
 
@@ -1758,7 +1970,7 @@ class AudioPlaybackService : MediaSessionService() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = android.app.NotificationChannel(
+            val audioChannel = android.app.NotificationChannel(
                 "audio_playback_channel", "Audio Playback", android.app.NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Shows currently playing audio"
@@ -1768,7 +1980,10 @@ class AudioPlaybackService : MediaSessionService() {
                 setSound(null, null)
             }
             val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
-            manager.createNotificationChannel(channel)
+            manager.createNotificationChannel(audioChannel)
+            try {
+                manager.deleteNotificationChannel(LIVE_LYRICS_CHANNEL_ID)
+            } catch (_: Exception) {}
         }
     }
 
@@ -2024,9 +2239,6 @@ class AudioPlaybackService : MediaSessionService() {
 
         @OptIn(UnstableApi::class)
         private fun analyzePcmForHaptics(buffer: ByteBuffer, is16Bit: Boolean, isStereo: Boolean, frameCount: Int) {
-            val haptic = viewModel?.hapticManager
-            if (haptic == null || !haptic.isHapticsEnabled) return
-
             var sumSubBass = 0f
             var sumBass = 0f
             var sumMid = 0f
@@ -2077,13 +2289,24 @@ class AudioPlaybackService : MediaSessionService() {
                 val midEnergy = (sumMid / count) * 4f
                 val highEnergy = (sumHigh / count) * 4f
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                    haptic.processPcmHaptics(
-                        subBassEnergy.coerceIn(0f, 1f),
-                        bassEnergy.coerceIn(0f, 1f),
-                        midEnergy.coerceIn(0f, 1f),
-                        highEnergy.coerceIn(0f, 1f)
-                    )
+                // Feed real-time frequency data to Visualizer bus
+                com.codetrio.overdrive.ui.player.themes.PlayerVisualizerBus.update(
+                    subBassEnergy,
+                    bassEnergy,
+                    midEnergy,
+                    highEnergy
+                )
+
+                val haptic = viewModel?.hapticManager
+                if (haptic != null && haptic.isHapticsEnabled) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                        haptic.processPcmHaptics(
+                            subBassEnergy.coerceIn(0f, 1f),
+                            bassEnergy.coerceIn(0f, 1f),
+                            midEnergy.coerceIn(0f, 1f),
+                            highEnergy.coerceIn(0f, 1f)
+                        )
+                    }
                 }
             }
         }
@@ -2101,19 +2324,45 @@ class AudioPlaybackService : MediaSessionService() {
             actionFactory: androidx.media3.session.MediaNotification.ActionFactory
         ): IntArray {
             val isPlaying = player.isPlaying
-            Log.d(TAG, "Notification update: isPlaying=$isPlaying, song=$currentSongName")
-            
-            // Explicitly set channel and properties to match Java example exactly
-            // The small icon is set on the provider instance in setupMediaSession
+            val prefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+            val liveUpdatesEnabled = prefs.getBoolean("pref_live_updates_enabled", true)
+
             notificationBuilder.setContentTitle(currentSongName)
-            notificationBuilder.setContentText(if (is8DEnabled) "🎧 8D Audio" else "Normal Playback")
-            notificationBuilder.setSubText("OverDrive")
+            
+            // ── Live Updates & Synced Lyrics SubText ──
+            val liveLyric = currentLiveLyricText
+            val currentArtist = viewModel?.currentSong?.value?.artist ?: ""
+            if (liveUpdatesEnabled && !liveLyric.isNullOrBlank()) {
+                notificationBuilder.setSubText("🎤 $liveLyric")
+                notificationBuilder.setContentText(
+                    if (is8DEnabled) "🎧 8D Audio • ${if (currentArtist.isNotEmpty()) currentArtist else "OverDrive"}"
+                    else if (currentArtist.isNotEmpty()) currentArtist else "OverDrive"
+                )
+            } else {
+                notificationBuilder.setContentText(
+                    if (is8DEnabled) "🎧 8D Audio • ${if (currentArtist.isNotEmpty()) currentArtist else "Normal Playback"}"
+                    else if (currentArtist.isNotEmpty()) currentArtist else "Normal Playback"
+                )
+                notificationBuilder.setSubText("OverDrive")
+            }
+            
             notificationBuilder.setChannelId("audio_playback_channel")
             notificationBuilder.setOngoing(isPlaying)
             notificationBuilder.setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
             notificationBuilder.setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC)
             notificationBuilder.setOnlyAlertOnce(true)
-            notificationBuilder.setShowWhen(false)
+
+            // ── Chronometer Live Progress (Android 16 / M3 Live Updates) ──
+            if (isPlaying && liveUpdatesEnabled) {
+                val currentPos = if (isCrossfading && nextPlayer != null) nextPlayer!!.currentPosition else player.currentPosition
+                notificationBuilder.setShowWhen(true)
+                notificationBuilder.setUsesChronometer(true)
+                notificationBuilder.setWhen(System.currentTimeMillis() - currentPos)
+            } else {
+                notificationBuilder.setShowWhen(false)
+                notificationBuilder.setUsesChronometer(false)
+            }
+
             notificationBuilder.setCategory(androidx.core.app.NotificationCompat.CATEGORY_TRANSPORT)
             
             currentAlbumArt?.let {

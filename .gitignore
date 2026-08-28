@@ -28,5 +28,6 @@ patch.txt
 tmp_aar/
 missing_strings*.xml
 test_gemini.gradle
-
-
+.gemini/
+*.log
+.gradle_home/

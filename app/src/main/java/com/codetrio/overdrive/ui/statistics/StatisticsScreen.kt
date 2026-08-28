@@ -50,19 +50,34 @@ import com.codetrio.overdrive.viewmodel.PlayerSharedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import com.codetrio.overdrive.ui.statistics.dna.MusicDnaBanner
+import com.codetrio.overdrive.ui.statistics.dna.MusicWrappedStoryDialog
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
     playerViewModel: PlayerSharedViewModel,
-    onNavigateToExplore: () -> Unit
+    onNavigateToExplore: () -> Unit,
+    onNavigateToDna: () -> Unit = {}
 ) {
     val recap by playerViewModel.listeningRecapFlow.collectAsStateWithLifecycle(null)
     val history by playerViewModel.historyFlow.collectAsStateWithLifecycle(emptyList())
+    val dnaProfile by playerViewModel.musicDnaProfileFlow.collectAsStateWithLifecycle(null)
+    var showWrappedStoryDialog by remember { mutableStateOf(false) }
     
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(androidx.compose.ui.res.stringResource(R.string.tab_statistics)) },
+                actions = {
+                    IconButton(onClick = onNavigateToDna) {
+                        Icon(
+                            imageVector = Icons.Rounded.AutoAwesome,
+                            contentDescription = "Music DNA & Wrapped",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -78,7 +93,24 @@ fun StatisticsScreen(
                     }
                 }
             }
-            RecapContent(nestedScrollConnection, playerViewModel, onNavigateToExplore, history)
+            RecapContent(
+                nestedScrollConnection = nestedScrollConnection,
+                viewModel = playerViewModel,
+                onNavigateToExplore = onNavigateToExplore,
+                onNavigateToDna = onNavigateToDna,
+                onOpenStory = { showWrappedStoryDialog = true },
+                history = history,
+                dnaProfile = dnaProfile
+            )
+
+            if (showWrappedStoryDialog && dnaProfile != null) {
+                MusicWrappedStoryDialog(
+                    profile = dnaProfile!!,
+                    onDismiss = { showWrappedStoryDialog = false },
+                    onPlaySong = { song -> playerViewModel.playSong(song) },
+                    onPlayCapsule = { p -> playerViewModel.playCapsule(p) }
+                )
+            }
         }
     }
 }
@@ -97,7 +129,10 @@ private fun RecapContent(
     nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection,
     viewModel: PlayerSharedViewModel,
     onNavigateToExplore: () -> Unit,
-    history: List<com.codetrio.overdrive.data.db.HistoryEventEntity>
+    onNavigateToDna: () -> Unit,
+    onOpenStory: () -> Unit,
+    history: List<com.codetrio.overdrive.data.db.HistoryEventEntity>,
+    dnaProfile: com.codetrio.overdrive.data.dna.MusicDnaProfile?
 ) {
     val context = LocalContext.current
     val recap by viewModel.listeningRecapFlow.collectAsStateWithLifecycle(null)
@@ -106,18 +141,24 @@ private fun RecapContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                MusicDnaBanner(
+                    profile = dnaProfile,
+                    onOpenDnaScreen = onNavigateToDna,
+                    onOpenWrappedStory = onOpenStory
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 Icon(
                     imageVector = Icons.Default.BarChart,
                     contentDescription = "No Stats",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(64.dp)
+                    modifier = Modifier.size(56.dp)
                 )
                 Text(
                     text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_your_flow_is_warming_up),
@@ -191,7 +232,13 @@ private fun RecapContent(
             contentPadding = PaddingValues(bottom = 160.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+                MusicDnaBanner(
+                    profile = dnaProfile,
+                    onOpenDnaScreen = onNavigateToDna,
+                    onOpenWrappedStory = onOpenStory
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             // Glassmorphic Summary Metrics
@@ -222,8 +269,20 @@ private fun RecapContent(
                                 contentDescription = "Minutes Played",
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
+                            val formattedTotalTime = if (data.totalMinutes >= 60) {
+                                androidx.compose.ui.res.stringResource(
+                                    com.codetrio.overdrive.R.string.stat_time_hours_mins,
+                                    data.totalMinutes / 60,
+                                    data.totalMinutes % 60
+                                )
+                            } else {
+                                androidx.compose.ui.res.stringResource(
+                                    com.codetrio.overdrive.R.string.stat_time_minutes,
+                                    data.totalMinutes
+                                )
+                            }
                             Text(
-                                text = "${data.totalMinutes} min",
+                                text = formattedTotalTime,
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Black,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -237,11 +296,32 @@ private fun RecapContent(
                     }
 
                     // Peak Habit Mood Card
-                    val moodIconRes = when (data.peakMood) {
-                        "Morning Spark" -> R.drawable.ic_morning
-                        "Afternoon Groove" -> R.drawable.ic_afternoon
-                        "Evening Harmony" -> R.drawable.ic_evening
-                        else -> R.drawable.ic_evening
+                    val (moodTitle, moodDesc, moodIconRes) = when (data.peakMood) {
+                        "Morning Spark" -> Triple(
+                            androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.stat_mood_morning_title),
+                            androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.stat_mood_morning_desc),
+                            R.drawable.ic_morning
+                        )
+                        "Afternoon Groove" -> Triple(
+                            androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.stat_mood_afternoon_title),
+                            androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.stat_mood_afternoon_desc),
+                            R.drawable.ic_afternoon
+                        )
+                        "Evening Harmony" -> Triple(
+                            androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.stat_mood_evening_title),
+                            androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.stat_mood_evening_desc),
+                            R.drawable.ic_evening
+                        )
+                        "Night Serenade" -> Triple(
+                            androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.stat_mood_night_title),
+                            androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.stat_mood_night_desc),
+                            R.drawable.ic_evening
+                        )
+                        else -> Triple(
+                            data.peakMood,
+                            data.peakMoodDescription,
+                            R.drawable.ic_evening
+                        )
                     }
                     Card(
                         modifier = Modifier
@@ -263,13 +343,13 @@ private fun RecapContent(
                                 modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                text = data.peakMood,
+                                text = moodTitle,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                             Text(
-                                text = data.peakMoodDescription,
+                                text = moodDesc,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
                             )
@@ -435,7 +515,10 @@ private fun RecapContent(
                                     color = artistColor
                                 )
                                 Text(
-                                    text = "Played ${heroSong.count} times",
+                                    text = androidx.compose.ui.res.stringResource(
+                                        com.codetrio.overdrive.R.string.stat_played_n_times,
+                                        heroSong.count
+                                    ),
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = playedCountColor
@@ -474,7 +557,10 @@ private fun RecapContent(
                         },
                         trailingContent = {
                             Text(
-                                text = "${song.count} plays",
+                                text = androidx.compose.ui.res.stringResource(
+                                    com.codetrio.overdrive.R.string.stat_n_plays,
+                                    song.count
+                                ),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -566,7 +652,10 @@ private fun RecapContent(
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
-                                    text = "${item.count} songs played",
+                                    text = androidx.compose.ui.res.stringResource(
+                                        com.codetrio.overdrive.R.string.stat_n_songs_played,
+                                        item.count
+                                    ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
@@ -582,7 +671,7 @@ private fun RecapContent(
             if (history.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Recent History",
+                        text = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_recent_listening_history),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)

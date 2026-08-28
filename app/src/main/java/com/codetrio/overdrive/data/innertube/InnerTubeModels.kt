@@ -140,6 +140,15 @@ data class PlayerResult(
     val musicVideoType: String? = null
 )
 
+/** Return YouTube Dislike (RYD) engagement metrics */
+@Stable
+data class RydEngagement(
+    val likes: Long,
+    val dislikes: Long,
+    val viewCount: Long? = null,
+    val rating: Double? = null
+)
+
 /** Home feed section (carousel) */
 @Stable
 data class HomeSection(

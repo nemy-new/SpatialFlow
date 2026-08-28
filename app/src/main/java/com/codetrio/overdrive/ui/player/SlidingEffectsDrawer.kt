@@ -43,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -129,30 +130,52 @@ fun SlidingEffectsDrawer(
         }
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE) }
+    var playerTheme by remember { mutableStateOf(prefs.getString("player_theme", "fluid") ?: "fluid") }
+    DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
+            if (key == "player_theme") {
+                playerTheme = sp.getString(key, "fluid") ?: "fluid"
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    val isVinyl = playerTheme == "vinyl"
+
     if (!isEffectsExpanded && slidingOffset >= screenHeight) {
         return
     }
 
-    val effectsBgColor = remember(playerBackgroundColor, isDark) {
-        deriveArtworkSurfaceColor(
-            sourceColor = Color(playerBackgroundColor),
-            isDark = isDark,
-            darkLightness = 0.12f,
-            lightLightness = 0.90f,
-            darkSaturationRange = 0.28f..0.48f,
-            lightSaturationRange = 0.20f..0.40f
-        )
+    val effectsBgColor = remember(playerBackgroundColor, isDark, isVinyl) {
+        if (isVinyl) {
+            if (isDark) Color(0xFF1E2026) else Color(0xFFFFFFFF)
+        } else {
+            deriveArtworkSurfaceColor(
+                sourceColor = Color(playerBackgroundColor),
+                isDark = isDark,
+                darkLightness = 0.12f,
+                lightLightness = 0.90f,
+                darkSaturationRange = 0.28f..0.48f,
+                lightSaturationRange = 0.20f..0.40f
+            )
+        }
     }
 
-    val cardBgColor = remember(effectsBgColor, isDark) {
-        deriveArtworkSurfaceColor(
-            sourceColor = Color(playerBackgroundColor),
-            isDark = isDark,
-            darkLightness = 0.18f,
-            lightLightness = 0.82f,
-            darkSaturationRange = 0.28f..0.52f,
-            lightSaturationRange = 0.18f..0.40f
-        )
+    val cardBgColor = remember(playerBackgroundColor, isDark, isVinyl) {
+        if (isVinyl) {
+            if (isDark) Color(0xFF282A32) else Color(0xFFF3F4F7)
+        } else {
+            deriveArtworkSurfaceColor(
+                sourceColor = Color(playerBackgroundColor),
+                isDark = isDark,
+                darkLightness = 0.18f,
+                lightLightness = 0.82f,
+                darkSaturationRange = 0.28f..0.52f,
+                lightSaturationRange = 0.18f..0.40f
+            )
+        }
     }
 
     val contentColor = if (isDark) Color.White else Color.Black
@@ -212,17 +235,13 @@ fun SlidingEffectsDrawer(
                 },
             shape = RoundedCornerShape(topStart = safeCornerRadius, topEnd = safeCornerRadius),
             color = effectsBgColor,
-            border = BorderStroke(
-                width = 1.dp,
-                color = contentColor.copy(alpha = 0.12f)
-            ),
             shadowElevation = 24.dp
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .animateContentSize(animationSpec = spring(dampingRatio = 0.85f, stiffness = 320f))
+                        .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 320f))
                         .padding(bottom = 28.dp)
                 ) {
                     // 1. Top Drag Handle
@@ -381,7 +400,7 @@ fun SlidingEffectsDrawer(
                                 pod = EffectPod.LOUDNESS,
                                 iconRes = R.drawable.ic_speaker,
                                 title = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_loudness_effects),
-                                subtitle = if (isLoudnessEnabled) "+${(loudnessGain / 100).toInt()} dB" else androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_normal),
+                                subtitle = if (isLoudnessEnabled) "+${loudnessGain / 100} dB" else androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_normal),
                                 isSelected = selectedPod == EffectPod.LOUDNESS,
                                 isActive = isLoudnessEnabled,
                                 onClick = { selectedPod = if (selectedPod == EffectPod.LOUDNESS) null else EffectPod.LOUDNESS },
@@ -418,8 +437,7 @@ fun SlidingEffectsDrawer(
                                     .padding(horizontal = 16.dp)
                                     .padding(top = 12.dp),
                                 shape = RoundedCornerShape(22.dp),
-                                color = cardBgColor.copy(alpha = 0.75f),
-                                border = BorderStroke(1.dp, contentColor.copy(alpha = 0.1f))
+                                color = cardBgColor.copy(alpha = 0.75f)
                             ) {
                                 Column(
                                     modifier = Modifier
@@ -556,7 +574,7 @@ private fun EffectPodCard(
             isActive -> contentColor.copy(alpha = 0.11f)
             else -> contentColor.copy(alpha = 0.05f)
         },
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 300f),
         label = "PodBgColor"
     )
     val borderColor by animateColorAsState(
@@ -565,7 +583,7 @@ private fun EffectPodCard(
             isActive -> accentColor.copy(alpha = 0.5f)
             else -> contentColor.copy(alpha = 0.06f)
         },
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 300f),
         label = "PodBorderColor"
     )
     val textColor = if (isSelected || isActive) Color.White else contentColor

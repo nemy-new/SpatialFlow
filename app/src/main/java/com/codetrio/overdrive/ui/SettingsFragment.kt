@@ -27,6 +27,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -37,13 +38,16 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -73,26 +77,36 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.rounded.AccountCircle
-import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.FontDownload
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Opacity
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.SettingsBackupRestore
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Update
 import androidx.compose.material.icons.rounded.Vibration
+import com.codetrio.overdrive.ui.onboarding.OnboardingScreen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -139,11 +153,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -195,22 +212,37 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    // ── Dark Mode ────────────────────────────────────────────────────────────
+    // ── Theme Mode ────────────────────────────────────────────────────────────
+    private val _themeMode = MutableStateFlow(
+        prefs.getString(KEY_THEME_MODE, "system") ?: "system"
+    )
+    val themeMode: StateFlow<String> = _themeMode.asStateFlow()
+
     private val _darkMode = MutableStateFlow(
-        prefs.getString("theme_mode", "system").let {
+        _themeMode.value.let {
             if (it == "system") prefs.getBoolean(KEY_DARK_MODE, true) else it == "dark"
         }
     )
     val darkMode: StateFlow<Boolean> = _darkMode.asStateFlow()
 
+    fun setThemeMode(mode: String) {
+        _themeMode.value = mode
+        val isDark = mode == "dark"
+        _darkMode.value = isDark
+        prefs.edit {
+            putString(KEY_THEME_MODE, mode)
+            putBoolean(KEY_DARK_MODE, isDark)
+        }
+        val nightMode = when (mode) {
+            "dark" -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+            "light" -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+            else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        }
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(nightMode)
+    }
+
     fun setDarkMode(enabled: Boolean) {
-        _darkMode.value = enabled
-        prefs.edit {putBoolean(KEY_DARK_MODE, enabled)}
-        prefs.edit {putString("theme_mode", if (enabled) "dark" else "light")}
-        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
-            if (enabled) androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
-            else androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
-        )
+        setThemeMode(if (enabled) "dark" else "light")
     }
 
     // ── YouTube Music Cookies ──────────────────────────────────────────────────
@@ -293,7 +325,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setCrossfadeDuration(duration: Float) {
         _crossfadeDuration.value = duration
-        prefs.edit {putFloat(KEY_CROSSFADE_DURATION, duration)}
+        prefs.edit { putFloat(KEY_CROSSFADE_DURATION, duration) }
+    }
+
+    // ── Live Updates & Synced Lyrics ─────────────────────────────────────────
+    private val _liveUpdatesEnabled =
+        MutableStateFlow(prefs.getBoolean("pref_live_updates_enabled", true))
+    val liveUpdatesEnabled: StateFlow<Boolean> = _liveUpdatesEnabled.asStateFlow()
+
+    fun setLiveUpdatesEnabled(enabled: Boolean) {
+        _liveUpdatesEnabled.value = enabled
+        prefs.edit { putBoolean("pref_live_updates_enabled", enabled) }
     }
 
     // ── Volume Normalization ─────────────────────────────────────────────────
@@ -829,7 +871,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         }
                     }
 
-                    _darkMode.value = prefs.getBoolean(KEY_DARK_MODE, true)
+                    _themeMode.value = prefs.getString(KEY_THEME_MODE, "system") ?: "system"
+                    _darkMode.value = if (_themeMode.value == "system") prefs.getBoolean(KEY_DARK_MODE, true) else _themeMode.value == "dark"
                     _amoledBlack.value = prefs.getBoolean(KEY_AMOLED_BLACK, false)
                     _showAnimatedArt.value = prefs.getBoolean("show_animated_art", true)
                     _dynamicAlbumTheme.value = prefs.getBoolean(KEY_DYNAMIC_ALBUM_THEME, true)
@@ -967,6 +1010,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     companion object {
         const val PREFS_NAME = "AppSettings"
+        const val KEY_THEME_MODE = "theme_mode"
         const val KEY_DARK_MODE = "dark_mode"
         const val KEY_NAVIGATION_BLUR = "navigation_blur"
         const val KEY_TAB_SWITCH_BLUR = "tab_switch_blur"
@@ -1243,7 +1287,7 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
         val context = LocalContext.current
         val activity = context.findActivity() as androidx.activity.ComponentActivity
         val viewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(activity)
-        val darkMode by viewModel.darkMode.collectAsStateWithLifecycle()
+        val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
         val amoledBlack by viewModel.amoledBlack.collectAsStateWithLifecycle()
         val showAnimatedArt by viewModel.showAnimatedArt.collectAsStateWithLifecycle()
         val dynamicAlbumTheme by viewModel.dynamicAlbumTheme.collectAsStateWithLifecycle()
@@ -1260,8 +1304,8 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
 
         AppearanceScreen(
             navController = navController,
-            darkMode = darkMode,
-            onDarkModeChange = { viewModel.setDarkMode(it) },
+            themeMode = themeMode,
+            onThemeModeChange = { viewModel.setThemeMode(it) },
             amoledBlack = amoledBlack,
             onAmoledBlackChange = { viewModel.setAmoledBlack(it) },
             showAnimatedArt = showAnimatedArt,
@@ -1315,6 +1359,7 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
         val showVolumeSlider by viewModel.showVolumeSlider.collectAsStateWithLifecycle()
         val lyricsTranslationEnabled by viewModel.lyricsTranslationEnabled.collectAsStateWithLifecycle()
         val lyricsTranslationEngine by viewModel.lyricsTranslationEngine.collectAsStateWithLifecycle()
+        val liveUpdatesEnabled by viewModel.liveUpdatesEnabled.collectAsStateWithLifecycle()
         PlaybackScreen(
             navController = navController,
             crossfadeEnabled = crossfadeEnabled,
@@ -1344,7 +1389,9 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
             lyricsTranslationEnabled = lyricsTranslationEnabled,
             onLyricsTranslationToggle = { viewModel.setLyricsTranslationEnabled(it) },
             lyricsTranslationEngine = lyricsTranslationEngine,
-            onLyricsTranslationEngineChange = { viewModel.setLyricsTranslationEngine(it) }
+            onLyricsTranslationEngineChange = { viewModel.setLyricsTranslationEngine(it) },
+            liveUpdatesEnabled = liveUpdatesEnabled,
+            onLiveUpdatesToggle = { viewModel.setLiveUpdatesEnabled(it) }
         )
     }
 
@@ -1459,6 +1506,33 @@ fun NavGraphBuilder.settingsGraph(navController: androidx.navigation.NavControll
     ) {
         com.codetrio.overdrive.ui.settings.PerformanceSettingsScreen(navController = navController)
     }
+
+    composableWithBlur(
+        route = SettingsRoute.CustomFonts.route,
+        enterTransition = enterAnim,
+        exitTransition = exitAnim,
+        popEnterTransition = popEnterAnim,
+        popExitTransition = popExitAnim
+    ) {
+        com.codetrio.overdrive.ui.settings.CustomFontSettingsScreen(navController = navController)
+    }
+
+    composableWithBlur(
+        route = "onboarding",
+        enterTransition = enterAnim,
+        exitTransition = exitAnim,
+        popEnterTransition = popEnterAnim,
+        popExitTransition = popExitAnim
+    ) {
+        OnboardingScreen(
+            onComplete = {
+                navController.popBackStack()
+            },
+            onNavigateToSignIn = {
+                navController.navigate("google_signin")
+            }
+        )
+    }
 }
 
 
@@ -1496,11 +1570,13 @@ sealed class SettingsRoute(val route: String) {
     object WhatsNew : SettingsRoute("whats_new")
     object BackupRestore : SettingsRoute("backup_restore")
     object CustomizeBottomNav : SettingsRoute("customize_bottom_nav")
+    object CustomFonts : SettingsRoute("custom_fonts")
 }
 
 @Composable
 private fun SettingsMainScreen(navController: androidx.navigation.NavController) {
     val scrollState = rememberScrollState()
+    var showKeyboardShortcutsDialog by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val context = LocalContext.current
@@ -1529,17 +1605,16 @@ private fun SettingsMainScreen(navController: androidx.navigation.NavController)
             .nestedScroll(nestedScrollConnection)
             .verticalScroll(scrollState)
             .padding(horizontal = 24.dp)
-            .padding(bottom = 400.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(bottom = 400.dp)
     ) {
         Text(
             text = stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
-                .widthIn(max = 840.dp)
                 .fillMaxWidth()
-                .padding(start = 16.dp, top = 16.dp, bottom = 24.dp)
+                .padding(start = 8.dp, top = 16.dp, bottom = 24.dp)
         )
 
         SettingsGroupCard(
@@ -1594,6 +1669,14 @@ private fun SettingsMainScreen(navController: androidx.navigation.NavController)
                 },
                 {
                     SettingsCategoryItem(
+                        title = "キーボードショートカット",
+                        subtitle = "物理キーボードでの操作一覧を表示",
+                        icon = Icons.Rounded.Keyboard,
+                        onClick = { showKeyboardShortcutsDialog = true }
+                    )
+                },
+                {
+                    SettingsCategoryItem(
                         title = stringResource(R.string.settings_cat_about),
                         subtitle = stringResource(R.string.settings_cat_about_sub),
                         icon = Icons.Rounded.Info,
@@ -1602,7 +1685,12 @@ private fun SettingsMainScreen(navController: androidx.navigation.NavController)
                 }
             )
         )
-        
+
+        if (showKeyboardShortcutsDialog) {
+            com.codetrio.overdrive.ui.components.KeyboardShortcutsDialog(
+                onDismissRequest = { showKeyboardShortcutsDialog = false }
+            )
+        }
     }
 }
 
@@ -1678,8 +1766,7 @@ private fun MusicManagementScreen(
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 400.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(bottom = 400.dp)
             ) {
                 SettingsHeader(stringResource(R.string.settings_header_library))
                 SettingsGroupCard(buildList {
@@ -1818,8 +1905,7 @@ private fun BackupRestoreScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 400.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(bottom = 400.dp)
         ) {
             SettingsHeader(stringResource(R.string.settings_backup_restore))
             SettingsGroupCard(buildList {
@@ -2014,8 +2100,7 @@ private fun AccountScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 400.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(bottom = 400.dp)
         ) {
             SettingsHeader(stringResource(R.string.yt_music_account))
             SettingsGroupCard(listOf(
@@ -2191,10 +2276,136 @@ private fun ManualSyncRow() {
 }
 
 @Composable
+private fun ThemeModeSelector(
+    selectedMode: String,
+    onModeSelect: (String) -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    val options = listOf(
+        Triple("system", stringResource(R.string.onboarding_mode_system), Icons.Filled.SettingsBrightness),
+        Triple("dark", stringResource(R.string.onboarding_mode_dark), Icons.Filled.DarkMode),
+        Triple("light", stringResource(R.string.onboarding_mode_light), Icons.Filled.LightMode)
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        options.forEach { (mode, label, icon) ->
+            val isSelected = selectedMode == mode
+            val targetContainerColor by animateColorAsState(
+                targetValue = if (isSelected) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.38f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                label = "themeContainer_$mode"
+            )
+            val targetBorderColor by animateColorAsState(
+                targetValue = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                },
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                label = "themeBorder_$mode"
+            )
+
+            Surface(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onModeSelect(mode)
+                },
+                shape = RoundedCornerShape(22.dp),
+                color = targetContainerColor,
+                border = BorderStroke(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = targetBorderColor
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(96.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = label,
+                                    tint = if (isSelected) {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            textAlign = TextAlign.Center,
+                            maxLines = 1
+                        )
+                    }
+
+                    if (isSelected) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .size(16.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun AppearanceScreen(
     navController: androidx.navigation.NavController,
-    darkMode: Boolean,
-    onDarkModeChange: (Boolean) -> Unit,
+    themeMode: String,
+    onThemeModeChange: (String) -> Unit,
     amoledBlack: Boolean,
     onAmoledBlackChange: (Boolean) -> Unit,
     showAnimatedArt: Boolean,
@@ -2222,6 +2433,13 @@ private fun AppearanceScreen(
     unifiedFloatingBar: Boolean,
     onUnifiedFloatingBarChange: (Boolean) -> Unit
 ) {
+    val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val isEffectiveDark = when (themeMode) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemDark
+    }
+
     Scaffold(
         topBar = { SettingsDetailTopBar(stringResource(R.string.settings_cat_appearance)) { navController.popBackStack() } }
     ) { paddingValues ->
@@ -2231,16 +2449,36 @@ private fun AppearanceScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 400.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(bottom = 400.dp)
         ) {
+            SettingsHeader(stringResource(R.string.settings_header_theme_mode))
+            ThemeModeSelector(
+                selectedMode = themeMode,
+                onModeSelect = onThemeModeChange
+            )
+
+            AnimatedVisibility(
+                visible = isEffectiveDark,
+                enter = fadeIn(tween(220)) + expandVertically(spring(stiffness = Spring.StiffnessMediumLow)),
+                exit = fadeOut(tween(180)) + shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow))
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                ) {
+                    AmoledBlackRow(amoledBlack, onAmoledBlackChange)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             SettingsHeader(stringResource(R.string.settings_header_general))
             SettingsGroupCard(buildList {
                 add { AppLanguageRow(appLanguage, onAppLanguageChange) }
-                add { ThemeRow(darkMode, onDarkModeChange) }
-                if (darkMode) {
-                    add { AmoledBlackRow(amoledBlack, onAmoledBlackChange) }
-                }
                 add { HighRefreshRateRow(forceHighRefreshRate, onForceHighRefreshRateChange) }
             })
 
@@ -2255,64 +2493,8 @@ private fun AppearanceScreen(
                         modifier = Modifier.clickable { onShowAnimatedArtChange(!showAnimatedArt) }
                     )
                 }
-                add {
-                    var showThemeSheet by remember { mutableStateOf(false) }
-                    val fluidStr = stringResource(R.string.text_fluid_theme)
-                    val meshStr = stringResource(R.string.text_fluid_mesh_theme)
-                    val staticStr = stringResource(R.string.text_static_theme)
-                    val immersionStr = stringResource(R.string.text_immersion_theme)
-                    val themeText = when (playerTheme) {
-                        "fluid" -> fluidStr
-                        "mesh" -> meshStr
-                        "static" -> staticStr
-                        "immersion" -> immersionStr
-                        else -> fluidStr
-                    }
-                    ListItem(
-                        onClick = { showThemeSheet = true },
-                        content = {
-                            Column {
-                                Text(
-                                    text = stringResource(R.string.setting_player_theme),
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                Text(
-                                    text = themeText,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        leadingContent = {
-                            Icon(
-                                imageVector = Icons.Rounded.Palette,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        trailingContent = {
-                            Icon(
-                                imageVector = Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                    )
-                    if (showThemeSheet) {
-                        val ctx = androidx.compose.ui.platform.LocalContext.current
-                        val bgMode = ctx.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
-                            .getString("now_playing_background", "Blurred") ?: "Blurred"
-                        com.codetrio.overdrive.ui.player.PlayerThemeBottomSheet(
-                            onDismissRequest = { showThemeSheet = false },
-                            currentTheme = playerTheme,
-                            onThemeSelect = { selectedTheme ->
-                                onPlayerThemeChange(selectedTheme)
-                            }
-                        )
-                    }
-                }
+                add { CustomFontSettingsRow { navController.navigate(SettingsRoute.CustomFonts.route) } }
+                add { PlayerThemeRow(playerTheme, onPlayerThemeChange) }
                 add { DynamicAlbumThemeRow(dynamicAlbumTheme, onDynamicAlbumThemeChange) }
                 add { NavigationBlurRow(navigationBlur, onNavigationBlurChange) }
                 // Only show tab-blur toggle when blur is enabled globally
@@ -2332,8 +2514,218 @@ private fun AppearanceScreen(
                     add { UnifiedFloatingBarRow(unifiedFloatingBar, onUnifiedFloatingBarChange) }
                 }
             })
+
+            SettingsHeader(stringResource(R.string.settings_header_performance))
+            SettingsGroupCard(buildList {
+                add { PerformanceModeRow() }
+                add { DisableBlurRow() }
+            })
         }
     }
+}
+
+@Composable
+private fun CustomFontSettingsRow(onClick: () -> Unit) {
+    ListItem(
+        headlineContent = {
+            Text(
+                text = stringResource(R.string.setting_custom_fonts),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        },
+        supportingContent = {
+            Text(
+                text = stringResource(R.string.setting_custom_fonts_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        leadingContent = {
+            Icon(
+                Icons.Rounded.FontDownload,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        trailingContent = {
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable(onClick = onClick)
+    )
+}
+
+@Composable
+private fun PlayerThemeRow(currentTheme: String, onThemeChange: (String) -> Unit) {
+    var showDialog by remember { mutableStateOf(false) }
+    val themeText = stringResource(com.codetrio.overdrive.ui.player.themes.PlayerThemeType.fromId(currentTheme).titleRes)
+
+    ListItem(
+        headlineContent = {
+            Text(
+                text = stringResource(R.string.setting_player_theme),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        },
+        supportingContent = {
+            Text(
+                text = themeText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        leadingContent = {
+            Icon(
+                imageVector = Icons.Rounded.Palette,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        },
+        trailingContent = {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable { showDialog = true }
+    )
+
+    if (showDialog) {
+        com.codetrio.overdrive.ui.player.PlayerThemeBottomSheet(
+            onDismissRequest = { showDialog = false },
+            currentTheme = currentTheme,
+            onThemeSelect = { selectedTheme ->
+                onThemeChange(selectedTheme)
+            }
+        )
+    }
+}
+
+@Composable
+private fun PerformanceModeRow() {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE) }
+    var currentMode by remember { mutableStateOf(prefs.getString(com.codetrio.overdrive.util.PerformanceManager.KEY_PERFORMANCE_MODE, "auto") ?: "auto") }
+    var showDialog by remember { mutableStateOf(false) }
+
+    val modeLabel = when (currentMode) {
+        "low_end" -> stringResource(R.string.performance_mode_lite)
+        "high_quality" -> stringResource(R.string.performance_mode_high)
+        else -> stringResource(R.string.performance_mode_auto)
+    }
+
+    ListItem(
+        headlineContent = {
+            Text(stringResource(R.string.setting_performance_mode), style = MaterialTheme.typography.bodyLarge)
+        },
+        supportingContent = {
+            Text(modeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        leadingContent = {
+            Icon(
+                imageVector = Icons.Rounded.Speed,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        },
+        trailingContent = {
+            Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable { showDialog = true }
+    )
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text(stringResource(R.string.setting_performance_mode)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        stringResource(R.string.setting_performance_mode_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val modes = listOf(
+                        "auto" to stringResource(R.string.performance_mode_auto),
+                        "high_quality" to stringResource(R.string.performance_mode_high),
+                        "low_end" to stringResource(R.string.performance_mode_lite)
+                    )
+
+                    modes.forEach { (modeKey, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    currentMode = modeKey
+                                    prefs.edit().putString(com.codetrio.overdrive.util.PerformanceManager.KEY_PERFORMANCE_MODE, modeKey).apply()
+                                    showDialog = false
+                                }
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currentMode == modeKey,
+                                onClick = {
+                                    currentMode = modeKey
+                                    prefs.edit().putString(com.codetrio.overdrive.util.PerformanceManager.KEY_PERFORMANCE_MODE, modeKey).apply()
+                                    showDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(label, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun DisableBlurRow() {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE) }
+    var disableBlur by remember { mutableStateOf(prefs.getBoolean(com.codetrio.overdrive.util.PerformanceManager.KEY_DISABLE_BLUR, false)) }
+
+    ListItem(
+        headlineContent = {
+            Text(stringResource(R.string.setting_disable_realtime_blur), style = MaterialTheme.typography.bodyLarge)
+        },
+        supportingContent = {
+            Text(stringResource(R.string.setting_disable_realtime_blur_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        trailingContent = {
+            Switch(
+                checked = disableBlur,
+                onCheckedChange = {
+                    disableBlur = it
+                    prefs.edit().putBoolean(com.codetrio.overdrive.util.PerformanceManager.KEY_DISABLE_BLUR, it).apply()
+                }
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable {
+            val newVal = !disableBlur
+            disableBlur = newVal
+            prefs.edit().putBoolean(com.codetrio.overdrive.util.PerformanceManager.KEY_DISABLE_BLUR, newVal).apply()
+        }
+    )
 }
 
 @Composable
@@ -2611,18 +3003,34 @@ private fun DynamicAlbumThemeRow(checked: Boolean, onToggle: (Boolean) -> Unit) 
 @Composable
 private fun AmoledBlackRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
     ListItem(
-        onClick = { onToggle(!checked) },
-        content = {
-            Column {
-                Text(
-                    text = stringResource(R.string.setting_pure_black),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = stringResource(R.string.setting_pure_black_desc),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        headlineContent = {
+            Text(
+                text = stringResource(R.string.setting_pure_black),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        },
+        supportingContent = {
+            Text(
+                text = stringResource(R.string.setting_pure_black_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        leadingContent = {
+            Surface(
+                shape = CircleShape,
+                color = if (checked) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.Contrast,
+                        contentDescription = null,
+                        tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         },
         trailingContent = {
@@ -2631,7 +3039,8 @@ private fun AmoledBlackRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
                 onCheckedChange = onToggle
             )
         },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable { onToggle(!checked) }
     )
 }
 
@@ -2697,7 +3106,9 @@ private fun PlaybackScreen(
     lyricsTranslationEnabled: Boolean,
     onLyricsTranslationToggle: (Boolean) -> Unit,
     lyricsTranslationEngine: String,
-    onLyricsTranslationEngineChange: (String) -> Unit
+    onLyricsTranslationEngineChange: (String) -> Unit,
+    liveUpdatesEnabled: Boolean,
+    onLiveUpdatesToggle: (Boolean) -> Unit
 ) {
     Scaffold(
         topBar = { SettingsDetailTopBar(stringResource(R.string.settings_cat_playback)) { navController.popBackStack() } }
@@ -2708,9 +3119,13 @@ private fun PlaybackScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 400.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(bottom = 400.dp)
         ) {
+            SettingsHeader(stringResource(R.string.setting_live_updates))
+            SettingsGroupCard(listOf(
+                { LiveUpdatesRow(liveUpdatesEnabled, onLiveUpdatesToggle) }
+            ))
+
             SettingsHeader(stringResource(R.string.setting_crossfade))
             SettingsGroupCard(listOf(
                 { CrossfadeRow(crossfadeEnabled, onCrossfadeToggle, crossfadeDuration, onCrossfadeDurationChange) }
@@ -2909,8 +3324,7 @@ private fun HapticsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 400.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(bottom = 400.dp)
         ) {
             SettingsHeader(stringResource(R.string.settings_haptics_title))
             SettingsGroupCard(buildList {
@@ -3270,81 +3684,85 @@ private fun AboutScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 400.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(bottom = 400.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Hero App Logo (Elegant Box)
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_applogo),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(72.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5).sp
-            )
-            
-            // Version Pills
-            Row(
-                modifier = Modifier.padding(top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Hero App Logo (Elegant Box)
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = BuildConfig.VERSION_NAME,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .clickable(
-                                interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                indication = null
-                            ) { handleVersionTap() }
-                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                    Icon(
+                        painter = painterResource(R.drawable.ic_applogo),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(72.dp)
                     )
                 }
-            }
-            
-            // Action Buttons
-            androidx.compose.material3.ButtonGroup(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 32.dp)
-            ) {
-                Button(
-                    onClick = onCheckUpdate,
-                    modifier = Modifier.weight(1f).height(48.dp)
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp
+                )
+                
+                // Version Pills
+                Row(
+                    modifier = Modifier.padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Rounded.Update, null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.settings_updates), style = MaterialTheme.typography.labelLarge)
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ) {
+                        Text(
+                            text = BuildConfig.VERSION_NAME,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .clickable(
+                                    interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null
+                                ) { handleVersionTap() }
+                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
                 }
-                Button(
-                    onClick = onWhatsNew,
-                    modifier = Modifier.weight(1f).height(48.dp)
+                
+                // Action Buttons
+                androidx.compose.material3.ButtonGroup(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 32.dp)
                 ) {
-                    Icon(Icons.Rounded.Info, null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.settings_whats_new), style = MaterialTheme.typography.labelLarge)
+                    Button(
+                        onClick = onCheckUpdate,
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Icon(Icons.Rounded.Update, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.settings_updates), style = MaterialTheme.typography.labelLarge)
+                    }
+                    Button(
+                        onClick = onWhatsNew,
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Icon(Icons.Rounded.Info, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.settings_whats_new), style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
             
@@ -3378,9 +3796,11 @@ private fun AboutScreen(
 private fun SettingsHeader(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleLarge,
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth().padding(start = 16.dp, top = 24.dp, bottom = 12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp, top = 24.dp, bottom = 8.dp)
     )
 }
 
@@ -3390,8 +3810,7 @@ private fun SettingsGroupCard(items: List<@Composable () -> Unit>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .widthIn(max = 840.dp)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
     ) {
         items.forEachIndexed { index, item ->
@@ -3415,48 +3834,6 @@ private fun getSettingsSegmentedShape(index: Int, count: Int): Shape {
         index == count - 1 -> RoundedCornerShape(topStart = inner, topEnd = inner, bottomStart = outer, bottomEnd = outer)
         else -> RoundedCornerShape(inner)
     }
-}
-
-// ── Theme ────────────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ThemeRow(isDark: Boolean, onToggle: (Boolean) -> Unit) {
-    ListItem(
-        onClick = { onToggle(!isDark) },
-        content = {
-            Text(
-                text = stringResource(R.string.setting_dark_mode),
-                style = MaterialTheme.typography.bodyLarge
-            )
-        },
-        trailingContent = { ThemeSwitch(isDark, onToggle) },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-    )
-}
-
-@Composable
-private fun ThemeSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        thumbContent = {
-            AnimatedContent(
-                targetState = checked,
-                transitionSpec = {
-                    fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium)) togetherWith
-                        fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium))
-                },
-                label = "theme_icon"
-            ) { dark ->
-                Icon(
-                    imageVector = if (!dark) Icons.Default.WbSunny else Icons.Default.NightsStay,
-                    contentDescription = null,
-                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                )
-            }
-        }
-    )
 }
 
 
@@ -3520,7 +3897,38 @@ private fun VibrationStrengthRow(
     )
 }
 
-// ── Wavy Divider ────────────────────────────────────────────────────────────
+// ── Live Updates ─────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LiveUpdatesRow(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    ListItem(
+        onClick = { onToggle(!enabled) },
+        content = {
+            Text(
+                text = stringResource(R.string.setting_live_updates),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        },
+        supportingContent = {
+            Text(
+                text = stringResource(R.string.setting_live_updates_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        trailingContent = {
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+    )
+}
 
 // ── Crossfade ───────────────────────────────────────────────────────────────
 
@@ -4260,8 +4668,7 @@ private fun FeedbackScreen(navController: androidx.navigation.NavController) {
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 400.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(bottom = 400.dp)
         ) {
             SettingsHeader(stringResource(R.string.settings_report_request))
             SettingsGroupCard(
@@ -4398,14 +4805,23 @@ private fun UnifiedFloatingBarRow(unified: Boolean, onSelect: (Boolean) -> Unit)
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ShowVolumeSliderRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
     ListItem(
-        headlineContent = { Text(stringResource(R.string.text_volume_bar), style = MaterialTheme.typography.bodyLarge) },
-        supportingContent = { Text(stringResource(R.string.text_show_m3e_expressive_volume_slider_below_playback_controls), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        onClick = { onToggle(!checked) },
+        content = {
+            Text(stringResource(R.string.text_volume_bar), style = MaterialTheme.typography.bodyLarge)
+        },
+        supportingContent = {
+            Text(
+                stringResource(R.string.text_show_m3e_expressive_volume_slider_below_playback_controls),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
         trailingContent = { Switch(checked = checked, onCheckedChange = onToggle) },
-        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
-        modifier = Modifier.clickable { onToggle(!checked) }
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
     )
 }
 
@@ -4424,13 +4840,13 @@ private fun DeveloperOptionsScreen(navController: androidx.navigation.NavControl
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 200.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(bottom = 200.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             
             SettingsHeader(stringResource(R.string.developer_playback_diagnostics))
             var showPlayerStats by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getBoolean("show_player_stats", false)) }
+            var showPlayerThemeChip by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getBoolean("show_player_theme_chip", false)) }
             SettingsGroupCard(
                 items = listOf(
                     {
@@ -4458,6 +4874,29 @@ private fun DeveloperOptionsScreen(navController: androidx.navigation.NavControl
                     },
                     {
                         androidx.compose.material3.ListItem(
+                            headlineContent = { Text(stringResource(R.string.developer_show_player_theme_chip)) },
+                            supportingContent = { Text(stringResource(R.string.developer_show_player_theme_chip_desc)) },
+                            leadingContent = {
+                                Icon(Icons.Rounded.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            },
+                            trailingContent = {
+                                androidx.compose.material3.Switch(
+                                    checked = showPlayerThemeChip,
+                                    onCheckedChange = { checked ->
+                                        showPlayerThemeChip = checked
+                                        prefs.edit().putBoolean("show_player_theme_chip", checked).apply()
+                                    }
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                val next = !showPlayerThemeChip
+                                showPlayerThemeChip = next
+                                prefs.edit().putBoolean("show_player_theme_chip", next).apply()
+                            }
+                        )
+                    },
+                    {
+                        androidx.compose.material3.ListItem(
                             headlineContent = { Text(stringResource(R.string.developer_playback_logs)) },
                             supportingContent = { Text(stringResource(R.string.developer_playback_logs_desc)) },
                             leadingContent = {
@@ -4468,6 +4907,29 @@ private fun DeveloperOptionsScreen(navController: androidx.navigation.NavControl
                             },
                             modifier = Modifier.clickable {
                                 navController.navigate("developer_playback_logs")
+                            }
+                        )
+                    }
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SettingsHeader(stringResource(R.string.developer_setup_and_onboarding))
+            SettingsGroupCard(
+                items = listOf(
+                    {
+                        androidx.compose.material3.ListItem(
+                            headlineContent = { Text(stringResource(R.string.developer_start_onboarding)) },
+                            supportingContent = { Text(stringResource(R.string.developer_start_onboarding_desc)) },
+                            leadingContent = {
+                                Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            },
+                            trailingContent = {
+                                Icon(Icons.Default.ChevronRight, contentDescription = null)
+                            },
+                            modifier = Modifier.clickable {
+                                navController.navigate("onboarding")
                             }
                         )
                     }

@@ -46,8 +46,19 @@ kotlinxSerializationJson = "1.11.0"
 mlkitTranslate = "17.0.3"
 mlkitLanguageId = "17.0.6"
 mlkitGenaiPrompt = "1.0.0-beta4"
+playServicesCast = "22.0.0"
+androidxMediarouter = "1.7.0"
+firebaseBom = "33.9.0"
+googleServices = "4.4.2"
+firebaseCrashlyticsPlugin = "3.0.3"
 
 [libraries]
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+media3-cast = { group = "androidx.media3", name = "media3-cast", version.ref = "media3" }
+play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "playServicesCast" }
+androidx-mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "androidxMediarouter" }
 androidx-graphics-shapes = { module = "androidx.graphics:graphics-shapes", version.ref = "graphicsShapes" }
 androidx-graphics-path = { module = "androidx.graphics:graphics-path", version.ref = "graphicsPath" }
 appcompat-v170 = { module = "androidx.appcompat:appcompat", version.ref = "appcompatVersion" }
@@ -125,3 +136,5 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }

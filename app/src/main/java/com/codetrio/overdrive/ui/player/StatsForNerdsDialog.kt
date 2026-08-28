@@ -349,7 +349,6 @@ fun StatsForNerdsDialog(
                                     .heightIn(max = 240.dp)
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(Color(0xFF121417))
-                                    .border(1.dp, Color(0xFF2A2E35), RoundedCornerShape(14.dp))
                                     .padding(12.dp)
                             ) {
                                 LazyColumn(

@@ -95,7 +95,9 @@ fun DynamicMeshCanvasBackground(
         shiftColorHue(animatedVibrant, 35f)
     }
 
-    if (isReducedMotion) {
+    val isLiteMode = com.codetrio.overdrive.util.rememberIsLiteMode().value
+
+    if (isReducedMotion || isLiteMode) {
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -188,9 +190,9 @@ fun DynamicMeshCanvasBackground(
                     // 0. Solid Base Dark Layer
                     drawRect(color = baseDarkTone)
 
-                    // 1. Primary Vibrant Node (Top-Left quadrant sweeping towards center)
-                    val n1X = w * (0.30f + 0.28f * sin(timeSlow * 0.90f) + 0.12f * cos(timeMed * 0.70f))
-                    val n1Y = h * (0.28f + 0.22f * cos(timeSlow * 1.15f) + 0.10f * sin(timeFast * 0.85f))
+                    // 1. Primary Vibrant Node (Top-Left quadrant sweeping towards center) (100% seamless closed loop)
+                    val n1X = w * (0.30f + 0.25f * sin(timeSlow) + 0.12f * cos(timeMed + 0.8f))
+                    val n1Y = h * (0.28f + 0.20f * cos(timeSlow + 1.2f) + 0.10f * sin(timeFast))
                     val r1 = diag * 0.90f * pulseRatio
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -206,9 +208,9 @@ fun DynamicMeshCanvasBackground(
                         radius = r1
                     )
 
-                    // 2. Light Vibrant Node (Top-Right / Center High-Luminance Highlight)
-                    val n2X = w * (0.75f + 0.22f * cos(timeMed * 1.05f) + 0.10f * sin(timeSlow * 0.60f))
-                    val n2Y = h * (0.40f + 0.25f * sin(timeFast * 0.95f) + 0.12f * cos(timeMed * 0.80f))
+                    // 2. Light Vibrant Node (Top-Right / Center High-Luminance Highlight) (100% seamless closed loop)
+                    val n2X = w * (0.75f + 0.20f * cos(timeMed) + 0.10f * sin(timeSlow + 0.5f))
+                    val n2Y = h * (0.40f + 0.22f * sin(timeFast) + 0.12f * cos(timeMed + 1.0f))
                     val r2 = diag * 0.85f * (2f - pulseRatio)
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -224,9 +226,9 @@ fun DynamicMeshCanvasBackground(
                         radius = r2
                     )
 
-                    // 3. Dark Vibrant Node (Bottom-Left Depth Swell)
-                    val n3X = w * (0.25f + 0.20f * cos(timeFast * 0.80f) + 0.15f * sin(timeSlow * 1.20f))
-                    val n3Y = h * (0.72f + 0.18f * sin(timeSlow * 0.75f) + 0.10f * cos(timeMed * 1.10f))
+                    // 3. Dark Vibrant Node (Bottom-Left Depth Swell) (100% seamless closed loop)
+                    val n3X = w * (0.25f + 0.18f * cos(timeFast + 1.4f) + 0.14f * sin(timeSlow * 2f))
+                    val n3Y = h * (0.72f + 0.16f * sin(timeSlow + 2.0f) + 0.10f * cos(timeMed * 2f))
                     val r3 = diag * 0.95f * pulseRatio
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -242,9 +244,9 @@ fun DynamicMeshCanvasBackground(
                         radius = r3
                     )
 
-                    // 4. Muted / Harmonic Node (Bottom-Right / Mid Drift)
-                    val n4X = w * (0.80f + 0.18f * sin(timeSlow * 1.10f) + 0.10f * cos(timeFast * 0.65f))
-                    val n4Y = h * (0.75f + 0.20f * cos(timeMed * 0.90f) + 0.12f * sin(timeSlow * 0.85f))
+                    // 4. Muted / Harmonic Node (Bottom-Right / Mid Drift) (100% seamless closed loop)
+                    val n4X = w * (0.80f + 0.16f * sin(timeSlow + 1.8f) + 0.10f * cos(timeFast + 2.5f))
+                    val n4Y = h * (0.75f + 0.18f * cos(timeMed + 0.9f) + 0.12f * sin(timeSlow + 3.1f))
                     val r4 = diag * 0.80f
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -260,9 +262,9 @@ fun DynamicMeshCanvasBackground(
                         radius = r4
                     )
 
-                    // 5. Harmonic Hue Shifter (Atmospheric Color Contrast Accent)
-                    val n5X = w * (0.50f + 0.25f * cos(timeFast * 1.15f) + 0.10f * sin(timeMed * 0.50f))
-                    val n5Y = h * (0.55f + 0.20f * sin(timeSlow * 0.95f) + 0.14f * cos(timeFast * 0.75f))
+                    // 5. Harmonic Hue Shifter (Atmospheric Color Contrast Accent) (100% seamless closed loop)
+                    val n5X = w * (0.50f + 0.22f * cos(timeFast * 2f + 0.7f) + 0.10f * sin(timeMed))
+                    val n5Y = h * (0.55f + 0.18f * sin(timeSlow + 4.2f) + 0.14f * cos(timeFast + 1.6f))
                     val r5 = diag * 0.75f * pulseRatio
                     drawCircle(
                         brush = Brush.radialGradient(

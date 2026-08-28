@@ -227,8 +227,9 @@ object NewPipeStreamExtractor {
         }
 
         // Prefer 720p > 480p > 360p > any highest resolution
+        @Suppress("DEPRECATION")
         val preferred = videoStreams
-            .filter { it.content != null && it.content.isNotBlank() }
+            .filter { it.content.isNotBlank() }
             .sortedByDescending { it.resolution?.replace("p", "")?.toIntOrNull() ?: 0 }
 
         val target = preferred.firstOrNull {

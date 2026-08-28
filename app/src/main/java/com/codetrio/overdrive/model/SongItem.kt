@@ -138,7 +138,9 @@ data class SongItem(
             return cleanTitle
         }
 
-        private fun cleanArtist(rawArtist: String?, path: String?): String {
+        @JvmStatic
+        @JvmOverloads
+        fun cleanArtist(rawArtist: String?, path: String? = null): String {
             var cleanArtist = rawArtist?.trim() ?: "Unknown Artist"
             val invalidArtists = setOf("曲", "楽曲", "動画", "ビデオ", "song", "video", "single", "album", "artist", "<unknown>", "unknown artist")
             if (cleanArtist.isEmpty() || cleanArtist.lowercase() in invalidArtists) {
@@ -162,14 +164,14 @@ data class SongItem(
                     }
                 } catch (_: Exception) {}
             }
-            return cleanArtist
+            return cleanArtist.replace("、", ", ").replace(Regex(",\\s*"), ", ").trim()
         }
 
         @JvmStatic
         @JvmOverloads
         fun createOnlineSong(videoId: String?, title: String?, artist: String?, streamUrl: String?, durationMs: Long, thumbnailUrl: String?, artistId: String? = null, animatedThumbnailUrl: String? = null): SongItem {
             val id = videoId?.hashCode()?.toLong() ?: (streamUrl?.hashCode()?.toLong() ?: System.currentTimeMillis())
-            val song = SongItem(id, title ?: "Unknown Title", artist ?: "Unknown Artist", -1, streamUrl, durationMs, System.currentTimeMillis())
+            val song = SongItem(id, cleanTitle(title, null), cleanArtist(artist, null), -1, streamUrl, durationMs, System.currentTimeMillis())
             song.contentUri = (streamUrl ?: "").toUri()
             song.thumbnailUrl = thumbnailUrl?.let { enhanceThumbnailUrl(it) }
             song.animatedThumbnailUrl = animatedThumbnailUrl
@@ -182,22 +184,18 @@ data class SongItem(
         fun enhanceThumbnailUrl(url: String): String {
             if (url.isEmpty()) return url
             
-            // Handle googleusercontent/ggpht dynamic image sizing parameters (YouTube Music / Google Photos)
+            // Handle googleusercontent/ggpht dynamic image sizing parameters (YouTube Music / Google Photos / Channel Avatars)
             if (url.contains("googleusercontent.com") || url.contains("ggpht.com")) {
-                // If it already has size parameters, replace them with high-res square ones
                 val regex = "(=[ws]\\d+.*)$".toRegex()
                 return if (regex.containsMatchIn(url)) {
-                    url.replace(regex, "=w1024-h1024-l90-rj")
+                    url.replace(regex, "=w1440-h1440-l90-rj")
                 } else {
-                    "$url=w1024-h1024-l90-rj"
+                    "$url=w1440-h1440-l90-rj"
                 }
             }
             
             // Handle standard YouTube video thumbnails
             if (url.contains("ytimg.com") || url.contains("youtube.com/vi/")) {
-                // Try to get maxresdefault if possible, but hq720 or hqdefault are safer fallbacks
-                // Actually, maxresdefault is not always available. hqdefault is 480x360 (16:9).
-                // For a music player, we want the highest quality available.
                 if (url.contains("/default.jpg") || url.contains("/mqdefault.jpg") || url.contains("/hqdefault.jpg") || url.contains("/sddefault.jpg")) {
                     return url.replace(Regex("/(default|mqdefault|hqdefault|sddefault)\\.jpg$"), "/maxresdefault.jpg")
                 }

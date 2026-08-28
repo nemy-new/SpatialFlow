@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import android.util.LruCache
+import com.codetrio.overdrive.data.lyrics.LrcParser
+import com.codetrio.overdrive.data.lyrics.LyricsNormalizer
 import com.codetrio.overdrive.data.lyrics.LyricsResult
 import com.codetrio.overdrive.data.lyrics.TrackMetadata
 import com.google.gson.Gson
@@ -52,6 +54,14 @@ class LyricsCacheManager(context: Context) {
             try {
                 val diskResult = gson.fromJson(json, LyricsResult::class.java)
                 if (diskResult != null && diskResult.hasLyrics()) {
+                    // Sanitize cached syncedLyrics: if syncedLyrics is present but doesn't have valid advancing timestamps, convert it to plain lyrics
+                    if (!diskResult.syncedLyrics.isNullOrBlank() && LrcParser.parse(diskResult.syncedLyrics).isEmpty()) {
+                        diskResult.plainLyrics = LyricsNormalizer.extractCleanPlainText(diskResult.syncedLyrics ?: diskResult.plainLyrics)
+                        diskResult.syncedLyrics = null
+                        diskResult.isSynced = false
+                        diskResult.isWordByWord = false
+                    }
+
                     memoryCache.put(key, diskResult) // Promote to memory
                     Log.d(TAG, "Disk cache hit for: $key")
                     return diskResult

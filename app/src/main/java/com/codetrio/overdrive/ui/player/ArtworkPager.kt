@@ -1,5 +1,3 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
-
 package com.codetrio.overdrive.ui.player
 
 import android.content.Context
@@ -9,13 +7,23 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -69,11 +77,14 @@ fun ArtworkPager(
     context: Context,
     modifier: Modifier = Modifier,
     userScrollEnabled: Boolean = true,
-    allowCanvas: Boolean = true
+    allowCanvas: Boolean = true,
+    showTonearm: Boolean = true
 ) {
     val isMvFullscreen by viewModel.isMvFullscreen.collectAsStateWithLifecycle()
     val isInPipMode by viewModel.isInPipMode.collectAsStateWithLifecycle()
     val isTrueFullscreen = isMvFullscreen || isInPipMode
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 600
     
     BackHandler(enabled = isMvFullscreen) {
         viewModel.setMvFullscreen(false)
@@ -118,11 +129,18 @@ fun ArtworkPager(
             val videoId = song.videoId
             
             // Determine artwork source with fallback chain
-            val artworkData = remember(song.id, isCurrentPage, currentSongArtwork) {
+            val artworkData: Any? = remember(song.id, isCurrentPage, currentSongArtwork, rawUri) {
                 if (isCurrentPage && currentSongArtwork != null) {
                     currentSongArtwork // Use pre-extracted bytes for active song
+                } else if (song.id == -9999L) {
+                    R.drawable.artwork_autumn_wind // Direct resource ID for 100% reliable zero-delay onboarding preview
                 } else if (rawUri != null && rawUri.toString().isNotEmpty()) {
-                    SongItem.enhanceThumbnailUrl(rawUri.toString()).toUri()
+                    val uriStr = rawUri.toString()
+                    if (uriStr.startsWith("android.resource://")) {
+                        rawUri
+                    } else {
+                        SongItem.enhanceThumbnailUrl(uriStr).toUri()
+                    }
                 } else if (!videoId.isNullOrEmpty()) {
                     "https://img.youtube.com/vi/$videoId/hqdefault.jpg".toUri()
                 } else {
@@ -132,15 +150,31 @@ fun ArtworkPager(
 
             var isError by remember(artworkData) { mutableStateOf(false) }
 
-            // Canvas artwork state — resolved asynchronously per song
-            val prefs = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
-            val showAnimatedArt = prefs.getBoolean("show_animated_art", true) && allowCanvas
+            val duration by viewModel.duration.collectAsState()
+            val prefs = remember { context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE) }
+            var playerTheme by remember { mutableStateOf(prefs.getString("player_theme", "fluid") ?: "fluid") }
+            var showAnimatedArtPref by remember { mutableStateOf(prefs.getBoolean("show_animated_art", true)) }
+
+            androidx.compose.runtime.DisposableEffect(prefs) {
+                val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
+                    if (key == "player_theme") {
+                        playerTheme = sp.getString(key, "fluid") ?: "fluid"
+                    } else if (key == "show_animated_art") {
+                        showAnimatedArtPref = sp.getBoolean(key, true)
+                    }
+                }
+                prefs.registerOnSharedPreferenceChangeListener(listener)
+                onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+            }
+
+            val showAnimatedArt = showAnimatedArtPref && allowCanvas
+            val isVinyl = playerTheme == "vinyl"
 
             var canvasArtworkState by remember(song.id) { mutableStateOf<CanvasArtwork?>(null) }
 
             // Attempt to resolve canvas artwork
             LaunchedEffect(song.id, isCurrentPage, showAnimatedArt, activeCanvasArtwork) {
-                if (!showAnimatedArt) {
+                if (!showAnimatedArt || isVinyl) {
                     canvasArtworkState = null
                     return@LaunchedEffect
                 }
@@ -163,8 +197,8 @@ fun ArtworkPager(
 
                 // Slow path: resolve from network / cache
                 val mediaId = song.id.toString()
-                val songTitle = song.title ?: return@LaunchedEffect
-                val artistName = song.artist ?: return@LaunchedEffect
+                val songTitle = song.title
+                val artistName = song.artist
 
                 val resolved = withContext(Dispatchers.IO) {
                     resolveCanvasArtworkForPlayback(
@@ -183,113 +217,126 @@ fun ArtworkPager(
             val canvasFallbackUrl = canvasArtworkState?.videoUrlVertical ?: canvasArtworkState?.videoUrl
 
             val isMvMode by viewModel.isMvMode.collectAsState()
+            val hasMusicVideo by viewModel.hasMusicVideo.collectAsState()
             val musicVideoUrl by viewModel.musicVideoUrl.collectAsState()
             val currentPosition by viewModel.currentPosition.collectAsState()
             val isPlaying by viewModel.isPlaying.collectAsState()
             val mvSeekRequest by viewModel.mvSeekRequest.collectAsState()
 
-            val showStaticArt = !(isCurrentPage && isMvMode)
+            val isEffectiveMvMode = isMvMode && hasMusicVideo && !musicVideoUrl.isNullOrBlank()
+            val showStaticArt = !(isCurrentPage && isEffectiveMvMode)
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(isCurrentPage) {
-                        if (!isCurrentPage) return@pointerInput
-                        detectTapGestures(
-                            onTap = {
-                                val prefs = context.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
-                                if (prefs.getBoolean("debug_toasts_enabled", false)) {
-                                    val s = songList.getOrNull(currentSongIndex)
-                                    android.widget.Toast.makeText(context, "Song ID: ${s?.id}\nVideo ID: ${s?.videoId}", android.widget.Toast.LENGTH_LONG).show()
-                                }
-                            },
-                            onDoubleTap = { offset ->
-                                val width = size.width
-                                if (offset.x < width * 0.33f) {
-                                    val currentMs = currentPosition
-                                    viewModel.seekTo((currentMs - 10000).coerceAtLeast(0))
-                                } else if (offset.x > width * 0.66f) {
-                                    val currentMs = currentPosition
-                                    val duration = viewModel.duration.value
-                                    val targetMs = if (duration > 0) (currentMs + 10000).coerceAtMost(duration) else (currentMs + 10000)
-                                    viewModel.seekTo(targetMs)
-                                } else {
-                                    viewModel.toggleFavorite()
-                                }
+                    .then(
+                        if (userScrollEnabled) {
+                            Modifier.pointerInput(isCurrentPage, isVinyl) {
+                                if (!isCurrentPage || isVinyl) return@pointerInput
+                                detectTapGestures(
+                                    onTap = {
+                                        val sp = context.getSharedPreferences("AppSettings", android.content.Context.MODE_PRIVATE)
+                                        if (sp.getBoolean("debug_toasts_enabled", false)) {
+                                            val s = songList.getOrNull(currentSongIndex)
+                                            android.widget.Toast.makeText(context, "Song ID: ${s?.id}\nVideo ID: ${s?.videoId}", android.widget.Toast.LENGTH_LONG).show()
+                                        }
+                                    },
+                                    onDoubleTap = { offset ->
+                                        val width = size.width
+                                        if (offset.x < width * 0.33f) {
+                                            val currentMs = currentPosition
+                                            viewModel.seekTo((currentMs - 10000).coerceAtLeast(0))
+                                        } else if (offset.x > width * 0.66f) {
+                                            val currentMs = currentPosition
+                                            val dur = viewModel.duration.value
+                                            val targetMs = if (dur > 0) (currentMs + 10000).coerceAtMost(dur) else (currentMs + 10000)
+                                            viewModel.seekTo(targetMs)
+                                        } else {
+                                            viewModel.toggleFavorite()
+                                        }
+                                    }
+                                )
                             }
-                        )
-                    },
+                        } else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                // 1. Static album art as base layer (hidden during MV playback)
-                if (showStaticArt && artworkData != null && !isError) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(artworkData)
-                            .crossfade(100)
-                            .build(),
-                        contentDescription = null,
-                        onState = { state ->
-                            if (state is AsyncImagePainter.State.Error) isError = true
+                if (isVinyl && !isEffectiveMvMode) {
+                    val isEffectivePlaying = (isPlaying || song.id == -9999L) && isCurrentPage
+                    com.codetrio.overdrive.ui.player.themes.VinylDiscArtwork(
+                        artworkData = artworkData,
+                        isPlaying = isEffectivePlaying,
+                        onDoubleTapSeekBackward = {
+                            val currentMs = currentPosition
+                            viewModel.seekTo((currentMs - 10000).coerceAtLeast(0))
                         },
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (showStaticArt && (artworkData == null || isError)) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.surfaceVariant,
-                                        MaterialTheme.colorScheme.surface
-                                    )
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.MusicNote,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
-                    }
-                } else if (!showStaticArt) {
-                    // Clean black background behind Music Video so no album art bleeds through
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black)
-                    )
-                }
-
-                // 2. Canvas motion artwork overlay (crossfades in when ready)
-                AnimatedVisibility(
-                    visible = showAnimatedArt && isCurrentPage && !isMvMode &&
-                        (!canvasPrimaryUrl.isNullOrBlank() || !canvasFallbackUrl.isNullOrBlank()),
-                    enter = fadeIn(tween(1500)),
-                    exit = fadeOut(tween(800)),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    CanvasArtworkPlayer(
-                        primaryUrl = canvasPrimaryUrl,
-                        fallbackUrl = canvasFallbackUrl,
-                        isPlaying = isCurrentPage && !isMvMode && isPlaying,
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+                        onDoubleTapSeekForward = {
+                            val currentMs = currentPosition
+                            val dur = duration
+                            val targetMs = if (dur > 0) (currentMs + 10000).coerceAtMost(dur) else (currentMs + 10000)
+                            viewModel.seekTo(targetMs)
+                        },
+                        onDoubleTapFavorite = { viewModel.toggleFavorite() },
                         modifier = Modifier.fillMaxSize()
                     )
+                } else {
+                    // 1. Static album art as base layer (hidden during MV playback)
+                    if (showStaticArt && artworkData != null && !isError) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(artworkData)
+                                .size(coil.size.Size.ORIGINAL)
+                                .precision(coil.size.Precision.EXACT)
+                                .allowHardware(true)
+                                .crossfade(100)
+                                .build(),
+                            contentDescription = null,
+                            onState = { state ->
+                                if (state is AsyncImagePainter.State.Error) isError = true
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else if (showStaticArt && (artworkData == null || isError)) {
+                        ExpressiveArtworkPlaceholder(
+                            title = song.title,
+                            artist = song.artist,
+                            accentColor = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (!showStaticArt) {
+                        // Clean transparent background behind Music Video so no black box bleeds through
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Transparent)
+                        )
+                    }
+
+                    // 2. Canvas motion artwork overlay (crossfades in when ready)
+                    AnimatedVisibility(
+                        visible = showAnimatedArt && isCurrentPage && !isEffectiveMvMode &&
+                            (!canvasPrimaryUrl.isNullOrBlank() || !canvasFallbackUrl.isNullOrBlank()),
+                        enter = fadeIn(tween(1500)),
+                        exit = fadeOut(tween(800)),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        CanvasArtworkPlayer(
+                            primaryUrl = canvasPrimaryUrl,
+                            fallbackUrl = canvasFallbackUrl,
+                            isPlaying = isCurrentPage && !isEffectiveMvMode && isPlaying,
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
 
                 // 3. Music Video Playback overlay
                 AnimatedVisibility(
-                    visible = isCurrentPage && isMvMode && !musicVideoUrl.isNullOrBlank(),
+                    visible = isCurrentPage && isEffectiveMvMode,
                     enter = fadeIn(tween(500)),
                     exit = fadeOut(tween(500)),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(if (isTrueFullscreen) Modifier else Modifier.padding(horizontal = 14.dp))
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     var showOverlay by remember { androidx.compose.runtime.mutableStateOf(false) }
                     
@@ -300,9 +347,12 @@ fun ArtworkPager(
                         }
                     }
 
+                    val mvRadius = if (isTrueFullscreen || isMvFullscreen) 0.dp else 22.dp
+
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .then(if (isTrueFullscreen) Modifier.background(Color.Black) else Modifier)
                             .clickable(
                                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                                 indication = null
@@ -310,15 +360,16 @@ fun ArtworkPager(
                                 if (isTrueFullscreen) {
                                     showOverlay = !showOverlay
                                 }
-                            }
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
                         com.codetrio.overdrive.ui.player.canvas.MusicVideoPlayer(
                             videoUrl = musicVideoUrl,
-                            isPlaying = isCurrentPage && isMvMode && isPlaying,
+                            isPlaying = isCurrentPage && isEffectiveMvMode && isPlaying,
                             currentPositionMs = currentPosition.toLong(),
                             onPositionUpdate = { },
                             onDurationUpdate = { durMs ->
-                                if (isMvMode && durMs > 0) {
+                                if (isEffectiveMvMode && durMs > 0) {
                                     viewModel.setDuration(durMs.toInt())
                                 }
                             },
@@ -327,17 +378,16 @@ fun ArtworkPager(
                                 viewModel.clearMvSeekRequest()
                             },
                             onPlaybackCompleted = {
-                                if (isMvMode) {
+                                if (isEffectiveMvMode) {
                                     viewModel.playNextSong()
                                 }
                             },
                             onAspectRatioUpdate = { ratio -> 
                                 viewModel.setVideoAspectRatio(ratio) 
                             },
-                            resizeMode = if (isTrueFullscreen) androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT else androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .then(if (isTrueFullscreen) Modifier else Modifier.clip(RoundedCornerShape(12.dp)))
+                            resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT,
+                            cornerRadius = mvRadius,
+                            modifier = Modifier.fillMaxSize()
                         )
                         
                         androidx.compose.animation.AnimatedVisibility(
@@ -352,6 +402,43 @@ fun ArtworkPager(
                                     .background(if (isTrueFullscreen) Color.Black.copy(alpha = 0.6f) else Color.Transparent)
                             ) {
                                 if (isTrueFullscreen) {
+                                    // Top bar with back button & title
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .fillMaxWidth()
+                                            .statusBarsPadding()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        androidx.compose.material3.IconButton(
+                                            onClick = { viewModel.setMvFullscreen(false) }
+                                        ) {
+                                            androidx.compose.material3.Icon(
+                                                imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Default.ArrowBack,
+                                                contentDescription = "Back",
+                                                tint = Color.White
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            androidx.compose.material3.Text(
+                                                text = song.title,
+                                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                                color = Color.White,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                            androidx.compose.material3.Text(
+                                                text = song.artist,
+                                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                                color = Color.White.copy(alpha = 0.7f),
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+
                                     // Play/Pause button in center
                                     androidx.compose.material3.IconButton(
                                         onClick = { if (isPlaying) viewModel.pauseAudio() else viewModel.playAudio() },
@@ -371,6 +458,7 @@ fun ArtworkPager(
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.BottomCenter)
+                                            .navigationBarsPadding()
                                             .padding(bottom = 72.dp, start = 32.dp, end = 32.dp)
                                     ) {
                                         com.codetrio.overdrive.ui.player.WavySliderWithLabels(
@@ -388,13 +476,26 @@ fun ArtworkPager(
                                 }
 
                                 if (!isInPipMode) {
+                                    val videoAspectRatio by viewModel.videoAspectRatio.collectAsStateWithLifecycle()
+                                    val buttonBoxModifier = if (isTrueFullscreen) {
+                                        Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .navigationBarsPadding()
+                                            .padding(16.dp)
+                                    } else {
+                                        Modifier
+                                            .align(Alignment.Center)
+                                            .fillMaxWidth()
+                                            .aspectRatio(videoAspectRatio.coerceIn(0.5f, 2.5f))
+                                            .wrapContentSize(Alignment.BottomEnd)
+                                            .padding(12.dp)
+                                    }
+
                                     androidx.compose.material3.IconButton(
                                         onClick = { viewModel.setMvFullscreen(!isMvFullscreen) },
-                                        modifier = Modifier
-                                            .align(Alignment.BottomEnd)
-                                            .padding(16.dp)
+                                        modifier = buttonBoxModifier
                                             .clip(androidx.compose.foundation.shape.CircleShape)
-                                            .background(Color.Black.copy(alpha = 0.5f))
+                                            .background(Color.Black.copy(alpha = 0.6f))
                                     ) {
                                         androidx.compose.material3.Icon(
                                             imageVector = if (isMvFullscreen) androidx.compose.material.icons.Icons.Default.FullscreenExit else androidx.compose.material.icons.Icons.Default.Fullscreen,
@@ -409,5 +510,38 @@ fun ArtworkPager(
                 }
             }
         }
+
+        // ── 4. Fixed Vinyl Tonearm Overlay (Stays static across horizontal swipes) ──
+        val prefs = remember { context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE) }
+        var playerTheme by remember { mutableStateOf(prefs.getString("player_theme", "fluid") ?: "fluid") }
+        androidx.compose.runtime.DisposableEffect(prefs) {
+            val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
+                if (key == "player_theme") {
+                    playerTheme = sp.getString(key, "fluid") ?: "fluid"
+                }
+            }
+            prefs.registerOnSharedPreferenceChangeListener(listener)
+            onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+        }
+        val isVinyl = playerTheme == "vinyl"
+        val isMvMode by viewModel.isMvMode.collectAsState()
+        val hasMusicVideo by viewModel.hasMusicVideo.collectAsState()
+        val musicVideoUrl by viewModel.musicVideoUrl.collectAsState()
+        val isEffectiveMvMode = isMvMode && hasMusicVideo && !musicVideoUrl.isNullOrBlank()
+        val duration by viewModel.duration.collectAsState()
+        val currentPosition by viewModel.currentPosition.collectAsState()
+        val isPlaying by viewModel.isPlaying.collectAsState()
+
+        if (isVinyl && !isEffectiveMvMode) {
+            val progressFraction = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()) else 0.35f
+            val isEffectivePlaying = isPlaying || currentSong.id == -9999L
+            com.codetrio.overdrive.ui.player.themes.VinylTonearmOverlay(
+                isPlaying = isEffectivePlaying,
+                progressFraction = progressFraction,
+                showTonearm = showTonearm,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
+

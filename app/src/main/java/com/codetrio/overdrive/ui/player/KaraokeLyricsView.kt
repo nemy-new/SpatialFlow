@@ -102,7 +102,7 @@ import kotlin.time.Duration.Companion.milliseconds
 private const val LYRIC_FOCUS_MIN_SCROLL_PX = 1
 private const val LYRIC_FOCUS_ANIMATED_DISTANCE = 15
 private const val LYRIC_FOCUS_SCROLL_DURATION_MS = 360
-private const val MANUAL_SCROLL_RESUME_DELAY_MS = 1200L
+private const val MANUAL_SCROLL_RESUME_DELAY_MS = 3500L
 private const val MANUAL_SCROLL_DEBOUNCE_MS = 50L
 private const val LYRIC_FOCUS_ANCHOR_RATIO = 0.38f
 private const val LYRIC_LINE_SYNC_TOP_ANCHOR_RATIO = 0.22f
@@ -173,34 +173,33 @@ fun KaraokeLyricsView(
         }
     }
 
-    // ── High-precision sub-frame clock tick with frame deltas ──
-    LaunchedEffect(Unit) {
-        var lastSystemNanos = System.nanoTime()
+    // ── High-precision sub-frame clock tick with frame deltas (Suspended when paused) ──
+    val isPlaying = isPlayingProviderState()
+    LaunchedEffect(isPlaying) {
+        if (!isPlaying) {
+            interpolatedPositionMs = currentPositionProviderState().toFloat()
+            return@LaunchedEffect
+        }
 
+        var lastSystemNanos = System.nanoTime()
         while (isActive) {
             withFrameNanos { frameNanos ->
                 val deltaNanos = frameNanos - lastSystemNanos
                 lastSystemNanos = frameNanos
 
-                val isPlaying = isPlayingProviderState()
                 val speed = playbackSpeedProviderState()
                 val actualMs = currentPositionProviderState().toFloat()
 
-                if (isPlaying) {
-                    val deltaMs = (deltaNanos / 1_000_000f) * speed
-                    val projected = interpolatedPositionMs + deltaMs
-                    val drift = actualMs - projected
+                val deltaMs = (deltaNanos / 1_000_000f) * speed
+                val projected = interpolatedPositionMs + deltaMs
+                val drift = actualMs - projected
 
-                    if (abs(drift) > 1000f) {
-                        // User seeked or track changed — hard snap to actual position
-                        interpolatedPositionMs = actualMs
-                    } else {
-                        // Smooth monotonic forward step with subtle 5% drift correction
-                        interpolatedPositionMs = (projected + drift * 0.05f).coerceAtLeast(interpolatedPositionMs)
-                    }
-                } else {
-                    // Paused: Lock clock immediately to actual media player position
+                if (abs(drift) > 1000f) {
+                    // User seeked or track changed — hard snap to actual position
                     interpolatedPositionMs = actualMs
+                } else {
+                    // Smooth monotonic forward step with subtle 5% drift correction
+                    interpolatedPositionMs = (projected + drift * 0.05f).coerceAtLeast(interpolatedPositionMs)
                 }
             }
         }
@@ -215,15 +214,20 @@ fun KaraokeLyricsView(
             val currentPos = interpolatedPositionMs.toInt()
             if (displayLyrics.isEmpty()) -1
             else {
-                var index = -1
-                for (i in displayLyrics.indices) {
-                    val line = displayLyrics[i]
-                    if (line.isInterlude) continue
-                    if (line.startTimeMs <= currentPos) {
-                        index = i
-                    } else break
+                val hasAdvancingTimestamps = displayLyrics.size <= 1 || displayLyrics.any { it.startTimeMs > 0L }
+                if (!hasAdvancingTimestamps) {
+                    0
+                } else {
+                    var index = -1
+                    for (i in displayLyrics.indices) {
+                        val line = displayLyrics[i]
+                        if (line.isInterlude) continue
+                        if (line.startTimeMs <= currentPos) {
+                            index = i
+                        } else break
+                    }
+                    index
                 }
-                index
             }
         }
     }
@@ -258,8 +262,8 @@ fun KaraokeLyricsView(
             }
     ) {
         // ── Native Spring Focal Scroll Engine ──
-        LaunchedEffect(activeIndex, isUserInteracting, displayLyrics) {
-            if (isUserInteracting || displayLyrics.isEmpty() || activeIndex !in displayLyrics.indices) return@LaunchedEffect
+        LaunchedEffect(activeIndex, isUserInteracting, listState.isScrollInProgress, displayLyrics) {
+            if (isUserInteracting || listState.isScrollInProgress || displayLyrics.isEmpty() || activeIndex !in displayLyrics.indices) return@LaunchedEffect
 
             try {
                 val targetIndexInList = activeIndex + 1 // +1 for head_spacer
@@ -782,8 +786,10 @@ private fun KaraokeLineItem(
         else -> FontWeight.SemiBold
     }
 
+    val lyricsFontFamily = com.codetrio.overdrive.ui.theme.rememberCustomFontFamily(com.codetrio.overdrive.data.font.FontTarget.LYRICS)
+
     val mainTextStyle = MaterialTheme.typography.headlineMedium.copy(
-        fontFamily = GoogleSansFlexNonRounded,
+        fontFamily = lyricsFontFamily,
         fontSize = 34.sp,
         fontWeight = mainFontWeight,
         lineHeight = 44.sp,
@@ -893,7 +899,7 @@ private fun KaraokeLineItem(
     }
 
     val bracketTextStyle = MaterialTheme.typography.bodyLarge.copy(
-        fontFamily = GoogleSansFlexNonRounded,
+        fontFamily = lyricsFontFamily,
         fontSize = 22.sp,
         fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.SemiBold,
         fontStyle = FontStyle.Italic,
@@ -1009,7 +1015,7 @@ private fun KaraokeLineItem(
 
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = line.translatedContent!!,
+                text = line.translatedContent,
                 style = translationTextStyle,
                 color = animatedColor,
                 softWrap = true,

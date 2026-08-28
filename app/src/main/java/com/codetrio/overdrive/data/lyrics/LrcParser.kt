@@ -32,7 +32,7 @@ object LrcParser {
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing lyrics via Gramophone parser", e)
             null
-        } ?: return emptyList()
+        }
 
         val parsedLines = mutableListOf<LyricLine>()
         if (semanticLyrics is SemanticLyrics.SyncedLyrics) {
@@ -45,7 +45,7 @@ object LrcParser {
                     } else {
                         ""
                     }
-                                        val duration = (word.endInclusive?.toLong()?.minus(word.begin.toLong()))?.coerceAtLeast(0L) ?: 0L
+                    val duration = (word.endInclusive?.toLong()?.minus(word.begin.toLong()))?.coerceAtLeast(0L) ?: 0L
                     LyricWord(
                         text = wordText,
                         absoluteStartTimeMs = word.begin.toLong(),
@@ -64,25 +64,64 @@ object LrcParser {
                     )
                 )
             }
-        } else if (semanticLyrics is SemanticLyrics.UnsyncedLyrics) {
-            // Unsynced lyrics (plain lyrics)
-            for (line in semanticLyrics.unsyncedText) {
-                parsedLines.add(
-                    LyricLine(
-                        startTimeMs = 0L,
-                        content = line.first,
-                        isInterlude = false,
-                        isWordByWord = false,
-                        words = emptyList()
-                    )
-                )
+        }
+
+        // Validate that parsedLines has actual timing progression
+        val isValidSynced = parsedLines.isNotEmpty() &&
+                !(parsedLines.size > 1 && parsedLines.all { it.startTimeMs == 0L }) &&
+                !(parsedLines.size > 2 && parsedLines.map { it.startTimeMs }.distinct().size == 1)
+
+        if (isValidSynced) {
+            parsedLines.sort()
+            return insertInterludes(parsedLines)
+        }
+
+        // Fallback: try resilient regex parser in case Gramophone parser failed on custom tag format
+        val fallbackLines = parseSimpleLrcFallback(trimmed)
+        if (fallbackLines.isNotEmpty()) {
+            return fallbackLines
+        }
+
+        return emptyList()
+    }
+
+    private fun parseSimpleLrcFallback(content: String): List<LyricLine> {
+        val lines = mutableListOf<LyricLine>()
+        val timeRegex = Regex("""\[(\d+):(\d+)(?:[.:](\d+))?]""")
+
+        for (rawLine in content.lines()) {
+            val trimmed = rawLine.trim()
+            if (trimmed.isBlank()) continue
+            if (trimmed.startsWith("[ti:") || trimmed.startsWith("[ar:") ||
+                trimmed.startsWith("[al:") || trimmed.startsWith("[by:") ||
+                trimmed.startsWith("[offset:") || trimmed.startsWith("[re:")) continue
+
+            val matches = timeRegex.findAll(trimmed).toList()
+            if (matches.isEmpty()) continue
+
+            val textContent = trimmed.replace(timeRegex, "").trim()
+            if (textContent.isBlank()) continue
+
+            for (match in matches) {
+                val min = match.groupValues[1].toLongOrNull() ?: 0L
+                val sec = match.groupValues[2].toLongOrNull() ?: 0L
+                val fracStr = match.groupValues[3]
+                val millis = when (fracStr.length) {
+                    0 -> 0L
+                    1 -> (fracStr.toLongOrNull() ?: 0L) * 100L
+                    2 -> (fracStr.toLongOrNull() ?: 0L) * 10L
+                    else -> fracStr.take(3).toLongOrNull() ?: 0L
+                }
+                val startMs = min * 60000L + sec * 1000L + millis
+                lines.add(LyricLine(startTimeMs = startMs, content = textContent))
             }
         }
 
-        parsedLines.sort()
+        if (lines.size > 1 && lines.all { it.startTimeMs == 0L }) return emptyList()
+        if (lines.size > 2 && lines.map { it.startTimeMs }.distinct().size == 1) return emptyList()
 
-        // Insert interlude markers for instrumental gaps
-        return insertInterludes(parsedLines)
+        lines.sort()
+        return insertInterludes(lines)
     }
 
     private fun insertInterludes(sorted: List<LyricLine>): List<LyricLine> {

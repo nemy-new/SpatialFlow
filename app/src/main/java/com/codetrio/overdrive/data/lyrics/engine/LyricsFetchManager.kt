@@ -9,9 +9,11 @@ import com.codetrio.overdrive.data.lyrics.LrcLibApi
 import com.codetrio.overdrive.data.lyrics.KugouApi
 import com.codetrio.overdrive.data.lyrics.BetterLyricsApi
 import com.codetrio.overdrive.data.lyrics.SimpMusicApi
+import com.codetrio.overdrive.data.lyrics.LrcParser
 import com.codetrio.overdrive.data.lyrics.LyricsNormalizer
 import com.codetrio.overdrive.data.lyrics.LyricsResult
 import com.codetrio.overdrive.data.lyrics.MetadataRepair
+import com.codetrio.overdrive.data.lyrics.PaxsenixLyrics
 import com.codetrio.overdrive.data.lyrics.TrackMetadata
 import com.codetrio.overdrive.data.lyrics.providers.EmbeddedLyricsProvider
 import com.codetrio.overdrive.data.lyrics.providers.LrcLibProvider
@@ -143,18 +145,20 @@ class LyricsFetchManager private constructor(context: Context) {
             // 1. Check LyricsHelper.singleLyricsCache first (finalized text cache)
             val cachedSingleText = LyricsHelper.getSingle(track.cleanedTitle, track.cleanedArtist)
             if (cachedSingleText != null) {
-                val isSynced = cachedSingleText.contains("[") || cachedSingleText.contains("<tt") || cachedSingleText.contains("<p begin=") || cachedSingleText.contains("ttm:begin")
-                val isWordByWord = (cachedSingleText.contains("<tt") || cachedSingleText.contains("<p begin=") || cachedSingleText.contains("ttm:begin")) ||
-                        (cachedSingleText.contains("<") && cachedSingleText.contains(">") && cachedSingleText.contains("["))
+                val parsedLines = LrcParser.parse(cachedSingleText)
+                val isSynced = parsedLines.isNotEmpty()
+                val isWordByWord = isSynced && (parsedLines.any { it.isWordByWord } || PaxsenixLyrics.isWordByWord(cachedSingleText))
+                val cleanPlain = if (!isSynced) LyricsNormalizer.extractCleanPlainText(cachedSingleText) else null
+
                 val cachedResult = LyricsResult(
                     providerName = "Local Cache",
-                    plainLyrics = if (!isSynced) cachedSingleText else null,
+                    plainLyrics = cleanPlain,
                     syncedLyrics = if (isSynced) cachedSingleText else null,
                     confidence = 1.0f,
                     isSynced = isSynced,
                     isWordByWord = isWordByWord
                 )
-                telemetry.logCacheStatus("SINGLE_TEXT_HIT", "length=${cachedSingleText.length}")
+                telemetry.logCacheStatus("SINGLE_TEXT_HIT", "length=${cachedSingleText.length}, isSynced=$isSynced")
                 telemetry.logResult(cachedResult, "CACHE_HIT")
                 
                 withContext(Dispatchers.Main) {
@@ -188,12 +192,23 @@ class LyricsFetchManager private constructor(context: Context) {
             val cachedList = LyricsHelper.get(track.getCacheKey())
             if (cachedList != null && cachedList.isNotEmpty()) {
                 telemetry.logCacheStatus("HELPER_LIST_HIT", "size=${cachedList.size}")
+                val sanitizedList = cachedList.map { res ->
+                    if (!res.syncedLyrics.isNullOrBlank() && LrcParser.parse(res.syncedLyrics).isEmpty()) {
+                        res.copy(
+                            plainLyrics = LyricsNormalizer.extractCleanPlainText(res.syncedLyrics ?: res.plainLyrics),
+                            syncedLyrics = null,
+                            isSynced = false,
+                            isWordByWord = false
+                        )
+                    } else res
+                }
+
                 withContext(Dispatchers.Main) {
-                    cachedList.forEach { res ->
+                    sanitizedList.forEach { res ->
                         callback.onProviderResult(res.providerName.orEmpty(), res)
                     }
                 }
-                val best = cachedList.maxByOrNull { it.confidence }
+                val best = sanitizedList.maxByOrNull { it.confidence }
                 if (best != null && best.hasLyrics()) {
                     withContext(Dispatchers.Main) {
                         callback.onLyricsFound(best)
@@ -205,6 +220,14 @@ class LyricsFetchManager private constructor(context: Context) {
             // Check standard file/database cache
             val cached = cacheManager.get(track)
             if (cached != null) {
+                // Ensure syncedLyrics in cached result is actually synced
+                if (!cached.syncedLyrics.isNullOrBlank() && LrcParser.parse(cached.syncedLyrics).isEmpty()) {
+                    cached.plainLyrics = LyricsNormalizer.extractCleanPlainText(cached.syncedLyrics ?: cached.plainLyrics)
+                    cached.syncedLyrics = null
+                    cached.isSynced = false
+                    cached.isWordByWord = false
+                }
+
                 val decision = decisionEngine.decideFetch(cached, false)
 
                 when (decision) {

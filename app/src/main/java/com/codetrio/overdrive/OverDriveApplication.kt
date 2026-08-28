@@ -57,7 +57,7 @@ class OverDriveApplication : Application(), ImageLoaderFactory {
                 }
             }
             .crossfade(true)
-            .crossfade(300) // Expressive 300ms transition fade-in
+            .crossfade(120) // Fast 120ms transition for ultra-smooth scrolling
             .allowHardware(true) // Offload rendering directly to GPU hardware buffers for zero UI thread lag
             .allowRgb565(getSharedPreferences("AppSettings", MODE_PRIVATE).getBoolean("pref_opt_thumbnail_downsampling", true))
             .diskCachePolicy(CachePolicy.ENABLED)
@@ -73,12 +73,9 @@ class OverDriveApplication : Application(), ImageLoaderFactory {
 
         super.onCreate()
         instance = this
-        
+
         // Proactive Initialization: Connect localized persistence cache to high-speed networking engine
         InnerTubeClient.initialize(this)
-
-        // Initialize canvas motion artwork disk cache
-        CanvasArtworkPlaybackCache.init(this)
 
         // Initialize global theme mode
         val prefs = getSharedPreferences("AppSettings", MODE_PRIVATE)
@@ -99,10 +96,31 @@ class OverDriveApplication : Application(), ImageLoaderFactory {
             InnerTubeClient.cookie = savedCookie
         }
 
-        // Background Warm-up: Initialize NewPipe, OkHttp, and TLS to YouTube CDN
+        // Asynchronous Background Initialization: Offload Disk I/O & warmups off the main startup path
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            // 1. Initialize Firebase Crashlytics session metadata
             try {
-                // 1. Warm up OkHttp TCP+TLS connection to YouTube CDN
+                val crashlytics = com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance()
+                crashlytics.setCustomKey("device_model", "${Build.MANUFACTURER} ${Build.MODEL}")
+                crashlytics.setCustomKey("android_os", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+                crashlytics.setCustomKey("app_version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+            } catch (_: Exception) {}
+
+            // 2. Initialize disk caches
+            try {
+                CanvasArtworkPlaybackCache.init(this@OverDriveApplication)
+            } catch (e: Exception) {
+                Log.w("SpatialFlowApp", "CanvasArtworkPlaybackCache init error: ${e.message}")
+            }
+
+            try {
+                com.codetrio.overdrive.data.artist.ArtistCacheManager.init(this@OverDriveApplication)
+            } catch (e: Exception) {
+                Log.w("SpatialFlowApp", "ArtistCacheManager init error: ${e.message}")
+            }
+
+            // 3. Warm up OkHttp TCP+TLS connection to YouTube CDN
+            try {
                 InnerTubeClient.httpClient.newCall(
                     okhttp3.Request.Builder()
                         .url("https://www.youtube.com/generate_204")
@@ -114,24 +132,24 @@ class OverDriveApplication : Application(), ImageLoaderFactory {
                 Log.w("SpatialFlowApp", "Failed to warm up OkHttp connection: ${e.message}")
             }
 
+            // 4. Initialize NewPipe Extractor and perform a dummy extraction to JIT-warm the JavaScript engine
             try {
-                // 2. Initialize NewPipe Extractor and perform a dummy extraction to JIT-warm the JavaScript engine
                 NewPipeStreamExtractor.init(this@OverDriveApplication)
-                // A lightweight dummy request to trigger JS evaluation
-                // This is a known lightweight video ID just for warming the engine
                 NewPipeStreamExtractor.getStreamUrl("dQw4w9WgXcQ")
                 Log.d("SpatialFlowApp", "Successfully JIT-warmed NewPipe JS Extractor engine")
             } catch (e: Exception) {
                 Log.w("SpatialFlowApp", "Failed to warm up NewPipe Extractor: ${e.message}")
             }
+
+            // 5. Clean up old temp files
+            try {
+                localCacheDataSource.clearOldCache()
+            } catch (_: Exception) {}
         }
 
         // Suppress expected Glide warnings for missing album arts
-        Glide.init(this, GlideBuilder().setLogLevel(Log.ERROR))
-
-        // Clean up old temp files on app start
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            localCacheDataSource.clearOldCache()
-        }
+        try {
+            Glide.init(this, GlideBuilder().setLogLevel(Log.ERROR))
+        } catch (_: Exception) {}
     }
 }

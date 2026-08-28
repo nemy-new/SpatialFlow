@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "284672987102",
+    "project_id": "device-streaming-3ee35d77",
+    "storage_bucket": "device-streaming-3ee35d77.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:284672987102:android:b6baf76fdc6004f3bdd74f",
+        "android_client_info": {
+          "package_name": "com.codetrio.overdrive"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAOq9Ve2oVnF9zI56TpTSoHLRt3UUPMMY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

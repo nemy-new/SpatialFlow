@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import com.codetrio.overdrive.BuildConfig
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -20,6 +21,18 @@ object CrashHandler {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
+                // Record to Firebase Crashlytics
+                try {
+                    val crashlytics = FirebaseCrashlytics.getInstance()
+                    crashlytics.setCustomKey("thread_name", thread.name)
+                    crashlytics.setCustomKey("app_version_name", BuildConfig.VERSION_NAME)
+                    crashlytics.setCustomKey("app_version_code", BuildConfig.VERSION_CODE)
+                    crashlytics.setCustomKey("device_manufacturer", Build.MANUFACTURER)
+                    crashlytics.setCustomKey("device_model", Build.MODEL)
+                    crashlytics.setCustomKey("android_sdk", Build.VERSION.SDK_INT)
+                    crashlytics.recordException(throwable)
+                } catch (_: Exception) {}
+
                 saveCrashReport(context, thread, throwable)
             } catch (e: Exception) {
                 Log.e("CrashHandler", "Failed to save crash report", e)

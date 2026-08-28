@@ -479,7 +479,7 @@ object YouTubeMusic {
             // Parse content sections (reuse home section parser)
             val homePage = InnerTubeParser.parseHomePage(response)
 
-            val updatedSections = homePage.sections.map { section ->
+            var updatedSections = homePage.sections.map { section ->
                 section.copy(
                     items = section.items.map { item ->
                         if (item is SearchItem.Song && (item.song.artist.isBlank() || item.song.artist.equals("Unknown Artist", ignoreCase = true) || item.song.artist.equals("<unknown>", ignoreCase = true))) {
@@ -489,6 +489,25 @@ object YouTubeMusic {
                         }
                     }
                 )
+            }
+
+            // If no song section exists, fetch top songs via search to guarantee a rich Top Songs section
+            val hasSongSection = updatedSections.any { section ->
+                section.items.any { it is SearchItem.Song }
+            }
+
+            if (!hasSongSection && title.isNotBlank() && title != "Unknown Artist") {
+                try {
+                    val searchResult = search(title, SearchFilter.SONGS).getOrNull()
+                    val artistSongs = searchResult?.items?.filterIsInstance<SearchItem.Song>()?.take(10)
+                    if (!artistSongs.isNullOrEmpty()) {
+                        val topSongsSection = HomeSection(
+                            title = "Top songs",
+                            items = artistSongs
+                        )
+                        updatedSections = listOf(topSongsSection) + updatedSections
+                    }
+                } catch (_: Exception) {}
             }
 
             ArtistPage(

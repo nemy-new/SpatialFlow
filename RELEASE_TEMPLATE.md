@@ -1,6 +1,6 @@
-![SpatialFlow Update](https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmdjaDhpeGd4aHhpc280cHFuajBxa3hoenZiOG5sczUybDB2bDh0MCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/TyCVCdmXJHnK3yHjqy/giphy.gif)
+![OverDrive Update](https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmdjaDhpeGd4aHhpc280cHFuajBxa3hoenZiOG5sczUybDB2bDh0MCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/TyCVCdmXJHnK3yHjqy/giphy.gif)
 
-## What's New in SpatialFlow v1.8.1
+## What's New in OverDrive v1.8.1
 
 ### New Features & Enhancements
 
@@ -16,7 +16,7 @@
 - **Blur & Glassmorphism Effects:** Blur transitions on navigation and Mini Player background dragging.
 - **Rebuilt Playback Queue UI:** Drag-reorder, multi-select, and queue synchronization logic.
 - **Music Management Tools:** Full Library Rescan and Database Rebuild options added to Settings.
-- **System Share Integration:** Open YouTube music links directly in SpatialFlow via system "Share" menu.
+- **System Share Integration:** Open YouTube music links directly in OverDrive via system "Share" menu.
 - **Crash Detection & Logging:** App Crash Detection with automatic recovery logging.
 - **Rich Release Notes:** GIF and markdown support in the In-App Update Bottom Sheet.
 

@@ -1,7 +1,9 @@
 package com.codetrio.overdrive.ui.player
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -13,9 +15,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeDown
+import androidx.compose.material.icons.automirrored.rounded.VolumeMute
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.AudioFile
@@ -119,8 +127,9 @@ internal fun SplitLikeDislikeChip(
     customBackgroundColor: Color? = null
 ) {
     val backgroundColor = customBackgroundColor ?: contentColor.copy(alpha = if (isDark) 0.08f else 0.06f)
-    val displayLikesText = remember(likesCount) {
-        likesCount.ifBlank { "Like" }
+    val defaultLikeLabel = androidx.compose.ui.res.stringResource(id = com.codetrio.overdrive.R.string.text_like)
+    val displayLikesText = remember(likesCount, defaultLikeLabel) {
+        likesCount.ifBlank { defaultLikeLabel }
     }
     
     Row(
@@ -459,44 +468,121 @@ fun VolumeSlider(
     dynamicAccentColor: Color = Color.White
 ) {
     val context = LocalContext.current
-    val audioManager = remember { context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager }
-    val maxVolume = remember { audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).toFloat() }
+    val audioManager = remember {
+        try {
+            context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+        } catch (_: Exception) { null }
+    }
     
-    var currentVolume by remember { 
-        mutableStateOf(audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()) 
+    val maxVolume = remember(audioManager) {
+        val rawMax = try {
+            audioManager?.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)?.toFloat() ?: 15f
+        } catch (_: Exception) { 15f }
+        if (rawMax > 0f) rawMax else 15f
     }
 
-    // React to hardware volume button changes
-    DisposableEffect(context) {
+    val minVolume = remember(audioManager) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                audioManager?.getStreamMinVolume(android.media.AudioManager.STREAM_MUSIC)?.toFloat() ?: 0f
+            } else 0f
+        } catch (_: Exception) { 0f }
+    }
+
+    var currentVolume by remember {
+        val initial = try {
+            audioManager?.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)?.toFloat() ?: (maxVolume * 0.5f)
+        } catch (_: Exception) { maxVolume * 0.5f }
+        mutableFloatStateOf(initial.coerceIn(minVolume, maxVolume))
+    }
+
+    // 1. React to hardware volume button changes via BroadcastReceiver (with Android 14+ safe flags)
+    DisposableEffect(context, audioManager) {
         val receiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
-                if (intent?.action == "android.media.VOLUME_CHANGED_ACTION") {
-                    currentVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat()
-                }
+            override fun onReceive(ctx: android.content.Context?, intent: android.content.Intent?) {
+                try {
+                    audioManager?.let {
+                        currentVolume = it.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat().coerceIn(minVolume, maxVolume)
+                    }
+                } catch (_: Exception) {}
             }
         }
         val filter = android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION")
-        context.registerReceiver(receiver, filter)
-        onDispose {
-            context.unregisterReceiver(receiver)
+        try {
+            androidx.core.content.ContextCompat.registerReceiver(
+                context,
+                receiver,
+                filter,
+                androidx.core.content.ContextCompat.RECEIVER_EXPORTED
+            )
+        } catch (_: Exception) {
+            try {
+                context.registerReceiver(receiver, filter)
+            } catch (_: Exception) {}
         }
+
+        // 2. React to volume changes via ContentObserver for OEM devices (Samsung/Xiaomi/Pixel) where broadcast is suppressed
+        val contentObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                super.onChange(selfChange)
+                try {
+                    audioManager?.let {
+                        currentVolume = it.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat().coerceIn(minVolume, maxVolume)
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+        try {
+            context.contentResolver.registerContentObserver(
+                android.provider.Settings.System.CONTENT_URI,
+                true,
+                contentObserver
+            )
+        } catch (_: Exception) {}
+
+        onDispose {
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (_: Exception) {}
+            try {
+                context.contentResolver.unregisterContentObserver(contentObserver)
+            } catch (_: Exception) {}
+        }
+    }
+
+    val volumeRange = (maxVolume - minVolume).coerceAtLeast(1f)
+    val fraction = ((currentVolume - minVolume) / volumeRange).coerceIn(0f, 1f)
+    val animatedFraction by animateFloatAsState(
+        targetValue = fraction,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 600f),
+        label = "VolumeFraction"
+    )
+
+    fun applyVolume(newVol: Float) {
+        val clamped = newVol.coerceIn(minVolume, maxVolume)
+        currentVolume = clamped
+        try {
+            audioManager?.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, clamped.toInt(), 0)
+        } catch (_: Exception) {}
     }
 
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_volume_down),
-            contentDescription = "Volume Down",
-            tint = contentColor.copy(alpha = 0.7f),
-            modifier = Modifier.size(20.dp)
-        )
+        IconButton(
+            onClick = { applyVolume(minVolume) },
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                imageVector = if (currentVolume <= minVolume) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeDown,
+                contentDescription = "Volume Down",
+                tint = contentColor.copy(alpha = 0.7f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
         
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        val fraction = if (maxVolume > 0f) currentVolume / maxVolume else 0f
-        var isDragging by remember { mutableStateOf(false) }
+        Spacer(modifier = Modifier.width(8.dp))
         
         val trackHeight = 24.dp
 
@@ -507,29 +593,23 @@ fun VolumeSlider(
                 .clip(CircleShape)
                 .background(contentColor.copy(alpha = 0.2f))
                 .pointerInput(Unit) {
-                    val componentWidth = size.width.toFloat()
+                    val componentWidth = size.width.toFloat().coerceAtLeast(1f)
                     detectTapGestures(
                         onPress = { offset ->
-                            isDragging = true
-                            val newValue = (offset.x / componentWidth) * maxVolume
-                            currentVolume = newValue.coerceIn(0f, maxVolume)
-                            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, currentVolume.toInt(), 0)
-                            tryAwaitRelease()
-                            isDragging = false
+                            val targetFraction = (offset.x / componentWidth).coerceIn(0f, 1f)
+                            val newValue = minVolume + (targetFraction * volumeRange)
+                            applyVolume(newValue)
                         }
                     )
                 }
                 .pointerInput(Unit) {
-                    val componentWidth = size.width.toFloat()
+                    val componentWidth = size.width.toFloat().coerceAtLeast(1f)
                     detectHorizontalDragGestures(
-                        onDragStart = { isDragging = true },
-                        onDragEnd = { isDragging = false },
-                        onDragCancel = { isDragging = false },
                         onHorizontalDrag = { change, _ ->
                             change.consume()
-                            val newValue = (change.position.x / componentWidth) * maxVolume
-                            currentVolume = newValue.coerceIn(0f, maxVolume)
-                            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, currentVolume.toInt(), 0)
+                            val targetFraction = (change.position.x / componentWidth).coerceIn(0f, 1f)
+                            val newValue = minVolume + (targetFraction * volumeRange)
+                            applyVolume(newValue)
                         }
                     )
                 },
@@ -537,20 +617,130 @@ fun VolumeSlider(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(fraction)
+                    .fillMaxWidth(animatedFraction.coerceAtLeast(0.001f))
                     .fillMaxHeight()
                     .clip(CircleShape)
                     .background(dynamicAccentColor)
             )
         }
         
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         
-        Icon(
-            painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_volume_up),
-            contentDescription = "Volume Up",
-            tint = contentColor.copy(alpha = 0.7f),
-            modifier = Modifier.size(20.dp)
-        )
+        IconButton(
+            onClick = { applyVolume(maxVolume) },
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
+                contentDescription = "Volume Up",
+                tint = contentColor.copy(alpha = 0.7f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
+
+/**
+ * Premium Expressive Artwork Placeholder for tracks with missing album art.
+ * Renders a rich ambient gradient with glowing concentric acoustic rings and a frosted glass icon badge.
+ */
+@Composable
+fun ExpressiveArtworkPlaceholder(
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    artist: String? = null,
+    accentColor: Color = MaterialTheme.colorScheme.primary
+) {
+    val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = 0.35f),
+                        surfaceColor.copy(alpha = 0.85f),
+                        MaterialTheme.colorScheme.surfaceContainerLowest
+                    ),
+                    radius = 800f
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        // Decorative concentric acoustic waves
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = this.center
+            val maxR = size.minDimension * 0.46f
+
+            // Concentric ambient rings
+            for (i in 1..3) {
+                val radius = maxR * (i / 3.2f)
+                drawCircle(
+                    color = accentColor.copy(alpha = 0.08f * (4 - i)),
+                    radius = radius,
+                    center = center,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = 1.5.dp.toPx()
+                    )
+                )
+            }
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Frosted Glass Icon Badge
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.5.dp,
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.45f),
+                            accentColor.copy(alpha = 0.30f),
+                            Color.Transparent
+                        )
+                    )
+                ),
+                shadowElevation = 8.dp,
+                modifier = Modifier.size(72.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.MusicNote,
+                        contentDescription = "Music Placeholder",
+                        tint = accentColor,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            }
+
+            if (!title.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = onSurfaceColor,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                if (!artist.isNullOrBlank()) {
+                    Text(
+                        text = artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+

@@ -2,6 +2,7 @@ package com.codetrio.overdrive.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.Animatable
@@ -13,13 +14,18 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -41,6 +47,10 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CastConnected
+import androidx.compose.ui.draw.clip
+import com.codetrio.overdrive.cast.CastState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -51,6 +61,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -80,6 +91,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -308,7 +321,9 @@ fun BoxScope.UnifiedPlayerMiniAndFullLayers(
     containerHeight: Dp,
     onCollapse: () -> Unit,
     onExpand: () -> Unit,
-    dragModifier: Modifier
+    dragModifier: Modifier,
+    onTabletPlaceholderPositioned: (Offset) -> Unit = {},
+    sheetRootCoordinates: LayoutCoordinates? = null
 ) {
     val currentSong = uiState.currentSong ?: return
     val isPlaying = uiState.isPlaying
@@ -318,6 +333,12 @@ fun BoxScope.UnifiedPlayerMiniAndFullLayers(
     }
     val fullPlayerZIndex by remember {
         derivedStateOf { if (playerContentExpansionFraction.value >= 0.5f) 1f else 0f }
+    }
+    val isMiniPlayerVisible by remember {
+        derivedStateOf { playerContentExpansionFraction.value < 0.6f }
+    }
+    val isFullPlayerActive by remember {
+        derivedStateOf { playerContentExpansionFraction.value > 0.001f }
     }
 
     // Mini Player Container
@@ -332,15 +353,17 @@ fun BoxScope.UnifiedPlayerMiniAndFullLayers(
             }
             .zIndex(miniPlayerZIndex)
     ) {
-        MiniPlayerContentInternal(
-            viewModel = viewModel,
-            currentSong = currentSong,
-            isPlaying = isPlaying,
-            isProcessing = uiState.isProcessing,
-            accentColor = baseAccentColor,
-            onClick = onExpand,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (isMiniPlayerVisible) {
+            MiniPlayerContentInternal(
+                viewModel = viewModel,
+                currentSong = currentSong,
+                isPlaying = isPlaying,
+                isProcessing = uiState.isProcessing,
+                accentColor = baseAccentColor,
+                onClick = onExpand,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 
     // Full Player Container
@@ -365,17 +388,21 @@ fun BoxScope.UnifiedPlayerMiniAndFullLayers(
             }
             .zIndex(fullPlayerZIndex)
     ) {
-        FullPlayerScreen(
-            activity = activity,
-            viewModel = viewModel,
-            uiState = uiState,
-            songList = songList,
-            accentColor = baseAccentColor,
-            context = context,
-            onCollapse = onCollapse,
-            dragModifier = dragModifier,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (isFullPlayerActive) {
+            FullPlayerScreen(
+                activity = activity,
+                viewModel = viewModel,
+                uiState = uiState,
+                songList = songList,
+                accentColor = baseAccentColor,
+                context = context,
+                onCollapse = onCollapse,
+                dragModifier = dragModifier,
+                onTabletPlaceholderPositioned = onTabletPlaceholderPositioned,
+                sheetRootCoordinates = sheetRootCoordinates,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
 
@@ -415,27 +442,35 @@ fun resolveVerticalSheetTargetState(
     velocityThreshold: Float,
     currentFraction: Float
 ): PlayerSheetState {
-    return when {
-        currentSheetContentState == PlayerSheetState.EXPANDED && accumulatedDragY <= 0f -> 
+    // 1. High velocity fling takes priority
+    if (abs(verticalVelocity) > velocityThreshold) {
+        return if (verticalVelocity < 0f) PlayerSheetState.EXPANDED else PlayerSheetState.COLLAPSED
+    }
+
+    // 2. Position and drag delta based threshold
+    return if (currentSheetContentState == PlayerSheetState.EXPANDED) {
+        // If dragged down from EXPANDED by noticeable distance and not pulled back up, collapse it
+        if (currentFraction < 0.90f || accumulatedDragY > minDragThresholdPx * 4f) {
+            PlayerSheetState.COLLAPSED
+        } else {
             PlayerSheetState.EXPANDED
-
-        abs(accumulatedDragY) > minDragThresholdPx ->
-            if (accumulatedDragY < 0f) PlayerSheetState.EXPANDED else PlayerSheetState.COLLAPSED
-
-        abs(verticalVelocity) > velocityThreshold ->
-            if (verticalVelocity < 0f) PlayerSheetState.EXPANDED else PlayerSheetState.COLLAPSED
-
-        else ->
-            if (currentFraction > 0.5f) PlayerSheetState.EXPANDED else PlayerSheetState.COLLAPSED
+        }
+    } else {
+        // If dragged up from COLLAPSED by noticeable distance and not pulled back down, expand it
+        if (currentFraction > 0.10f || accumulatedDragY < -minDragThresholdPx * 4f) {
+            PlayerSheetState.EXPANDED
+        } else {
+            PlayerSheetState.COLLAPSED
+        }
     }
 }
 
 fun collapseSpringDampingForFraction(currentFraction: Float): Float {
-    return androidx.compose.ui.util.lerp(Spring.DampingRatioNoBouncy, Spring.DampingRatioLowBouncy, currentFraction)
+    return Spring.DampingRatioNoBouncy
 }
 
 fun collapseInitialSquashForFraction(currentFraction: Float): Float {
-    return androidx.compose.ui.util.lerp(1.0f, 0.97f, currentFraction)
+    return 1.0f
 }
 
 class SheetVerticalDragGestureHandler(
@@ -462,6 +497,7 @@ class SheetVerticalDragGestureHandler(
     private var isActivelyDragging = false
 
     fun onDragStart() {
+        android.util.Log.d("PlayerDrag", "onDragStart: currentFraction=${playerContentExpansionFraction.value}, currentY=${currentSheetTranslationY.value}")
         isActivelyDragging = true
         onDragStateChange(true)
         dragJob?.cancel()
@@ -472,11 +508,28 @@ class SheetVerticalDragGestureHandler(
     }
 
     fun onVerticalDrag(uptimeMillis: Long, position: Offset, dragAmount: Float) {
-        if (currentSheetStateProvider() == PlayerSheetState.EXPANDED && dragAmount < 0) {
-            // Dragging UP when fully expanded: Ignore vertical sheet movement completely
-            return
+        val isExpanded = currentSheetStateProvider() == PlayerSheetState.EXPANDED
+        
+        if (isExpanded) {
+            // When dragging from EXPANDED:
+            // If already at top and dragging up, ignore
+            if (accumulatedDragYSinceStart <= 0f && dragAmount < 0f) {
+                accumulatedDragYSinceStart = 0f
+                return
+            }
+            // Allow dragging down (positive) and dragging back up (negative)
+            accumulatedDragYSinceStart = (accumulatedDragYSinceStart + dragAmount).coerceAtLeast(0f)
+        } else {
+            // When dragging from COLLAPSED:
+            // If already at bottom and dragging down, ignore
+            if (accumulatedDragYSinceStart >= 0f && dragAmount > 0f) {
+                accumulatedDragYSinceStart = 0f
+                return
+            }
+            // Allow dragging up (negative) and dragging back down (positive)
+            accumulatedDragYSinceStart = (accumulatedDragYSinceStart + dragAmount).coerceAtMost(0f)
         }
-        accumulatedDragYSinceStart += dragAmount
+
         val dragFrame = computeSheetVerticalDragFrame(
             accumulatedDragY = accumulatedDragYSinceStart,
             expandedY = expandedYProvider(),
@@ -494,74 +547,51 @@ class SheetVerticalDragGestureHandler(
         velocityTracker.addPosition(uptimeMillis, position)
     }
 
-    fun onDragEnd() {
+    fun onDragEnd(providedVelocity: Float? = null) {
         if (!isActivelyDragging) return
         isActivelyDragging = false
         onDragStateChange(false)
         dragJob?.cancel()
-        val verticalVelocity = velocityTracker.calculateVelocity().y
+        val verticalVelocity = providedVelocity ?: velocityTracker.calculateVelocity().y
         val currentFraction = playerContentExpansionFraction.value
         val minDragThresholdPx = with(densityProvider()) { 5.dp.toPx() }
-        
+
         val targetState = resolveVerticalSheetTargetState(
             currentSheetContentState = currentSheetStateProvider(),
             accumulatedDragY = accumulatedDragYSinceStart,
             minDragThresholdPx = minDragThresholdPx,
             verticalVelocity = verticalVelocity,
-            velocityThreshold = 150f,
+            velocityThreshold = 100f,
             currentFraction = currentFraction
         )
 
+        android.util.Log.d("PlayerDrag", "onDragEnd: targetState=$targetState, accumulatedDragY=$accumulatedDragYSinceStart, velocity=$verticalVelocity, currentFraction=$currentFraction")
+
         scope.launch {
             if (targetState == PlayerSheetState.EXPANDED) {
-                launch { onAnimateSheet(true, null, 0f) }
                 onExpandSheetState()
+                onAnimateSheet(true, null, verticalVelocity)
             } else {
-                val dynamicDamping = collapseSpringDampingForFraction(currentFraction)
-                
-                // Gelatinous Squash & Stretch Bounce Trigger
-                launch {
-                    val initialSquash = collapseInitialSquashForFraction(currentFraction)
-                    visualOvershootScaleY.snapTo(initialSquash)
-                    visualOvershootScaleY.animateTo(
-                        targetValue = 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessVeryLow
-                        )
-                    )
-                }
-                
-                launch {
-                    onAnimateSheet(
-                        false,
-                        spring(dampingRatio = dynamicDamping, stiffness = Spring.StiffnessLow),
-                        verticalVelocity
-                    )
-                }
                 onCollapseSheetState()
+                onAnimateSheet(false, null, verticalVelocity)
             }
         }
     }
 }
 
+@Composable
 fun Modifier.playerSheetVerticalDragGesture(
     enabled: Boolean,
     handler: SheetVerticalDragGestureHandler
-): Modifier {
-    if (!enabled) return this
-    return this.pointerInput(true, handler) {
-        detectVerticalDragGestures(
-            onDragStart = { handler.onDragStart() },
-            onVerticalDrag = { change, dragAmount ->
-                change.consume()
-                handler.onVerticalDrag(change.uptimeMillis, change.position, dragAmount)
-            },
-            onDragEnd = { handler.onDragEnd() },
-            onDragCancel = { handler.onDragEnd() }
-        )
-    }
-}
+): Modifier = this.draggable(
+    orientation = androidx.compose.foundation.gestures.Orientation.Vertical,
+    enabled = enabled,
+    state = androidx.compose.foundation.gestures.rememberDraggableState { delta ->
+        handler.onVerticalDrag(System.currentTimeMillis(), androidx.compose.ui.geometry.Offset.Zero, delta)
+    },
+    onDragStarted = { handler.onDragStart() },
+    onDragStopped = { velocity -> handler.onDragEnd(velocity) }
+)
 
 // ==========================================
 // 6. STEP 6: HORIZONTAL SWIPE-TO-DISMISS TENSION
@@ -582,19 +612,14 @@ class MiniPlayerDismissGestureHandler(
         dragPhase = MiniDismissDragPhase.TENSION
         accumulatedDragX = 0f
         offsetJob?.cancel()
-        offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            offsetAnimatable.stop()
-        }
     }
 
     fun onHorizontalDrag(dragAmount: Float) {
         accumulatedDragX += dragAmount
+        val snapThresholdPx = 40f * density.density
 
         when (dragPhase) {
             MiniDismissDragPhase.TENSION -> {
-                val snapThresholdPx = 100f * density.density
-                
-                // Pulls back with structural resistance under the 100dp threshold
                 if (abs(accumulatedDragX) < snapThresholdPx) {
                     val maxTensionOffsetPx = 30f * density.density
                     val dragFraction = (abs(accumulatedDragX) / snapThresholdPx).coerceIn(0f, 1f)
@@ -615,7 +640,7 @@ class MiniPlayerDismissGestureHandler(
                 offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     offsetAnimatable.animateTo(
                         targetValue = accumulatedDragX,
-                        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow)
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
                     )
                 }
                 dragPhase = MiniDismissDragPhase.FREE_DRAG
@@ -650,11 +675,11 @@ class MiniPlayerDismissGestureHandler(
                 offsetAnimatable.snapTo(0f)
             }
         } else {
-            // Springs back dynamically to center
+            // Springs back smoothly to center with no bounce
             offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 offsetAnimatable.animateTo(
                     targetValue = 0f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
                 )
             }
         }
@@ -683,21 +708,21 @@ fun rememberMiniPlayerDismissGestureHandler(
     }
 }
 
+@Composable
 fun Modifier.miniPlayerDismissHorizontalGesture(
     enabled: Boolean,
     handler: MiniPlayerDismissGestureHandler
 ): Modifier {
     if (!enabled) return this
-    return this.pointerInput(true, handler) {
-        detectHorizontalDragGestures(
-            onDragStart = { handler.onDragStart() },
-            onHorizontalDrag = { change, dragAmount ->
-                change.consume()
-                handler.onHorizontalDrag(dragAmount)
-            },
-            onDragEnd = { handler.onDragEnd() }
-        )
-    }
+    return this.draggable(
+        orientation = androidx.compose.foundation.gestures.Orientation.Horizontal,
+        enabled = enabled,
+        state = androidx.compose.foundation.gestures.rememberDraggableState { delta ->
+            handler.onHorizontalDrag(delta)
+        },
+        onDragStarted = { handler.onDragStart() },
+        onDragStopped = { handler.onDragEnd() }
+    )
 }
 
 // ==========================================
@@ -734,7 +759,7 @@ fun PlayerBottomSheetCompose(
         val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsStateWithLifecycle()
         val playerBackgroundColor by viewModel.playerBackgroundColor.collectAsStateWithLifecycle()
         val likesCount by viewModel.likesCountFlow.collectAsStateWithLifecycle()
-        val isDark = isSystemInDarkTheme()
+        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         val dynamicBgColor = remember(playerBackgroundColor, isDark) {
             val baseColor = Color(playerBackgroundColor)
             val hsl = FloatArray(3)
@@ -793,10 +818,13 @@ fun PlayerBottomSheetCompose(
             )
         }
         val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-        val isTabletTopLevel = configuration.screenWidthDp >= 600
+        val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val isWideLandscape = isLandscape && configuration.screenWidthDp >= 600
+        val isCompactLandscape = isLandscape && !isWideLandscape
+        val isTabletTopLevel = isWideLandscape
         val lyricsArtworkProgress by animateFloatAsState(
             targetValue = if (isLyricsModeEnabled && !isTabletTopLevel) 1f else 0f,
-            animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f),
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f),
             label = "LyricsArtworkSharedElement"
         )
  
@@ -830,8 +858,8 @@ fun PlayerBottomSheetCompose(
         val songList by viewModel.songList.collectAsStateWithLifecycle()
         val isQueueExpanded by viewModel.isQueueExpanded.collectAsStateWithLifecycle()
         val artworkAlpha by animateFloatAsState(
-            targetValue = if (isQueueExpanded) 0f else 1f,
-            animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
+            targetValue = 1f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 300f),
             label = "ArtworkAlpha"
         )
 
@@ -884,24 +912,30 @@ fun PlayerBottomSheetCompose(
 
         val showPlayerContentArea = currentSong != null
 
+        val isPlayerExpandedExternal by viewModel.isPlayerExpanded.collectAsStateWithLifecycle()
+        LaunchedEffect(isPlayerExpandedExternal) {
+            val targetState = if (isPlayerExpandedExternal) PlayerSheetState.EXPANDED else PlayerSheetState.COLLAPSED
+            if (currentSheetContentState != targetState && !isDragging) {
+                currentSheetContentState = targetState
+            }
+        }
+
         LaunchedEffect(currentSheetContentState) {
-            viewModel.setPlayerExpanded(currentSheetContentState == PlayerSheetState.EXPANDED)
+            val isExp = currentSheetContentState == PlayerSheetState.EXPANDED
+            if (viewModel.isPlayerExpanded.value != isExp) {
+                viewModel.setPlayerExpanded(isExp)
+            }
         }
 
         // Synchronize dynamic scrolling Bottom Nav visibility changes
         LaunchedEffect(Unit) {
             snapshotFlow { sheetCollapsedTargetYState.value }.collect { targetY ->
-                if (currentSheetContentState == PlayerSheetState.COLLAPSED && 
-                    !isDragging && 
-                    currentSheetTranslationY.value != screenHeightPx
-                ) {
+                if (currentSheetContentState == PlayerSheetState.COLLAPSED && !isDragging) {
                     if (currentSheetTranslationY.isRunning) {
-                        launch {
-                            currentSheetTranslationY.animateTo(
-                                targetValue = targetY,
-                                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
-                            )
-                        }
+                        currentSheetTranslationY.animateTo(
+                            targetValue = targetY,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                        )
                     } else {
                         currentSheetTranslationY.snapTo(targetY)
                     }
@@ -909,13 +943,30 @@ fun PlayerBottomSheetCompose(
             }
         }
 
+        // Standard collapsed Y when bottom navigation bar is fully visible
+        val computeNormalCollapsedY: () -> Float = remember(screenHeightPx, density, isTablet, defaultNavHeightPx) {
+            {
+                val bottomNavHeightPx = if (isTablet) {
+                    0f
+                } else if (dynamicBottomNavHeightState.value > 0f) {
+                    dynamicBottomNavHeightState.value
+                } else {
+                    defaultNavHeightPx
+                }
+                val miniPlayerHeightPx = with(density) { MiniPlayerHeight.toPx() }
+                val normalBottomGapPx = with(density) { if (isTablet) 8.dp.toPx() else 12.dp.toPx() }
+                screenHeightPx - miniPlayerHeightPx - bottomNavHeightPx - normalBottomGapPx
+            }
+        }
+
         var sheetBackProgress by remember { mutableFloatStateOf(0f) }
 
-        androidx.activity.compose.PredictiveBackHandler(enabled = currentSheetContentState == PlayerSheetState.EXPANDED && !isLyricsModeEnabled) { progressFlow ->
+        androidx.activity.compose.PredictiveBackHandler(enabled = currentSheetContentState == PlayerSheetState.EXPANDED && (isTablet || !isLyricsModeEnabled)) { progressFlow ->
             try {
+                val normalCollapsedY = computeNormalCollapsedY()
                 progressFlow.collect { backEvent ->
                     sheetBackProgress = backEvent.progress
-                    val targetY = backEvent.progress * sheetCollapsedTargetYState.value
+                    val targetY = backEvent.progress * normalCollapsedY
                     currentSheetTranslationY.snapTo(targetY)
                 }
                 sheetBackProgress = 0f
@@ -924,24 +975,16 @@ fun PlayerBottomSheetCompose(
                 sheetBackProgress = 0f
                 currentSheetTranslationY.animateTo(
                     targetValue = 0f,
-                    animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
                 )
             }
         }
 
-        // Auto-expand/collapse sheet when currentSong is changed / ready
-        LaunchedEffect(currentSong, isPlaybackReady) {
-            if (currentSong != null && isPlaybackReady) {
-                if (currentSheetTranslationY.value == screenHeightPx) {
-                    currentSheetTranslationY.animateTo(
-                        targetValue = sheetCollapsedTargetYState.value,
-                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
-                    )
-                    // Ensure it snaps to the latest layout height in case bottomNav was measured late
-                    if (currentSheetTranslationY.value != sheetCollapsedTargetYState.value) {
-                        currentSheetTranslationY.snapTo(sheetCollapsedTargetYState.value)
-                    }
-                    currentSheetContentState = PlayerSheetState.COLLAPSED
+        // Auto-expand/collapse sheet when currentSong is changed / loaded
+        LaunchedEffect(currentSong) {
+            if (currentSong != null) {
+                if (currentSheetContentState == PlayerSheetState.COLLAPSED) {
+                    currentSheetTranslationY.snapTo(computeNormalCollapsedY())
                 }
             }
         }
@@ -959,43 +1002,56 @@ fun PlayerBottomSheetCompose(
             }
         }
 
-        // Resolves sheet animations
-        suspend fun animatePlayerSheet(targetExpanded: Boolean, initialVelocity: Float = 0f) {
-            val destY = if (targetExpanded) {
-                0f
-            } else {
-                sheetCollapsedTargetYState.value
-            }
-            val destFraction = if (targetExpanded) 1f else 0f
-            
-            val collapsedY = sheetCollapsedTargetYState.value
-            val totalDistance = collapsedY
-            val initialFractionVelocity = if (totalDistance > 0f) {
-                -initialVelocity / totalDistance
-            } else 0f
-            
-            coroutineScope {
-                launch {
-                    currentSheetTranslationY.animateTo(
-                        targetValue = destY,
-                        animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f),
-                        initialVelocity = initialVelocity
-                    )
-                }
-                launch {
-                    playerContentExpansionFraction.animateTo(
-                        targetValue = destFraction,
-                        animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f),
-                        initialVelocity = initialFractionVelocity
-                    ) {
-                        viewModel.setPlayerExpansionFraction(value)
+        // Resolves sheet animations safely via a single coroutine Job
+        var sheetAnimationJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+        fun triggerSheetAnimation(targetExpanded: Boolean, initialVelocity: Float = 0f) {
+            android.util.Log.d("PlayerDrag", "triggerSheetAnimation: targetExpanded=$targetExpanded, velocity=$initialVelocity, currentY=${currentSheetTranslationY.value}, currentFraction=${playerContentExpansionFraction.value}")
+            sheetAnimationJob?.cancel()
+            sheetAnimationJob = scope.launch {
+                val normalCollapsedY = computeNormalCollapsedY()
+                val destY = if (targetExpanded) 0f else normalCollapsedY
+                val destFraction = if (targetExpanded) 1f else 0f
+                
+                val initialFractionVelocity = if (normalCollapsedY > 0f) {
+                    -initialVelocity / normalCollapsedY
+                } else 0f
+                
+                android.util.Log.d("PlayerDrag", "Starting animations to destY=$destY, destFraction=$destFraction")
+                try {
+                    coroutineScope {
+                        launch {
+                            currentSheetTranslationY.animateTo(
+                                targetValue = destY,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
+                                initialVelocity = initialVelocity
+                            )
+                            currentSheetTranslationY.snapTo(destY)
+                            android.util.Log.d("PlayerDrag", "currentSheetTranslationY finished at ${currentSheetTranslationY.value}")
+                        }
+                        launch {
+                            playerContentExpansionFraction.animateTo(
+                                targetValue = destFraction,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
+                                initialVelocity = initialFractionVelocity
+                            ) {
+                                viewModel.setPlayerExpansionFraction(value)
+                            }
+                            viewModel.setPlayerExpansionFraction(destFraction)
+                            android.util.Log.d("PlayerDrag", "playerContentExpansionFraction finished at ${playerContentExpansionFraction.value}")
+                        }
                     }
+                } catch (e: Exception) {
+                    android.util.Log.d("PlayerDrag", "Animation cancelled/interrupted: ${e.message}")
                 }
             }
         }
 
         LaunchedEffect(currentSheetContentState) {
-            animatePlayerSheet(currentSheetContentState == PlayerSheetState.EXPANDED)
+            android.util.Log.d("PlayerDrag", "LaunchedEffect(currentSheetContentState): state=$currentSheetContentState, isDragging=$isDragging")
+            if (!isDragging) {
+                triggerSheetAnimation(currentSheetContentState == PlayerSheetState.EXPANDED)
+            }
         }
 
         LaunchedEffect(playerContentExpansionFraction) {
@@ -1010,7 +1066,7 @@ fun PlayerBottomSheetCompose(
             playerContentExpansionFraction = playerContentExpansionFraction,
             containerHeight = containerHeight,
             currentSheetTranslationY = currentSheetTranslationY,
-            sheetCollapsedTargetYProvider = { sheetCollapsedTargetYState.value },
+            sheetCollapsedTargetYProvider = computeNormalCollapsedY,
             isNavBarHiddenProvider = { (bottomNavTranslationYState.value / (if (dynamicBottomNavHeightState.value > 0) dynamicBottomNavHeightState.value else 1f)) > 0.5f },
             navBarCornerRadiusDp = 32.dp
         )
@@ -1035,11 +1091,11 @@ fun PlayerBottomSheetCompose(
                 playerContentExpansionFraction = playerContentExpansionFraction,
                 currentSheetTranslationY = currentSheetTranslationY,
                 expandedYProvider = { 0f },
-                collapsedYProvider = { sheetCollapsedTargetYState.value },
+                collapsedYProvider = computeNormalCollapsedY,
                 miniHeightPxProvider = { miniHeightPx },
                 currentSheetStateProvider = { currentSheetContentState },
                 visualOvershootScaleY = visualOvershootScaleY,
-                onAnimateSheet = { target, _, velocity -> animatePlayerSheet(target, velocity) },
+                onAnimateSheet = { target, _, velocity -> triggerSheetAnimation(target, velocity) },
                 onExpandSheetState = { currentSheetContentState = PlayerSheetState.EXPANDED },
                 onCollapseSheetState = { currentSheetContentState = PlayerSheetState.COLLAPSED },
                 onDragStateChange = { dragging -> isDragging = dragging },
@@ -1062,6 +1118,9 @@ fun PlayerBottomSheetCompose(
         )
 
         if (showPlayerContentArea) {
+            var sheetRootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+            var tabletPlaceholderOffset by remember { mutableStateOf<Offset?>(null) }
+
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1069,11 +1128,21 @@ fun PlayerBottomSheetCompose(
                     .height(containerHeight),
                 color = Color.Transparent
             ) {
-                Box(modifier = Modifier.fillMaxSize().padding(bottom = sheetVisualState.currentBottomPadding)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = sheetVisualState.currentBottomPadding)
+                        .onGloballyPositioned { sheetRootCoordinates = it }
+                ) {
+                    val verticalDragModifier = Modifier.playerSheetVerticalDragGesture(
+                        enabled = currentSheetContentState == PlayerSheetState.EXPANDED && (isTablet || !isLyricsModeEnabled) && !isQueueExpanded,
+                        handler = sheetVerticalDragGestureHandler
+                    )
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .zIndex(if (isQueueExpanded) 5f else 2f)
+                            .zIndex(2f)
                     ) {
                         Box(
                             modifier = Modifier
@@ -1097,10 +1166,7 @@ fun PlayerBottomSheetCompose(
                                         placeable.placeRelative(startPaddingPx, 0)
                                     }
                                 }
-                                .miniPlayerDismissHorizontalGesture(
-                                    enabled = currentSheetContentState == PlayerSheetState.COLLAPSED,
-                                    handler = miniDismissGestureHandler
-                                )
+
                                 .graphicsLayer {
                                     translationX = offsetAnimatable.value
                                     scaleY = visualOvershootScaleY.value
@@ -1114,23 +1180,23 @@ fun PlayerBottomSheetCompose(
                                     color = dynamicBgColor,
                                     shape = playerShadowShape
                                 )
-                                .playerSheetVerticalDragGesture(enabled = !isLyricsModeEnabled && !isQueueExpanded, handler = sheetVerticalDragGestureHandler)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    currentSheetContentState = if (currentSheetContentState == PlayerSheetState.COLLAPSED) {
-                                        PlayerSheetState.EXPANDED
+                                .then(
+                                    if (currentSheetContentState == PlayerSheetState.COLLAPSED) {
+                                        Modifier
+                                            .playerSheetVerticalDragGesture(
+                                                enabled = true,
+                                                handler = sheetVerticalDragGestureHandler
+                                            )
+                                            .miniPlayerDismissHorizontalGesture(
+                                                enabled = true,
+                                                handler = miniDismissGestureHandler
+                                            )
                                     } else {
-                                        PlayerSheetState.COLLAPSED
+                                        Modifier
                                     }
-                                }
+                                )
+                                .zIndex(if (isQueueExpanded) 5f else 1f)
                         ) {
-                            val verticalDragModifier = Modifier.playerSheetVerticalDragGesture(
-                                enabled = currentSheetContentState == PlayerSheetState.EXPANDED && !isLyricsModeEnabled && !isQueueExpanded,
-                                handler = sheetVerticalDragGestureHandler
-                            )
-
                             UnifiedPlayerMiniAndFullLayers(
                                 activity = activity,
                                 viewModel = viewModel,
@@ -1142,7 +1208,9 @@ fun PlayerBottomSheetCompose(
                                 containerHeight = containerHeight,
                                 onCollapse = { currentSheetContentState = PlayerSheetState.COLLAPSED },
                                 onExpand = { currentSheetContentState = PlayerSheetState.EXPANDED },
-                                dragModifier = verticalDragModifier
+                                dragModifier = verticalDragModifier,
+                                onTabletPlaceholderPositioned = { tabletPlaceholderOffset = it },
+                                sheetRootCoordinates = sheetRootCoordinates
                             )
                         }
                     }
@@ -1150,147 +1218,280 @@ fun PlayerBottomSheetCompose(
                     // Integrated shared artwork layer. In lyrics mode the same ArtworkPager
                     // moves into the app bar as a compact thumbnail instead of being hidden.
                     val isMvMode by viewModel.isMvMode.collectAsStateWithLifecycle()
+                    val hasMusicVideo by viewModel.hasMusicVideo.collectAsStateWithLifecycle()
+                    val musicVideoUrl by viewModel.musicVideoUrl.collectAsStateWithLifecycle()
+                    val isEffectiveMvMode = isMvMode && hasMusicVideo && !musicVideoUrl.isNullOrBlank()
+
                     val isMvFullscreen by viewModel.isMvFullscreen.collectAsStateWithLifecycle()
                     val isInPipMode by viewModel.isInPipMode.collectAsStateWithLifecycle()
                     val isTrueFullscreen = isMvFullscreen || isInPipMode
 
-                    val screenWidth = LocalConfiguration.current.screenWidthDp
-                    val screenHeight = LocalConfiguration.current.screenHeightDp
-                    
-                    val targetAlbumArtWidthDp = if (isTrueFullscreen) screenWidth.dp else androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
-                    val baseAlbumArtHeightDp = androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
+                    val statusBarTopPx = WindowInsets.statusBars.getTop(density).toFloat()
+                    val navBarBottomPx = WindowInsets.navigationBars.getBottom(density).toFloat()
+
+                    val screenWidth = with(density) { screenWidthPx.toDp() }
+                    val screenHeight = with(density) { screenHeightPx.toDp() }
+                    val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                    val isWideLandscape = isLandscape && screenWidth >= 600.dp
+                    val isCompactLandscape = isLandscape && !isWideLandscape
+                    val isTablet = isWideLandscape
+                    val dimens = com.codetrio.overdrive.ui.theme.LocalDimens.current
+
+                    val baseAlbumArtHeightDp = when {
+                        isWideLandscape -> {
+                            val availableWidthDp = screenWidth - (dimens.screenMargin * 2)
+                            val rightPaneWidthDp = (availableWidthDp * 0.44f).coerceIn(320.dp, 540.dp)
+                            val maxLeftWidth = availableWidthDp - rightPaneWidthDp - 24.dp
+                            val maxLeftHeight = (screenHeight - with(density) { statusBarTopPx.toDp() } - 240.dp).coerceAtLeast(180.dp)
+                            androidx.compose.ui.unit.min(maxLeftWidth * 0.88f, maxLeftHeight).coerceIn(180.dp, 440.dp)
+                        }
+                        isCompactLandscape -> {
+                            androidx.compose.ui.unit.min(220.dp, (screenHeight - with(density) { statusBarTopPx.toDp() } - 36.dp).coerceAtLeast(140.dp))
+                        }
+                        else -> { // Portrait
+                            if (screenWidth >= 600.dp) {
+                                androidx.compose.ui.unit.min(screenWidth * 0.65f, screenHeight * 0.40f).coerceIn(260.dp, 480.dp)
+                            } else {
+                                val contentWidth = screenWidth - 44.dp
+                                androidx.compose.ui.unit.min(contentWidth, screenHeight * 0.39f).coerceIn(220.dp, 350.dp)
+                            }
+                        }
+                    }
+
+                    val videoAspectRatio by viewModel.videoAspectRatio.collectAsStateWithLifecycle()
+
+                    val targetAlbumArtWidthDp = if (isTrueFullscreen) {
+                        screenWidth
+                    } else {
+                        baseAlbumArtHeightDp
+                    }
+
                     val targetAlbumArtHeightDp = if (isTrueFullscreen) {
-                        screenHeight.dp
-                    } else if (isMvMode) {
-                        baseAlbumArtHeightDp / videoAspectRatio
+                        screenHeight
                     } else {
                         baseAlbumArtHeightDp
                     }
                     
                     val albumArtWidthDp by androidx.compose.animation.core.animateDpAsState(
                         targetValue = targetAlbumArtWidthDp,
-                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 380f),
+                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f),
                         label = "AlbumArtWidth"
                     )
+
                     val albumArtHeightDp by androidx.compose.animation.core.animateDpAsState(
                         targetValue = targetAlbumArtHeightDp,
-                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 380f),
+                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f),
                         label = "AlbumArtHeight"
                     )
-                    
-                    val statusBarTopPx = WindowInsets.statusBars.getTop(density).toFloat()
+
+                    val queueFadeAlpha by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = if (isQueueExpanded) 1f else 0f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f),
+                        label = "QueueFadeAlpha"
+                    )
 
                     val canvasArtwork by viewModel.canvasArtwork.collectAsStateWithLifecycle()
-                    val prefs = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
-                    val showAnimatedArt = prefs.getBoolean("show_animated_art", true)
-                    val playerTheme = prefs.getString("player_theme", "fluid") ?: "fluid"
+                    val prefs = remember { context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE) }
+                    var showAnimatedArt by remember { mutableStateOf(prefs.getBoolean("show_animated_art", true)) }
+                    var playerTheme by remember { mutableStateOf(prefs.getString("player_theme", "fluid") ?: "fluid") }
+
+                    DisposableEffect(prefs) {
+                        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
+                            if (key == "player_theme") {
+                                playerTheme = sp.getString(key, "fluid") ?: "fluid"
+                            } else if (key == "show_animated_art") {
+                                showAnimatedArt = sp.getBoolean(key, true)
+                            }
+                        }
+                        prefs.registerOnSharedPreferenceChangeListener(listener)
+                        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+                    }
+
                     val isStatic = playerTheme == "static"
-                    val hasCanvas = showAnimatedArt && canvasArtwork != null &&
+                    val isVinyl = playerTheme == "vinyl"
+                    val hasCanvas = !isStatic && !isVinyl && showAnimatedArt && canvasArtwork != null &&
                         (!canvasArtwork!!.preferredVerticalAnimationUrl.isNullOrBlank() || !canvasArtwork!!.preferredAnimationUrl.isNullOrBlank())
 
                     val miniSizePx = with(density) { 48.dp.toPx() }
                     val fullWidthPx = with(density) { albumArtWidthDp.toPx() }
                     val fullHeightPx = with(density) { albumArtHeightDp.toPx() }
-                    val isTablet = screenWidth >= 600
-                    val screenWidthPx = with(density) { screenWidth.dp.toPx() }
+                    val screenWidthPx = with(density) { screenWidth.toPx() }
                     val xStartOffsetPx = with(density) { 16.dp.toPx() }
                     val yStartPx = with(density) { 16.dp.toPx() }
 
-                    val dimens = com.codetrio.overdrive.ui.theme.LocalDimens.current
-                    val xEndPxTarget = remember(isTrueFullscreen, isTablet, isLyricsModeEnabled, screenWidthPx, fullWidthPx, density, dimens) {
+                    val xEndPxTarget = remember(isTrueFullscreen, isTablet, isCompactLandscape, screenWidthPx, fullWidthPx, density, dimens, tabletPlaceholderOffset) {
                         if (isTrueFullscreen) {
                             0f
-                        } else if (isTablet) {
-                            if (isLyricsModeEnabled) {
-                                val screenMarginPx = with(density) { dimens.screenMargin.toPx() }
-                                val availableWidthPx = screenWidthPx - (2 * screenMarginPx)
-                                val leftPaneWidthPx = availableWidthPx / 2f
-                                screenMarginPx + (leftPaneWidthPx - fullWidthPx) / 2f
-                            } else {
-                                (screenWidthPx - fullWidthPx) / 2f
-                            }
+                        } else if (tabletPlaceholderOffset != null && isTablet) {
+                            tabletPlaceholderOffset!!.x
+                        } else if (isTablet || isCompactLandscape) {
+                            val screenMarginPx = with(density) { dimens.screenMargin.toPx() }
+                            val availableWidthPx = screenWidthPx - (2 * screenMarginPx)
+                            val leftPaneWidthPx = availableWidthPx / 2f
+                            screenMarginPx + (leftPaneWidthPx - fullWidthPx) / 2f
                         } else {
                             (screenWidthPx - fullWidthPx) / 2f
                         }
                     }
                     val xEndPx by animateFloatAsState(
                         targetValue = xEndPxTarget,
-                        animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f),
-                        label = "AlbumArtXPosition"
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f),
+                        label = "AlbumArtX"
                     )
 
-                    val yEndPxTarget = remember(isTrueFullscreen, isTablet, statusBarTopPx, density, containerHeight, albumArtHeightDp, fullHeightPx, screenHeight, screenWidth, isMvMode, videoAspectRatio) {
+                    val yEndPxTarget = remember(isTrueFullscreen, isTablet, isCompactLandscape, statusBarTopPx, navBarBottomPx, density, containerHeight, albumArtHeightDp, fullHeightPx, screenHeight, screenWidth, tabletPlaceholderOffset) {
                         if (isTrueFullscreen) {
                             0f
-                        } else if (isTablet) {
-                            val baseControlsHeightDp = 340.dp
-                            val controlsHeightDp = baseControlsHeightDp
-                            val totalGroupHeightDp = albumArtHeightDp + controlsHeightDp
-                            val availableHeightDp = screenHeight.dp - with(density) { statusBarTopPx.toDp() }
-                            val tabletTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableHeightDp - totalGroupHeightDp) / 2f).coerceAtLeast(16.dp)
-                            with(density) { tabletTopOffsetDp.toPx() }
+                        } else if (isTablet || isCompactLandscape) {
+                            if (tabletPlaceholderOffset != null) {
+                                tabletPlaceholderOffset!!.y
+                            } else {
+                                val availableHeightPx = screenHeightPx - statusBarTopPx - navBarBottomPx
+                                val topMarginPx = ((availableHeightPx - fullHeightPx) / 2f).coerceAtLeast(0f)
+                                statusBarTopPx + topMarginPx
+                            }
                         } else {
-                            val baseAlbumArtHeightDp = androidx.compose.ui.unit.min((screenWidth * 0.9f).dp, (screenHeight * 0.45f).dp)
-                            val controlsAreaHeightDp = 400.dp
-                            val availableTopSpaceDp = screenHeight.dp - with(density) { statusBarTopPx.toDp() } - controlsAreaHeightDp
-                            val squareTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableTopSpaceDp - baseAlbumArtHeightDp) / 2f).coerceAtLeast(16.dp)
+                            val availableTopSpaceDp = screenHeight - with(density) { statusBarTopPx.toDp() } - 376.dp
+                            val squareTopOffsetDp = with(density) { statusBarTopPx.toDp() } + ((availableTopSpaceDp - baseAlbumArtHeightDp) / 2f).coerceIn(12.dp, 28.dp)
                             val squareCenterYDp = squareTopOffsetDp + (baseAlbumArtHeightDp / 2f)
-                            val albumArtHeightDp = if (isMvMode) baseAlbumArtHeightDp / videoAspectRatio else baseAlbumArtHeightDp
-                            val phoneTopOffsetDp = squareCenterYDp - (albumArtHeightDp / 2f)
+                            val currentArtHeightDp = baseAlbumArtHeightDp
+                            val phoneTopOffsetDp = squareCenterYDp - (currentArtHeightDp / 2f)
                             with(density) { phoneTopOffsetDp.toPx() }
                         }
                     }
                     val yEndPx by animateFloatAsState(
                         targetValue = yEndPxTarget,
-                        animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f),
-                        label = "AlbumArtYPosition"
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f),
+                        label = "AlbumArtY"
                     )
-                    val targetExpandedCornerRadiusPx = with(density) { 28.dp.toPx() } // Increased for Apple Music aesthetic
+                    val targetExpandedCornerRadiusPx = with(density) { 28.dp.toPx() }
 
-                    var lastCornerRadiusPx by remember { androidx.compose.runtime.mutableFloatStateOf(-1f) }
-                    var cachedShape by remember { mutableStateOf<androidx.compose.ui.graphics.Shape>(RoundedCornerShape(16.dp)) }
+                    val isArtworkPagerInteractive by remember(isTablet, isLyricsModeEnabled, isQueueExpanded) {
+                        derivedStateOf {
+                            playerContentExpansionFraction.value > 0.95f && (isTablet || !isLyricsModeEnabled) && !isQueueExpanded
+                        }
+                    }
+                    val isCanvasAllowed by remember(isTablet, isLyricsModeEnabled) {
+                        derivedStateOf {
+                            playerContentExpansionFraction.value > 0.95f && (isTablet || !isLyricsModeEnabled) && lyricsArtworkProgress == 0f
+                        }
+                    }
+                    val isTonearmVisible by remember {
+                        derivedStateOf {
+                            playerContentExpansionFraction.value > 0.85f && lyricsArtworkProgress == 0f
+                        }
+                    }
+                    val isSpecialTheme = isVinyl || (playerTheme == "immersion")
+                    val isArtworkDragEnabled by remember(isTablet, isLyricsModeEnabled, isQueueExpanded, currentSheetContentState) {
+                        derivedStateOf {
+                            currentSheetContentState == PlayerSheetState.EXPANDED && (isTablet || !isLyricsModeEnabled) && !isQueueExpanded
+                        }
+                    }
+                    val artworkPagerZIndex by remember(isTablet, isLyricsModeEnabled, isQueueExpanded, isTrueFullscreen) {
+                        derivedStateOf {
+                            if (isTrueFullscreen) 10f
+                            else if (!isTablet && (isLyricsModeEnabled || isQueueExpanded)) -1f
+                            else 3f
+                        }
+                    }
 
                     Box(
                         modifier = Modifier
                             .size(width = albumArtWidthDp, height = albumArtHeightDp)
                             .graphicsLayer {
-                                val t = playerContentExpansionFraction.value
+                                val t = playerContentExpansionFraction.value.coerceIn(0f, 1f)
                                 val lyricsT = lyricsArtworkProgress
 
-                                val normalScale = androidx.compose.ui.util.lerp(miniSizePx / fullWidthPx, 1f, t)
+                                val motionT = androidx.compose.animation.core.FastOutSlowInEasing.transform(t)
+
+                                val normalScale = androidx.compose.ui.util.lerp(miniSizePx / fullWidthPx, 1f, motionT)
                                 val startPaddingPx = sheetVisualState.currentHorizontalPaddingStartPxProvider()
                                 val xStartPx = startPaddingPx + xStartOffsetPx
 
-                                val normalX = androidx.compose.ui.util.lerp(xStartPx, xEndPx, t)
-                                val normalY = androidx.compose.ui.util.lerp(yStartPx, yEndPx, t)
-                                val normalCornerRadius = androidx.compose.ui.util.lerp(fullWidthPx / 2f, targetExpandedCornerRadiusPx, t)
-                                val normalShadow = androidx.compose.ui.util.lerp(0f, 6.dp.toPx(), t)
+                                val normalX = androidx.compose.ui.util.lerp(xStartPx, xEndPx, motionT)
+                                val normalY = androidx.compose.ui.util.lerp(yStartPx, yEndPx, motionT)
+
+                                val visualCornerRadiusPx = androidx.compose.ui.util.lerp(miniSizePx / 2f, targetExpandedCornerRadiusPx, motionT)
+                                val unscaledCornerRadiusPx = visualCornerRadiusPx / normalScale.coerceAtLeast(0.001f)
+
+                                val visualShadowElevationPx = androidx.compose.ui.util.lerp(0f, with(density) { 8.dp.toPx() }, motionT)
+                                val unscaledShadowElevationPx = visualShadowElevationPx / normalScale.coerceAtLeast(0.001f)
 
                                 val dismissOffsetPx = offsetAnimatable.value * (1f - t)
 
-                                scaleX = normalScale
-                                scaleY = normalScale
-                                translationX = normalX + dismissOffsetPx
-                                translationY = normalY
-                                transformOrigin = TransformOrigin(0f, 0f)
-
-                                if (kotlin.math.abs(normalCornerRadius - lastCornerRadiusPx) > 0.2f) {
-                                    lastCornerRadiusPx = normalCornerRadius
-                                    cachedShape = RoundedCornerShape(normalCornerRadius)
+                                val queueEnlargeScale = if (fullWidthPx > 0f) screenWidthPx / fullWidthPx else 1f
+                                val effectiveScale = if (!isSpecialTheme && !isTablet && t > 0.9f) {
+                                    androidx.compose.ui.util.lerp(normalScale, queueEnlargeScale, queueFadeAlpha)
+                                } else {
+                                    normalScale
                                 }
-                                shape = cachedShape
-                                clip = true
-                                shadowElevation = normalShadow
 
-                                val canvasHideT = if (hasCanvas) {
+                                val effectiveX = if (!isSpecialTheme && !isTablet && t > 0.9f) {
+                                    androidx.compose.ui.util.lerp(normalX + dismissOffsetPx, 0f, queueFadeAlpha)
+                                } else {
+                                    normalX + dismissOffsetPx
+                                }
+
+                                val effectiveY = if (!isSpecialTheme && !isTablet && t > 0.9f) {
+                                    androidx.compose.ui.util.lerp(normalY, 0f, queueFadeAlpha)
+                                } else {
+                                    normalY
+                                }
+
+                                val effectiveCornerRadiusPx = if (!isSpecialTheme && !isTablet && t > 0.9f) {
+                                    androidx.compose.ui.util.lerp(visualCornerRadiusPx, 0f, queueFadeAlpha) / effectiveScale.coerceAtLeast(0.001f)
+                                } else {
+                                    unscaledCornerRadiusPx
+                                }
+
+                                scaleX = effectiveScale
+                                scaleY = effectiveScale
+                                translationX = effectiveX
+                                translationY = if (!isTablet && queueFadeAlpha >= 0.99f) 10000f else effectiveY
+                                transformOrigin = TransformOrigin(0f, 0f)
+                                compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+
+                                shape = if (isEffectiveMvMode) {
+                                    RoundedCornerShape(0.dp)
+                                } else {
+                                    RoundedCornerShape(effectiveCornerRadiusPx)
+                                }
+                                clip = if (isEffectiveMvMode) false else if (isVinyl && t > 0.5f) false else true
+                                shadowElevation = if (isEffectiveMvMode) 0f else if (isVinyl && t > 0.5f) 0f else if (!isSpecialTheme && queueFadeAlpha > 0.5f) 0f else unscaledShadowElevationPx
+
+                                val isImmersionLike = playerTheme == "immersion" || playerTheme == "immersion-v2"
+                                val immersionHideT = if (isImmersionLike && !isEffectiveMvMode) {
                                     ((t - 0.75f).coerceAtLeast(0f) * 4f) * (1f - lyricsT)
                                 } else {
                                     0f
                                 }
+                                val canvasHideT = if (hasCanvas && !isQueueExpanded) {
+                                    ((t - 0.75f).coerceAtLeast(0f) * 4f) * (1f - lyricsT)
+                                } else {
+                                    0f
+                                }
+                                val hideArtworkT = maxOf(canvasHideT, immersionHideT)
                                 val lyricsFade = if (isTablet) 1f else (1f - lyricsT)
-                                alpha = artworkAlpha * (1f - canvasHideT) * lyricsFade
+                                alpha = artworkAlpha * (1f - hideArtworkT) * lyricsFade * (1f - queueFadeAlpha)
                             }
-                            .zIndex(if (isQueueExpanded) 1f else if (playerTheme == "immersion" && !isMvMode && playerContentExpansionFraction.value > 0.5f) -1f else 3f)
+                            .drawWithContent {
+                                drawContent()
+                                if (!isSpecialTheme && !isTablet && queueFadeAlpha > 0.01f) {
+                                    drawRect(
+                                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                            colorStops = arrayOf(
+                                                0.0f to Color.Black,
+                                                0.45f to Color.Black,
+                                                androidx.compose.ui.util.lerp(1.0f, 0.88f, queueFadeAlpha) to Color.Transparent,
+                                                1.0f to Color.Transparent
+                                            )
+                                        ),
+                                        blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+                                    )
+                                }
+                            }
+                            .zIndex(artworkPagerZIndex)
+                            .then(if (isArtworkDragEnabled) verticalDragModifier else Modifier)
                     ) {
                         ArtworkPager(
                             viewModel = viewModel,
@@ -1298,8 +1499,9 @@ fun PlayerBottomSheetCompose(
                             songList = songList,
                             currentSongIndex = uiState.currentSongIndex,
                             context = context,
-                            userScrollEnabled = playerContentExpansionFraction.value > 0.95f && (isTablet || !isLyricsModeEnabled) && !isQueueExpanded,
-                            allowCanvas = playerContentExpansionFraction.value > 0.95f && (isTablet || !isLyricsModeEnabled) && lyricsArtworkProgress == 0f,
+                            userScrollEnabled = isArtworkPagerInteractive,
+                            allowCanvas = isCanvasAllowed,
+                            showTonearm = isTonearmVisible,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -1314,7 +1516,7 @@ fun PlayerBottomSheetCompose(
                             viewModel = viewModel,
                             playerBackgroundColor = playerBackgroundColor,
                             dynamicAccentColor = dynamicAccentColor,
-                            isDark = androidx.compose.foundation.isSystemInDarkTheme()
+                            isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
                         )
                     }
                 }
@@ -1427,7 +1629,7 @@ private fun MiniPlayerContentInternal(
     modifier: Modifier = Modifier
 ) {
 
-    val isDark = isSystemInDarkTheme()
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val contentColor = if (isDark) Color.White else Color(0xFF1C1B1F)
     val contentSecondary = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1C1B1F).copy(alpha = 0.6f)
     val playBgColor = if (isDark) Color(0x1AFFFFFF) else Color(0x0D000000)
@@ -1461,7 +1663,7 @@ private fun MiniPlayerContentInternal(
                 amplitudeAnimatable.animateTo(
                     targetValue = if (isPlaying) 1f else 0f,
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        dampingRatio = Spring.DampingRatioNoBouncy,
                         stiffness = Spring.StiffnessLow
                     )
                 )
@@ -1509,7 +1711,15 @@ private fun MiniPlayerContentInternal(
         Spacer(modifier = Modifier.width(20.dp))
 
         // Song Info
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick
+                )
+        ) {
             Text(
                 text = currentSong.title,
                 style = MaterialTheme.typography.bodyMedium.copy(
@@ -1519,11 +1729,40 @@ private fun MiniPlayerContentInternal(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            val castState by viewModel.castState.collectAsStateWithLifecycle()
+            val isCastConnected = castState is CastState.Connected
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start
             ) {
+                if (isCastConnected) {
+                    val deviceName = (castState as CastState.Connected).deviceName
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { viewModel.showCastSheet() }
+                            .padding(end = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.CastConnected,
+                            contentDescription = "Casting",
+                            tint = accentColor,
+                            modifier = Modifier
+                                .size(13.dp)
+                                .padding(end = 2.dp)
+                        )
+                        Text(
+                            text = "$deviceName • ",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = accentColor,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            maxLines = 1
+                        )
+                    }
+                }
                 Text(
                     text = currentSong.artist,
                     style = MaterialTheme.typography.bodySmall.copy(

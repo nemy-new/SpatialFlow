@@ -54,7 +54,7 @@ object PaxsenixLyrics {
         try {
             client.newCall(req).execute().use { resp ->
                 if (resp.isSuccessful) {
-                    return resp.body?.string()
+                    return resp.body.string()
                 }
             }
         } catch (e: Exception) {
@@ -69,7 +69,7 @@ object PaxsenixLyrics {
 
         return try {
             client.newCall(reqFallback).execute().use { resp ->
-                if (resp.isSuccessful) resp.body?.string() else null
+                if (resp.isSuccessful) resp.body.string() else null
             }
         } catch (e: Exception) {
             null
@@ -119,7 +119,7 @@ object PaxsenixLyrics {
 
             client.newCall(req).execute().use { resp ->
                 if (resp.isSuccessful) {
-                    val body = resp.body?.string()
+                    val body = resp.body.string()
                     if (!body.isNullOrBlank()) {
                         val root = JsonParser.parseString(body).asJsonObject
                         val songs = root.getAsJsonArray("results")

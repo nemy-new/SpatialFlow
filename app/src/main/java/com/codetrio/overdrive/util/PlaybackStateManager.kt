@@ -77,7 +77,20 @@ object PlaybackStateManager {
     fun getLastSong(context: Context): SongItem? {
         val json = getPrefs(context).getString(KEY_CURRENT_SONG, null) ?: return null
         return try {
-            gson.fromJson(json, SongItem::class.java)
+            val song = gson.fromJson(json, SongItem::class.java) ?: return null
+            val cleaned = SongItem.cleanArtist(song.artist, song.path)
+            if (cleaned != song.artist) {
+                SongItem(song.id, song.title, cleaned, song.albumId, song.path, song.duration, song.dateAdded, song.data).apply {
+                    this.thumbnailUrl = song.thumbnailUrl
+                    this.animatedThumbnailUrl = song.animatedThumbnailUrl
+                    this.videoId = song.videoId
+                    this.artistId = song.artistId
+                    this.lufs = song.lufs
+                    this.contentUri = song.contentUri
+                }
+            } else {
+                song
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error decoding song: ${e.message}")
             null
@@ -94,7 +107,22 @@ object PlaybackStateManager {
         val json = getPrefs(context).getString(KEY_QUEUE, null) ?: return emptyList()
         return try {
             val type = object : TypeToken<List<SongItem>>() {}.type
-            gson.fromJson(json, type) ?: emptyList()
+            val list: List<SongItem> = gson.fromJson(json, type) ?: emptyList()
+            list.map { song ->
+                val cleaned = SongItem.cleanArtist(song.artist, song.path)
+                if (cleaned != song.artist) {
+                    SongItem(song.id, song.title, cleaned, song.albumId, song.path, song.duration, song.dateAdded, song.data).apply {
+                        this.thumbnailUrl = song.thumbnailUrl
+                        this.animatedThumbnailUrl = song.animatedThumbnailUrl
+                        this.videoId = song.videoId
+                        this.artistId = song.artistId
+                        this.lufs = song.lufs
+                        this.contentUri = song.contentUri
+                    }
+                } else {
+                    song
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error decoding queue: ${e.message}")
             emptyList()

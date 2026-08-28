@@ -32,10 +32,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.BottomSheetDefaults
@@ -61,9 +63,12 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -97,6 +102,7 @@ internal fun FullScreenLyricsOverlay(
     currentSong: SongItem?,
     syncedLyrics: List<LyricLine>?,
     plainLyrics: String?,
+    translatedPlainLyrics: String? = null,
     isLoading: Boolean,
     lyricsError: Throwable?,
     currentPositionProvider: () -> Int,
@@ -123,7 +129,8 @@ internal fun FullScreenLyricsOverlay(
     onToggleTranslation: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val consumeClicks = remember { MutableInteractionSource() }
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isTabletMode = isEmbedded || configuration.screenWidthDp >= 600
     var showProvidersSheet by remember { mutableStateOf(false) }
     var isDraggingSeekbar by remember { mutableStateOf(false) }
     var dragSeekProgress by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
@@ -144,11 +151,6 @@ internal fun FullScreenLyricsOverlay(
 
     Box(
         modifier = modifier
-            .clickable(
-                interactionSource = consumeClicks,
-                indication = null,
-                onClick = {}
-            )
     ) {
 
         Column(
@@ -167,9 +169,6 @@ internal fun FullScreenLyricsOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-                val isTabletMode = isEmbedded || configuration.screenWidthDp >= 600
-
                 if (!isTabletMode) {
                     // Top-Left: Spacer for animated ArtworkPager + Song Title + Artist (Clickable to collapse to normal player)
                     Row(
@@ -228,6 +227,55 @@ internal fun FullScreenLyricsOverlay(
                         }
                     }
                 } else {
+                    // On Tablet: Active Lyrics Provider & Sync Offset Chip Button
+                    val activeProviderDisplayName = selectedProvider
+                        ?: providerResults.values.firstOrNull { it.hasLyrics() }?.providerName
+                        ?: "歌詞ソース"
+
+                    Surface(
+                        onClick = { showProvidersSheet = true },
+                        shape = RoundedCornerShape(20.dp),
+                        color = contentColor.copy(alpha = 0.08f),
+                        contentColor = contentColor,
+                        modifier = Modifier
+                            .padding(vertical = 4.dp)
+                            .height(36.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_lyrics),
+                                contentDescription = "Lyrics Provider",
+                                tint = dynamicAccentColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = activeProviderDisplayName,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (syncOffsetMs != 0L) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(dynamicAccentColor)
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = String.format(java.util.Locale.US, "%+.1fs", syncOffsetMs / 1000f),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.weight(1f))
                 }
 
@@ -314,26 +362,15 @@ internal fun FullScreenLyricsOverlay(
                     }
 
                     !plainLyrics.isNullOrBlank() -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 28.dp)
-                        ) {
-                            Text(
-                                text = plainLyrics,
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = contentColor.copy(alpha = 0.9f)
-                            )
-                            LyricsMetadataFooter(
-                                currentSong = currentSong,
-                                selectedProvider = selectedProvider,
-                                providerResults = providerResults,
-                                contentColor = contentColor
-                            )
-                        }
+                        PlainLyricsView(
+                            plainLyrics = plainLyrics,
+                            translatedPlainLyrics = translatedPlainLyrics,
+                            currentSong = currentSong,
+                            selectedProvider = selectedProvider,
+                            providerResults = providerResults,
+                            contentColor = contentColor,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
 
                     isLoading -> {
@@ -395,7 +432,7 @@ internal fun FullScreenLyricsOverlay(
                 val playPauseMorphProgress by animateFloatAsState(
                     targetValue = if (isPlaying) 1f else 0f,
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        dampingRatio = Spring.DampingRatioNoBouncy,
                         stiffness = Spring.StiffnessMediumLow
                     ),
                     label = "LyricsPlayPauseMorph"
@@ -410,7 +447,7 @@ internal fun FullScreenLyricsOverlay(
                 val pressScale by animateFloatAsState(
                     targetValue = if (isPlayPressed) 0.88f else 1f,
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        dampingRatio = Spring.DampingRatioNoBouncy,
                         stiffness = Spring.StiffnessMedium
                     ),
                     label = "LyricsPlayPressScale"
@@ -420,34 +457,102 @@ internal fun FullScreenLyricsOverlay(
             }
 
             if (showProvidersSheet && contentReady) {
-                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-                ModalBottomSheet(
-                    onDismissRequest = { showProvidersSheet = false },
-                    sheetState = sheetState,
-                    containerColor = playerBackgroundColor,
-                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                    dragHandle = { BottomSheetDefaults.DragHandle(color = contentColor.copy(alpha = 0.4f)) },
-                    scrimColor = Color.Black.copy(alpha = 0.3f)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(bottom = 12.dp)
+                if (isTabletMode) {
+                    Dialog(
+                        onDismissRequest = { showProvidersSheet = false },
+                        properties = DialogProperties(
+                            usePlatformDefaultWidth = false
+                        )
                     ) {
-                        UnifiedLyricsBottomSheetContent(
-                            providerResults = providerResults,
-                            selectedProvider = selectedProvider,
-                            syncOffsetMs = syncOffsetMs,
-                            onSyncOffsetChange = onSyncOffsetChange,
-                            onProviderSelected = onProviderSelected,
-                            onRefindClick = onRetryLyrics,
-                            accentColor = dynamicAccentColor,
-                            contentColor = contentColor,
+                        Surface(
+                            modifier = Modifier
+                                .widthIn(max = 520.dp)
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            tonalElevation = 6.dp,
+                            shadowElevation = 12.dp
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_lyrics),
+                                            contentDescription = null,
+                                            tint = dynamicAccentColor,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Text(
+                                            text = "歌詞設定",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    IconButton(onClick = { showProvidersSheet = false }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Close",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                                UnifiedLyricsBottomSheetContent(
+                                    providerResults = providerResults,
+                                    selectedProvider = selectedProvider,
+                                    syncOffsetMs = syncOffsetMs,
+                                    onSyncOffsetChange = onSyncOffsetChange,
+                                    onProviderSelected = onProviderSelected,
+                                    onRefindClick = onRetryLyrics,
+                                    accentColor = dynamicAccentColor,
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    ModalBottomSheet(
+                        onDismissRequest = { showProvidersSheet = false },
+                        sheetState = sheetState,
+                        containerColor = playerBackgroundColor,
+                        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                        dragHandle = { BottomSheetDefaults.DragHandle(color = contentColor.copy(alpha = 0.4f)) },
+                        scrimColor = Color.Black.copy(alpha = 0.3f)
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                        )
+                                .navigationBarsPadding()
+                                .padding(bottom = 12.dp)
+                        ) {
+                            UnifiedLyricsBottomSheetContent(
+                                providerResults = providerResults,
+                                selectedProvider = selectedProvider,
+                                syncOffsetMs = syncOffsetMs,
+                                onSyncOffsetChange = onSyncOffsetChange,
+                                onProviderSelected = onProviderSelected,
+                                onRefindClick = onRetryLyrics,
+                                accentColor = dynamicAccentColor,
+                                contentColor = contentColor,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -475,7 +580,7 @@ private fun UnifiedLyricsBottomSheetContent(
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    dampingRatio = Spring.DampingRatioNoBouncy,
                     stiffness = Spring.StiffnessMediumLow
                 )
             ),
@@ -779,7 +884,7 @@ private fun ProvidersListTab(
         val buttonCornerRadius by animateDpAsState(
             targetValue = if (buttonIsPressed) 28.dp else 16.dp,
             animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
+                dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessLow
             ),
             label = "refind_button_corners"
@@ -888,7 +993,7 @@ private fun SyncControlTab(
                 val animatedWeight by animateFloatAsState(
                     targetValue = targetWeight,
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        dampingRatio = Spring.DampingRatioNoBouncy,
                         stiffness = Spring.StiffnessMedium
                     ),
                     label = "clickableNeighborPushingWeight"

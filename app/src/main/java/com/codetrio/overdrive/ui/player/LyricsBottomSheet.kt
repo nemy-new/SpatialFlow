@@ -2,6 +2,7 @@ package com.codetrio.overdrive.ui.player
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -29,6 +30,7 @@ fun LyricsBottomSheet(
     currentSong: SongItem?,
     syncedLyrics: List<LyricLine>?,
     plainLyrics: String?,
+    translatedPlainLyrics: String? = null,
     isLoading: Boolean,
     lyricsError: Throwable?,
     currentPositionProvider: () -> Int,
@@ -63,23 +65,24 @@ fun LyricsBottomSheet(
         visible = visible,
         enter = slideInVertically(
             initialOffsetY = { fullHeight -> fullHeight },
-            animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f)
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f)
         ) + fadeIn(
-            animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f)
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f)
         ),
         exit = slideOutVertically(
             targetOffsetY = { fullHeight -> fullHeight },
-            animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f)
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f)
         ) + fadeOut(
-            animationSpec = spring(dampingRatio = 0.88f, stiffness = 380f)
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f)
         ),
-        modifier = modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures() }
+        modifier = modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             FullScreenLyricsOverlay(
                 currentSong = currentSong,
                 syncedLyrics = syncedLyrics,
                 plainLyrics = plainLyrics,
+                translatedPlainLyrics = translatedPlainLyrics,
                 isLoading = isLoading,
                 lyricsError = lyricsError,
                 currentPositionProvider = currentPositionProvider,

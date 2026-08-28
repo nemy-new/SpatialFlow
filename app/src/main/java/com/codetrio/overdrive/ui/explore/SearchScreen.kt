@@ -9,9 +9,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
@@ -424,37 +424,41 @@ fun SearchScreen(
                                     )
                                 }
                                 item {
+                                    val newReleasesTitle = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_new_releases)
+                                    val chartsTitle = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_charts)
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
                                         CategoryCard(
-                                            title = "New Releases",
+                                            title = newReleasesTitle,
                                             icon = Icons.Default.MusicNote,
                                             gradientColors = listOf(Color(0xFF2E1A47), Color(0xFF160B24)),
                                             onClick = {
-                                                viewModel.loadMood("New Releases", "FEmusic_new_releases", null)
+                                                viewModel.loadMood(newReleasesTitle, "FEmusic_new_releases", null)
                                             },
                                             modifier = Modifier.weight(1f)
                                         )
                                         CategoryCard(
-                                            title = "Charts",
-                                            icon = Icons.Default.TrendingUp,
+                                            title = chartsTitle,
+                                            icon = Icons.AutoMirrored.Filled.TrendingUp,
                                             gradientColors = listOf(Color(0xFF4C1D1D), Color(0xFF240E0E)),
                                             onClick = {
-                                                viewModel.loadMood("Charts", "FEmusic_charts", null)
+                                                viewModel.loadMood(chartsTitle, "FEmusic_charts", null)
                                             },
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
                                 }
                                 item {
+                                    val moodsAndGenresTitle = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_moods_and_genres)
+                                    val podcastsTitle = androidx.compose.ui.res.stringResource(com.codetrio.overdrive.R.string.text_podcasts)
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
                                         CategoryCard(
-                                            title = "Moods & Genres",
+                                            title = moodsAndGenresTitle,
                                             icon = Icons.Default.Favorite,
                                             gradientColors = listOf(Color(0xFF0F3040), Color(0xFF081820)),
                                             onClick = {
@@ -463,11 +467,11 @@ fun SearchScreen(
                                             modifier = Modifier.weight(1f)
                                         )
                                         CategoryCard(
-                                            title = "Podcasts",
+                                            title = podcastsTitle,
                                             icon = Icons.Default.Mic,
                                             gradientColors = listOf(Color(0xFF4A1E30), Color(0xFF240F18)),
                                             onClick = {
-                                                viewModel.loadMood("Podcasts", "FEmusic_podcasts", null)
+                                                viewModel.loadMood(podcastsTitle, "FEmusic_podcasts", null)
                                             },
                                             modifier = Modifier.weight(1f)
                                         )

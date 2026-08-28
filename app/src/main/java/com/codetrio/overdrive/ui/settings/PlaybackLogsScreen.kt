@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.List
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -115,7 +116,7 @@ fun PlaybackLogsScreen(
                         onClick = { selectedFilter = "all" },
                         label = { Text("${stringResource(R.string.logs_all)} (${history.size})") },
                         leadingIcon = {
-                            Icon(Icons.Rounded.List, null, modifier = Modifier.size(16.dp))
+                            Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.List, null, modifier = Modifier.size(16.dp))
                         }
                     )
                 }

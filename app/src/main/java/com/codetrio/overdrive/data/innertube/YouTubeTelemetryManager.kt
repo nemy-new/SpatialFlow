@@ -138,7 +138,7 @@ class YouTubeTelemetryManager(
         
         coroutineScope.launch(Dispatchers.IO) {
             try {
-                val innerTubeClient = clientProvider() ?: return@launch
+                val innerTubeClient = clientProvider()
                 val cookie = innerTubeClient.cookie ?: return@launch
                 
                 val separator = if (playbackUrl.contains("?")) "&" else "?"
@@ -228,7 +228,7 @@ class YouTubeTelemetryManager(
         
         coroutineScope.launch(Dispatchers.IO) {
             try {
-                val innerTubeClient = clientProvider() ?: return@launch
+                val innerTubeClient = clientProvider()
                 val cookie = innerTubeClient.cookie ?: return@launch
                 
                 val authHeaders = innerTubeClient.buildHeaders(InnerTubeClient.ClientType.WEB_REMIX)

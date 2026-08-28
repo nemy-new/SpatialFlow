@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -100,7 +101,7 @@ fun AlbumDetailView(
     onStartRadioClick: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp >= 600
 
     AdaptiveDetailContainer(
         isLandscape = isLandscape,
@@ -154,7 +155,7 @@ fun PlaylistDetailView(
     onStartRadioClick: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp >= 600
 
     AdaptiveDetailContainer(
         isLandscape = isLandscape,
@@ -213,7 +214,7 @@ fun ArtistDetailView(
     onSectionClick: ((String, String?, String) -> Unit)? = null
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp >= 600
 
     val formattedSubtitle = remember(artistPage.artist.subscriberCount) {
         val raw = artistPage.artist.subscriberCount ?: ""
@@ -386,9 +387,15 @@ fun ArtistDetailView(
 
                 // Render sections below the banner
                 artistPage.sections.forEach { section ->
-                    val isTopSongs = section.title.contains("song", ignoreCase = true)
+                    val isTopSongs = section.title.contains("song", ignoreCase = true) ||
+                                     section.title.contains("曲", ignoreCase = true) ||
+                                     section.title.contains("track", ignoreCase = true) ||
+                                     section.title.contains("popular", ignoreCase = true) ||
+                                     section.title.contains("トップ", ignoreCase = true) ||
+                                     (section.items.isNotEmpty() && section.items.all { it is SearchItem.Song } && section == artistPage.sections.firstOrNull())
+
                     if (isTopSongs) {
-                        item {
+                        item(key = "artist_top_songs_header_${section.title}") {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -431,30 +438,22 @@ fun ArtistDetailView(
                                 }
                             }
                         }
-                        val songs = section.items.filterIsInstance<SearchItem.Song>()
-                        val topSongsToTake = songs.take(6)
-                        val songChunks = topSongsToTake.chunked(2)
 
-                        songChunks.forEachIndexed { chunkIdx, chunk ->
-                            item(key = "top-songs-row-$chunkIdx") {
-                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                                    chunk.forEachIndexed { colIdx, item ->
-                                        val song = item.song
-                                        val isPlaying = song.videoId == currentOnlineSong?.videoId
-                                        val index = chunkIdx * 2 + colIdx
-                                        Box(modifier = Modifier.weight(1f)) {
-                                            ArtistTopSongItem(
-                                                song = song,
-                                                isPlaying = isPlaying,
-                                                onClick = { onSongClick(song, songs.map { it.song }, index) },
-                                                onMenuClick = { onSongMenuClick(song) }
-                                            )
-                                        }
-                                    }
-                                    if (chunk.size < 2) {
-                                        Spacer(modifier = Modifier.weight(1f))
-                                    }
-                                }
+                        val songs = section.items.filterIsInstance<SearchItem.Song>()
+                        val topSongsToTake = songs.take(5)
+
+                        topSongsToTake.forEachIndexed { index, item ->
+                            val song = item.song
+                            val isPlaying = song.videoId == currentOnlineSong?.videoId
+                            item(key = "top-song-${song.videoId}-$index") {
+                                ArtistTopSongItem(
+                                    song = song,
+                                    isPlaying = isPlaying,
+                                    rankingIndex = index + 1,
+                                    onClick = { onSongClick(song, songs.map { it.song }, index) },
+                                    onMenuClick = { onSongMenuClick(song) },
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                )
                             }
                         }
                     } else {
@@ -576,9 +575,15 @@ fun ArtistDetailView(
             }
         ) {
             artistPage.sections.forEach { section ->
-                val isTopSongs = section.title.contains("song", ignoreCase = true)
+                val isTopSongs = section.title.contains("song", ignoreCase = true) ||
+                                 section.title.contains("曲", ignoreCase = true) ||
+                                 section.title.contains("track", ignoreCase = true) ||
+                                 section.title.contains("popular", ignoreCase = true) ||
+                                 section.title.contains("トップ", ignoreCase = true) ||
+                                 (section.items.isNotEmpty() && section.items.all { it is SearchItem.Song } && section == artistPage.sections.firstOrNull())
+
                 if (isTopSongs) {
-                    item {
+                    item(key = "tablet_top_songs_header_${section.title}") {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -617,29 +622,18 @@ fun ArtistDetailView(
                     }
                     val songs = section.items.filterIsInstance<SearchItem.Song>()
                     val topSongsToTake = songs.take(5)
-                    val columns = 1
-                    val songChunks = topSongsToTake.chunked(columns)
 
-                    songChunks.forEachIndexed { chunkIdx, chunk ->
-                        item(key = "top-songs-row-$chunkIdx") {
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                chunk.forEachIndexed { colIdx, item ->
-                                    val song = item.song
-                                    val isPlaying = song.videoId == currentOnlineSong?.videoId
-                                    val index = chunkIdx * columns + colIdx
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        ArtistTopSongItem(
-                                            song = song,
-                                            isPlaying = isPlaying,
-                                            onClick = { onSongClick(song, songs.map { it.song }, index) },
-                                            onMenuClick = { onSongMenuClick(song) }
-                                        )
-                                    }
-                                }
-                                if (chunk.size < columns) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
+                    topSongsToTake.forEachIndexed { index, item ->
+                        val song = item.song
+                        val isPlaying = song.videoId == currentOnlineSong?.videoId
+                        item(key = "tablet-top-song-${song.videoId}-$index") {
+                            ArtistTopSongItem(
+                                song = song,
+                                isPlaying = isPlaying,
+                                rankingIndex = index + 1,
+                                onClick = { onSongClick(song, songs.map { it.song }, index) },
+                                onMenuClick = { onSongMenuClick(song) }
+                            )
                         }
                     }
                 } else {
@@ -726,7 +720,8 @@ fun AdaptiveDetailContainer(
                 // LEFT: Sticky Hero Info Pane (Artwork + Title + Subtitle + Action Buttons)
                 Column(
                     modifier = Modifier
-                        .width(360.dp)
+                        .fillMaxWidth(0.38f)
+                        .widthIn(min = 280.dp, max = 380.dp)
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState())
                         .padding(start = 24.dp, top = 24.dp, bottom = 48.dp, end = 16.dp),
@@ -980,11 +975,13 @@ fun ArtistTopSongItem(
     isPlaying: Boolean,
     onClick: () -> Unit,
     onMenuClick: () -> Unit,
+    rankingIndex: Int? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onMenuClick
@@ -992,11 +989,23 @@ fun ArtistTopSongItem(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(56.dp)) {
+        if (rankingIndex != null) {
+            Text(
+                text = "$rankingIndex",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                modifier = Modifier.width(28.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+
+        Box(modifier = Modifier.size(52.dp)) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current).data(song.thumbnailUrl).crossfade(false).build(),
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp)),
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
             if (isPlaying) {
@@ -1017,11 +1026,11 @@ fun ArtistTopSongItem(
             Text(
                 text = song.title,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = if (isPlaying) FontWeight.ExtraBold else FontWeight.SemiBold,
                 color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "${song.artist}${song.duration?.let { " • $it" } ?: ""}",
                 style = MaterialTheme.typography.bodyMedium,
@@ -1212,7 +1221,7 @@ fun SectionDetailView(
     onStartRadioClick: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp >= 600
     val hasSongsOnly = section.items.isNotEmpty() && section.items.all { it is SearchItem.Song }
 
     if (hasSongsOnly) {
@@ -1337,7 +1346,7 @@ fun MoodDetailView(
     onStartRadioClick: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.screenWidthDp >= 600 || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp >= 600
 
     val (_, fallbackImageUrl) = getMoodVisuals(moodDetail.moodName)
 

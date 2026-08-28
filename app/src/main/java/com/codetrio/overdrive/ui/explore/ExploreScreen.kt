@@ -256,6 +256,7 @@ fun ExploreScreen(
     val searchListState = rememberLazyListState()
 
     val isPlayerExpanded by playerSharedViewModel.isPlayerExpanded.collectAsStateWithLifecycle()
+    val castState by playerSharedViewModel.castState.collectAsStateWithLifecycle()
 
     androidx.activity.compose.BackHandler(enabled = showCreditsForSong != null && !isPlayerExpanded) {
         showCreditsForSong = null
@@ -715,7 +716,9 @@ fun ExploreScreen(
                                             currentFilter = currentFilter,
                                             onFilterClick = onSearchHeaderFilterClick,
                                             isLandscape = isLandscape,
-                                            onClearSearch = onSearchHeaderClearSearch
+                                            onClearSearch = onSearchHeaderClearSearch,
+                                            castState = castState,
+                                            onCastClick = { playerSharedViewModel.showCastSheet() }
                                         )
 
                                         Box(modifier = Modifier.weight(1f)) {
@@ -917,7 +920,21 @@ fun ExploreScreen(
 
                                                                     items(
                                                                         items = homeSections,
-                                                                        key = { section -> "section-${section.title}" }
+                                                                        key = { section -> "section-${section.title}" },
+                                                                        contentType = { section ->
+                                                                            when {
+                                                                                section.title.contains("もう一度聴く", ignoreCase = true) ||
+                                                                                section.title.contains("listen again", ignoreCase = true) ||
+                                                                                section.title.contains("クイック ピック", ignoreCase = true) ||
+                                                                                section.title.contains("quick picks", ignoreCase = true) ||
+                                                                                section.title.contains("speed dial", ignoreCase = true) ||
+                                                                                section.title.contains("ライブラリから", ignoreCase = true) -> "quick_picks"
+                                                                                section.title.contains("daily discover", ignoreCase = true) -> "daily_discover"
+                                                                                section.title.contains("community", ignoreCase = true) -> "community"
+                                                                                section.items.isNotEmpty() && section.items.all { it is SearchItem.Song } -> "song_list"
+                                                                                else -> "carousel"
+                                                                            }
+                                                                        }
                                                                     ) { section ->
                                                                         HomeSectionRow(
                                                                             section = section,
@@ -1407,7 +1424,9 @@ fun SearchHeader(
         onFilterClick: (SearchFilter?) -> Unit,
         isLandscape: Boolean,
         onClearSearch: () -> Unit,
-        headerTitle: String = "OverDrive"
+        headerTitle: String = "OverDrive",
+        castState: com.codetrio.overdrive.cast.CastState = com.codetrio.overdrive.cast.CastState.Disconnected,
+        onCastClick: () -> Unit = {}
     ) {
         // Use WindowInsets instead of hardcoded statusBarsPadding so it adapts to any device
         val voiceLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -1516,7 +1535,7 @@ fun SearchHeader(
                                 if (userProfile?.avatarUrl != null) {
                                     AsyncImage(
                                         model = ImageRequest.Builder(LocalContext.current)
-                                            .data(userProfile.avatarUrl?.resize(80))
+                                            .data(userProfile.avatarUrl.resize(80))
                                             .crossfade(true)
                                             .build(),
                                         contentDescription = "Account",
@@ -1564,6 +1583,13 @@ fun SearchHeader(
                                     )
                                 }
                             }
+                            com.codetrio.overdrive.ui.components.CastButton(
+                                castState = castState,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                activeTint = MaterialTheme.colorScheme.primary,
+                                size = 24.dp,
+                                onClick = onCastClick
+                            )
                             IconButton(onClick = { onSearchActiveChange(true) }) {
                                 Icon(
                                     imageVector = Icons.Default.Search,
@@ -1577,7 +1603,7 @@ fun SearchHeader(
                                 if (userProfile?.avatarUrl != null) {
                                     AsyncImage(
                                         model = ImageRequest.Builder(LocalContext.current)
-                                            .data(userProfile.avatarUrl?.resize(80))
+                                            .data(userProfile.avatarUrl.resize(80))
                                             .crossfade(true)
                                             .build(),
                                         contentDescription = "Account",
@@ -2194,7 +2220,7 @@ fun GenreCard(
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageUrl?.resize(240))
+                        .data(imageUrl.resize(240))
                         .crossfade(true)
                         .build(),
                     contentDescription = null,

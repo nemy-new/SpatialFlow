@@ -145,5 +145,40 @@ class LyricsNormalizer {
             }
             return prev[lenB]
         }
+
+        /**
+         * Strips LRC headers, time tags, word tags, and TTML markup to return clean plain text lyrics.
+         */
+        @JvmStatic
+        fun extractCleanPlainText(text: String?): String {
+            if (text.isNullOrBlank()) return ""
+            if (text.contains("<tt") || text.contains("<?xml") || text.contains("<p begin=") || text.contains("ttm:begin")) {
+                return runCatching {
+                    val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                        .parse(java.io.ByteArrayInputStream(text.toByteArray(Charsets.UTF_8)))
+                    val pNodes = doc.getElementsByTagName("p")
+                    val sb = StringBuilder()
+                    for (i in 0 until pNodes.length) {
+                        val p = pNodes.item(i)
+                        val content = p.textContent?.trim()
+                        if (!content.isNullOrBlank()) {
+                            sb.append(content).append("\n")
+                        }
+                    }
+                    sb.toString().trim()
+                }.getOrNull()?.takeIf { it.isNotBlank() } ?: text.replace(Regex("<[^>]+>"), " ").trim()
+            }
+
+            return text.lines()
+                .map { line ->
+                    line.replace(Regex("""\[[a-zA-Z#]+:[^]]*]"""), "")
+                        .replace(Regex("""\[\d+:\d+(?:[.:]\d+)?(?:-\d+:\d+(?:[.:]\d+)?)?]"""), "")
+                        .replace(Regex("""<\d+:\d+(?:[.:]\d+)?>"""), "")
+                        .replace(Regex("""\(\d+:\d+(?:[.:]\d+)?,\d+\)"""), "")
+                        .trim()
+                }
+                .filter { it.isNotBlank() }
+                .joinToString("\n")
+        }
     }
 }

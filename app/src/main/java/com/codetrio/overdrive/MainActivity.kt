@@ -147,6 +147,7 @@ class MainActivity : AppCompatActivity() {
     private var navController: NavController? = null
     private var previousDestination = "explore"
     private var isNavigating = false
+    private var showShortcutsDialogTrigger: (() -> Unit)? = null
 
     var audioService: AudioPlaybackService? = null
     var isServiceBound = false
@@ -188,11 +189,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         enableEdgeToEdge()
-
-        val splashStartTime = System.currentTimeMillis()
-        splashScreen.setKeepOnScreenCondition {
-            System.currentTimeMillis() - splashStartTime < SPLASH_DURATION
-        }
 
         val appPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
         val lang = appPrefs.getString("app_language", "system") ?: "system"
@@ -352,7 +348,7 @@ class MainActivity : AppCompatActivity() {
 
                 var editingSong by remember { mutableStateOf<SongItem?>(null) }
 
-                val isTablet = windowSizeClass?.widthSizeClass != androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Compact
+                val isTablet = windowSizeClass.widthSizeClass != androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Compact
 
                 androidx.compose.foundation.layout.Row(
                     modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
@@ -647,12 +643,15 @@ class MainActivity : AppCompatActivity() {
                     Box(
                         modifier = Modifier.fillMaxSize()
                     ) {
+                        val currentContext = androidx.compose.ui.platform.LocalContext.current
+                        val bypassBlur = com.codetrio.overdrive.util.PerformanceManager.shouldBypassBlur(currentContext)
+
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(bottom = finalPadding.coerceAtLeast(0.dp))
                                 .graphicsLayer {
-                                    if (isBlurEnabled) {
+                                    if (isBlurEnabled && !bypassBlur) {
                                         val fraction = playerExpansionFractionState.value
                                         if (fraction > 0.01f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                             val maxBlurRadius = 24.dp.toPx()
@@ -669,10 +668,10 @@ class MainActivity : AppCompatActivity() {
                                 }
                                 .drawWithContent {
                                     drawContent()
-                                    if (isBlurEnabled && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                                    if (isBlurEnabled && (bypassBlur || Build.VERSION.SDK_INT < Build.VERSION_CODES.S)) {
                                         val fraction = playerExpansionFractionState.value
                                         if (fraction > 0.01f) {
-                                            drawRect(color = androidx.compose.ui.graphics.Color.Black.copy(alpha = fraction * 0.6f))
+                                            drawRect(color = androidx.compose.ui.graphics.Color.Black.copy(alpha = fraction * 0.65f))
                                         }
                                     }
                                 }
@@ -779,6 +778,9 @@ class MainActivity : AppCompatActivity() {
                                             currentNavController.navigate("explore") {
                                                 popUpTo("onboarding") { inclusive = true }
                                             }
+                                        },
+                                        onNavigateToSignIn = {
+                                            currentNavController.navigate("google_signin")
                                         }
                                     )
                                 }
@@ -823,6 +825,17 @@ class MainActivity : AppCompatActivity() {
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
+                                        },
+                                        onNavigateToDna = {
+                                            currentNavController.navigate("music_dna")
+                                        }
+                                    )
+                                }
+                                composableWithBlur("music_dna") {
+                                    com.codetrio.overdrive.ui.statistics.dna.MusicDnaScreen(
+                                        viewModel = playerViewModel,
+                                        onNavigateBack = {
+                                            currentNavController.popBackStack()
                                         }
                                     )
                                 }
@@ -883,6 +896,24 @@ class MainActivity : AppCompatActivity() {
                                 isTablet = isTablet
                             )
                         }
+
+                        val isCastSheetVisible by playerViewModel.isCastSheetVisible.collectAsStateWithLifecycle()
+                        if (isCastSheetVisible) {
+                            com.codetrio.overdrive.ui.components.CastBottomSheet(
+                                viewModel = playerViewModel,
+                                onDismiss = { playerViewModel.hideCastSheet() }
+                            )
+                        }
+
+                        var isShortcutsDialogVisible by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            showShortcutsDialogTrigger = { isShortcutsDialogVisible = true }
+                        }
+                        if (isShortcutsDialogVisible) {
+                            com.codetrio.overdrive.ui.components.KeyboardShortcutsDialog(
+                                onDismissRequest = { isShortcutsDialogVisible = false }
+                            )
+                        }
                         }
                     }
                 }
@@ -940,12 +971,46 @@ class MainActivity : AppCompatActivity() {
             if (cameFromOutside) {
                 exploreViewModel.cameFromLibrary = true
             }
-            exploreViewModel.setSearchFilter(com.codetrio.overdrive.data.innertube.SearchFilter.ARTISTS)
-            exploreViewModel.search(artistName)
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                val searchRes = com.codetrio.overdrive.data.innertube.YouTubeMusic.search(
+                    artistName,
+                    com.codetrio.overdrive.data.innertube.SearchFilter.ARTISTS
+                ).getOrNull()
+                val firstArtist = searchRes?.items?.filterIsInstance<com.codetrio.overdrive.data.innertube.SearchItem.Artist>()?.firstOrNull()?.artist
+                    ?: searchRes?.items?.filterIsInstance<com.codetrio.overdrive.data.innertube.SearchItem.TopResult>()?.firstOrNull()?.artist
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (firstArtist?.browseId != null) {
+                        exploreViewModel.loadArtist(firstArtist.browseId, firstArtist.thumbnailUrl)
+                    } else {
+                        exploreViewModel.setSearchFilter(com.codetrio.overdrive.data.innertube.SearchFilter.ARTISTS)
+                        exploreViewModel.search(artistName)
+                    }
+                }
+            }
         }
     }
 
-
+    fun showAlbumPage(albumId: String?) {
+        val controller = navController ?: return
+        if (albumId.isNullOrBlank()) return
+        val cameFromOutside = controller.currentDestination?.route != "explore"
+        if (cameFromOutside) {
+            isNavigating = true
+            controller.navigate("explore") {
+                popUpTo(controller.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+            previousDestination = "explore"
+            isNavigating = false
+        }
+        if (cameFromOutside) {
+            exploreViewModel.cameFromLibrary = true
+        }
+        exploreViewModel.loadAlbum(albumId)
+    }
 
     private fun startAudioService() {
         val serviceIntent = Intent(this, AudioPlaybackService::class.java)
@@ -1185,6 +1250,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (com.codetrio.overdrive.util.KeyboardShortcutHandler.handleKeyEvent(
+                event = event,
+                activity = this,
+                viewModel = playerViewModel,
+                navController = navController,
+                onShowShortcutsHelp = {
+                    showShortcutsDialogTrigger?.invoke()
+                }
+            )
+        ) {
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     companion object {
         private const val TAG = "MainActivity"
         private const val AUDIO_PERMISSION_REQUEST = 100
@@ -1220,7 +1301,8 @@ fun NavGraphBuilder.composableWithBlur(
         val isTabSwitchBlurEnabled by prefs.observeKey("tab_switch_blur", false)
 
         // Decide whether to apply blur for this specific route + user preference combo
-        val shouldBlur = isBlurEnabled && (!isMainTabRoute || isTabSwitchBlurEnabled)
+        val bypassBlur = com.codetrio.overdrive.util.PerformanceManager.shouldBypassBlur()
+        val shouldBlur = isBlurEnabled && !bypassBlur && (!isMainTabRoute || isTabSwitchBlurEnabled)
 
         if (shouldBlur) {
             val blurRadiusState = transition.animateDp(

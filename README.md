@@ -1,8 +1,8 @@
-SpatialFlow
+OverDrive
 
 <p align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" width="120" alt="SpatialFlow Logo"/>
-</p><h1 align="center">SpatialFlow</h1><p align="center">
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" width="120" alt="OverDrive Logo"/>
+</p><h1 align="center">OverDrive</h1><p align="center">
   A modern open-source hybrid music player for Android that seamlessly combines local audio playback and online music streaming within a beautiful Material Design 3 Expressive experience.
 </p><p align="center">
   Built with Kotlin, Jetpack Compose, Media3, and modern Android architecture.
@@ -29,7 +29,7 @@ SpatialFlow
 
 Project Status
 
-SpatialFlow is actively maintained and continuously evolving.
+OverDrive is actively maintained and continuously evolving.
 
 Current development focus:
 
@@ -42,13 +42,13 @@ Current development focus:
 
 ---
 
-About SpatialFlow
+About OverDrive
 
-SpatialFlow is a next-generation Android music player designed to bridge the gap between local media libraries and online streaming services.
+OverDrive is a next-generation Android music player designed to bridge the gap between local media libraries and online streaming services.
 
 Built entirely with Kotlin and Jetpack Compose, the application leverages Android's latest technologies including Media3, Coroutines, StateFlow, Material Design 3 Expressive, and modern architecture principles to provide a smooth, reliable, and immersive listening experience.
 
-Whether listening to locally stored high-fidelity audio files or streaming music online, SpatialFlow delivers premium playback through Media3, dynamic album-art-based theming, advanced audio processing, and a polished user experience optimized for modern Android devices.
+Whether listening to locally stored high-fidelity audio files or streaming music online, OverDrive delivers premium playback through Media3, dynamic album-art-based theming, advanced audio processing, and a polished user experience optimized for modern Android devices.
 
 ---
 
@@ -154,7 +154,7 @@ Screenshots
 
 Architecture
 
-SpatialFlow follows a modern MVI-inspired architecture focused on scalability, maintainability, and predictable state management.
+OverDrive follows a modern MVI-inspired architecture focused on scalability, maintainability, and predictable state management.
 
 Core Architecture Layers
 
@@ -218,7 +218,7 @@ Build From Source
 
 git clone https://github.com/nemy-new/OverDrive.git
 
-cd SpatialFlow
+cd OverDrive
 
 1. Open the project in Android Studio.
 2. Allow Gradle Sync to complete.
@@ -228,7 +228,7 @@ cd SpatialFlow
 
 In-App Updater
 
-SpatialFlow includes a built-in update system.
+OverDrive includes a built-in update system.
 
 Features:
 
@@ -288,7 +288,7 @@ Please use GitHub Issues for:
 
 Credits & Acknowledgements
 
-SpatialFlow stands on the shoulders of incredible open-source projects.
+OverDrive stands on the shoulders of incredible open-source projects.
 
 Special thanks to:
 
@@ -326,7 +326,7 @@ Interests
 <p align="center">
   Built with ❤️ using Kotlin, Jetpack Compose, and Android Media3.
 </p><p align="center">
-  If you enjoy SpatialFlow, consider giving the repository a ⭐
+  If you enjoy OverDrive, consider giving the repository a ⭐
 </p>---
 
 License
@@ -343,4 +343,4 @@ See the LICENSE file for complete details.
 
 Keywords
 
-SpatialFlow, Android Music Player, Jetpack Compose Music Player, Material You Audio Player, Media3 Player, ExoPlayer Android App, Open Source Music Player, Hybrid Streaming Music App, Kotlin Android Application, Volume Normalization, LUFS Audio Processing, Equalizer Android App, YouTube Music Client, Material Design 3 Expressive.
+OverDrive, Android Music Player, Jetpack Compose Music Player, Material You Audio Player, Media3 Player, ExoPlayer Android App, Open Source Music Player, Hybrid Streaming Music App, Kotlin Android Application, Volume Normalization, LUFS Audio Processing, Equalizer Android App, YouTube Music Client, Material Design 3 Expressive.

@@ -12,53 +12,53 @@
     <path
         android:pathData="M 512,187 A 325,325 0 1,0 512,837 A 325,325 0 1,0 512,187"
         android:strokeWidth="26"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#FF121214"
         android:strokeLineCap="round"/>
 
     <!-- Top-Left Glossy Reflection Arcs -->
     <path
         android:pathData="M 271.8,400.0 A 265,265 0 0,1 400.0,271.8"
         android:strokeWidth="15"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#FF121214"
         android:strokeLineCap="round"/>
     <path
         android:pathData="M 305.3,452.7 A 215,215 0 0,1 452.7,305.3"
         android:strokeWidth="15"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#FF121214"
         android:strokeLineCap="round"/>
     <path
         android:pathData="M 347.9,494.8 A 165,165 0 0,1 494.8,347.9"
         android:strokeWidth="15"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#FF121214"
         android:strokeLineCap="round"/>
 
     <!-- Bottom-Right Glossy Reflection Arcs -->
     <path
         android:pathData="M 752.2,624.0 A 265,265 0 0,1 624.0,752.2"
         android:strokeWidth="15"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#FF121214"
         android:strokeLineCap="round"/>
     <path
         android:pathData="M 718.7,571.3 A 215,215 0 0,1 571.3,718.7"
         android:strokeWidth="15"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#FF121214"
         android:strokeLineCap="round"/>
     <path
         android:pathData="M 676.1,529.2 A 165,165 0 0,1 529.2,676.1"
         android:strokeWidth="15"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#FF121214"
         android:strokeLineCap="round"/>
 
     <!-- Center Hub Ring -->
     <path
         android:pathData="M 512,416 A 96,96 0 1,0 512,608 A 96,96 0 1,0 512,416"
         android:strokeWidth="24"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#FF121214"
         android:strokeLineCap="round"/>
 
     <!-- Center Spindle Dot -->
     <path
         android:pathData="M 512,476 A 36,36 0 1,0 512,548 A 36,36 0 1,0 512,476"
-        android:fillColor="#FFFFFF"/>
+        android:fillColor="#FF121214"/>
   </group>
 </vector>

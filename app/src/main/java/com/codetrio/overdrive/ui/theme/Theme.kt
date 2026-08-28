@@ -17,6 +17,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
@@ -264,10 +265,22 @@ fun SpatialFlowTheme(
         else -> CompactDimens
     }
 
-    CompositionLocalProvider(LocalDimens provides dimens) {
+    val fontManager = remember(context) {
+        com.codetrio.overdrive.data.font.CustomFontManager.getInstance(context)
+    }
+    val fontChangeTicker by fontManager.fontChangeTicker.collectAsStateWithLifecycle()
+
+    val dynamicTypography = remember(fontChangeTicker) {
+        buildCustomTypography(fontManager)
+    }
+
+    CompositionLocalProvider(
+        LocalDimens provides dimens,
+        LocalCustomFontManager provides fontManager
+    ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
-            typography = Typography,
+            typography = dynamicTypography,
             motionScheme = MotionScheme.expressive(),
             content = content
         )

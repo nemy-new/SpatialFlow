@@ -69,8 +69,25 @@ import kotlin.time.Duration.Companion.milliseconds
 @HiltViewModel
 class PlayerSharedViewModel @Inject constructor(
     private val application: Application,
-    private val playlistDao: PlaylistDao
+    private val playlistDao: PlaylistDao,
+    val castPlaybackManager: com.codetrio.overdrive.cast.CastPlaybackManager
 ) : AndroidViewModel(application) {
+
+    val castState: StateFlow<com.codetrio.overdrive.cast.CastState> = castPlaybackManager.castState
+    val castAvailableDevices = castPlaybackManager.availableDevices
+    val castVolume = castPlaybackManager.currentVolume
+
+    private val _isCastSheetVisible = MutableStateFlow(false)
+    val isCastSheetVisible: StateFlow<Boolean> = _isCastSheetVisible.asStateFlow()
+
+    fun showCastSheet() {
+        castPlaybackManager.startScanning()
+        _isCastSheetVisible.value = true
+    }
+
+    fun hideCastSheet() {
+        _isCastSheetVisible.value = false
+    }
     
     private val appContext: Context get() = application.applicationContext
 
@@ -188,6 +205,52 @@ class PlayerSharedViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         null
     )
+
+    private val _selectedDnaRange = kotlinx.coroutines.flow.MutableStateFlow(com.codetrio.overdrive.data.dna.MusicCapsuleTimeRange.ALL_TIME)
+    val selectedDnaRange: kotlinx.coroutines.flow.StateFlow<com.codetrio.overdrive.data.dna.MusicCapsuleTimeRange> = _selectedDnaRange.asStateFlow()
+
+    fun setSelectedDnaRange(range: com.codetrio.overdrive.data.dna.MusicCapsuleTimeRange) {
+        _selectedDnaRange.value = range
+    }
+
+    val musicDnaProfileFlow = kotlinx.coroutines.flow.combine(
+        playlistDao.getAllHistoryEventsFlow(),
+        _selectedDnaRange
+    ) { events, range ->
+        com.codetrio.overdrive.data.dna.MusicDnaCalculator.calculate(events, range)
+    }.stateIn(
+        bgScope,
+        SharingStarted.WhileSubscribed(5000),
+        null
+    )
+
+    fun playCapsule(profile: com.codetrio.overdrive.data.dna.MusicDnaProfile) {
+        if (profile.topSongs.isEmpty()) return
+        val songItems = profile.topSongs.map { topSong ->
+            if (topSong.songId.toLongOrNull() != null && !topSong.thumbnailUrl.isNullOrEmpty() && !topSong.thumbnailUrl.startsWith("http")) {
+                SongItem(
+                    topSong.songId.toLong(),
+                    topSong.title,
+                    topSong.artist,
+                    -1L,
+                    topSong.thumbnailUrl,
+                    0L,
+                    System.currentTimeMillis()
+                )
+            } else {
+                SongItem.createOnlineSong(
+                    videoId = topSong.songId,
+                    title = topSong.title,
+                    artist = topSong.artist,
+                    streamUrl = null,
+                    durationMs = 0L,
+                    thumbnailUrl = topSong.thumbnailUrl
+                )
+            }
+        }
+        setSongList(songItems)
+        playSongAtIndex(0)
+    }
 
     val artistProfileMap = mutableStateMapOf<String, String>()
 
@@ -633,38 +696,64 @@ class PlayerSharedViewModel @Inject constructor(
     // Dynamic likes count tracking
     private var baseLikesCountInt = 0
 
+    private fun getDefaultLikeLabel(): String {
+        return try {
+            appContext.getString(R.string.text_like)
+        } catch (_: Exception) {
+            "Like"
+        }
+    }
+
     private fun parseLikesCount(likesStr: String): Int {
-        var str = likesStr.uppercase().trim().replace(",", "").replace(".", "")
+        var str = likesStr.trim().replace(",", "")
         // Bail early on known non-numeric YouTube strings
-        if (str.isBlank() || str == "LIKE" || str == "LIKED" ||
-            str.contains("NO LIKE") || str.contains("HIDDEN") ||
+        if (str.isBlank() || str.equals("LIKE", ignoreCase = true) || str.equals("LIKED", ignoreCase = true) ||
+            str.contains("NO LIKE", ignoreCase = true) || str.contains("HIDDEN", ignoreCase = true) ||
+            str.contains("高評価") ||
             !str.any(Char::isDigit)) return 0
 
-        var multiplier = 1
+        var multiplier = 1.0
+        val upper = str.uppercase()
         when {
-            str.endsWith("B") -> { multiplier = 1_000_000_000; str = str.removeSuffix("B") }
-            str.endsWith("M") -> { multiplier = 1_000_000;     str = str.removeSuffix("M") }
-            str.endsWith("K") -> { multiplier = 1_000;         str = str.removeSuffix("K") }
+            upper.endsWith("億") -> { multiplier = 100_000_000.0; str = str.substring(0, str.length - 1) }
+            upper.endsWith("万") -> { multiplier = 10_000.0; str = str.substring(0, str.length - 1) }
+            upper.endsWith("B") -> { multiplier = 1_000_000_000.0; str = str.substring(0, str.length - 1) }
+            upper.endsWith("M") -> { multiplier = 1_000_000.0; str = str.substring(0, str.length - 1) }
+            upper.endsWith("K") -> { multiplier = 1_000.0; str = str.substring(0, str.length - 1) }
         }
         return ((str.toDoubleOrNull() ?: return 0) * multiplier).toInt()
     }
 
     private fun formatLikesCount(count: Int): String {
-        if (count <= 0) return "Like"
-        if (count < 10_000) { // Under 10,000 likes, show the exact count with commas for interactive increment visibility (e.g. 1,234 -> 1,235)
-            return String.format(Locale.US, "%,d", count)
+        if (count <= 0) return getDefaultLikeLabel()
+        val isJapanese = Locale.getDefault().language == "ja"
+        
+        if (isJapanese) {
+            if (count < 10_000) {
+                return String.format(Locale.JAPAN, "%,d", count)
+            }
+            if (count < 100_000_000) {
+                val man = count / 10_000.0
+                return String.format(Locale.JAPAN, "%.1f万", man).replace(".0万", "万")
+            }
+            val oku = count / 100_000_000.0
+            return String.format(Locale.JAPAN, "%.1f億", oku).replace(".0億", "億")
+        } else {
+            if (count < 10_000) {
+                return String.format(Locale.US, "%,d", count)
+            }
+            if (count < 1_000_000) {
+                val k = count / 1_000.0
+                return String.format(Locale.US, "%.1fK", k).replace(".0K", "K")
+            }
+            val m = count / 1_000_000.0
+            return String.format(Locale.US, "%.1fM", m).replace(".0M", "M")
         }
-        if (count < 1_000_000) {
-            val k = count / 1_000.0
-            return String.format(Locale.US, "%.1fK", k).replace(".0K", "K")
-        }
-        val m = count / 1_000_000.0
-        return String.format(Locale.US, "%.1fM", m).replace(".0M", "M")
     }
 
     private fun updateLikesCountDisplay(userLiked: Boolean) {
         if (baseLikesCountInt <= 0) {
-            _likesCount.value = if (userLiked) "1" else "Like"
+            _likesCount.value = if (userLiked) "1" else getDefaultLikeLabel()
             return
         }
         val targetCount = if (userLiked) baseLikesCountInt + 1 else baseLikesCountInt
@@ -677,7 +766,11 @@ class PlayerSharedViewModel @Inject constructor(
         val videoId = song.videoId
         if (videoId.isNullOrEmpty()) {
             baseLikesCountInt = 0
-            _likesCount.value = "Like"
+            _likesCount.value = getDefaultLikeLabel()
+            _hasMusicVideo.value = false
+            if (_isMvMode.value) {
+                _isMvMode.value = false
+            }
             return
         }
 
@@ -686,16 +779,29 @@ class PlayerSharedViewModel @Inject constructor(
             try {
                 // Initialize default state
                 withContext(Dispatchers.Main) {
-                    _likesCount.value = "Like"
+                    _likesCount.value = getDefaultLikeLabel()
                 }
                 baseLikesCountInt = 0
 
-                // Fetch player info for likes count and animated thumbnail directly from WebRemix
+                // Fetch player info for animated thumbnail / MV detection
                 val playerJson = com.codetrio.overdrive.data.innertube.InnerTubeClient.playerWebRemix(videoId)
                 val playerResult = com.codetrio.overdrive.data.innertube.InnerTubeParser.parsePlayerResponse(playerJson, parseStreams = false)
                 
                 if (playerResult != null) {
-                    _hasMusicVideo.value = (playerResult.musicVideoType != "MUSIC_VIDEO_TYPE_ATV")
+                    val hasMv = (playerResult.musicVideoType != "MUSIC_VIDEO_TYPE_ATV")
+                    _hasMusicVideo.value = hasMv
+                    if (!hasMv && _isMvMode.value) {
+                        withContext(Dispatchers.Main) {
+                            _isMvMode.value = false
+                        }
+                    }
+                } else {
+                    _hasMusicVideo.value = false
+                    if (_isMvMode.value) {
+                        withContext(Dispatchers.Main) {
+                            _isMvMode.value = false
+                        }
+                    }
                 }
 
                 // ── RESOLVE CANVAS ARTWORK (MOTION ARTWORK) ──
@@ -705,7 +811,7 @@ class PlayerSharedViewModel @Inject constructor(
                             mediaId = videoId,
                             songTitleRaw = song.title,
                             artistNameRaw = song.artist,
-                            albumTitleRaw = null, // Can be improved if album name is available in SongItem
+                            albumTitleRaw = null,
                             requireVertical = true
                         )
                         if (resolved != null) {
@@ -717,64 +823,95 @@ class PlayerSharedViewModel @Inject constructor(
                     }
                 }
 
-                // Fallback Chain for Real Likes Count
-                var likesCountStr = playerResult?.likesCount
-                var remoteLikeStatus: Boolean?
+                var likesCountStr: String? = null
+                var officialLikeStatus: com.codetrio.overdrive.data.innertube.YouTubeMusic.LikeStatus? = null
 
-                // Always try nextYoutubeWeb endpoint (highly reliable for authenticated like status and guest likes)
+                // Tier 1: Check playerWebRemix
+                officialLikeStatus = com.codetrio.overdrive.data.innertube.parseOfficialLikeStatus(playerJson)
+                likesCountStr = com.codetrio.overdrive.data.innertube.parseOfficialLikeCount(playerJson)
+
+                // Tier 2: Try nextYoutubeWeb endpoint (very high reliability for authenticated like/dislike status)
                 try {
                     val nextYoutubeWebJson = InnerTubeClient.nextYoutubeWeb(videoId)
-                    remoteLikeStatus = parseLikeStatusFromNextResponse(nextYoutubeWebJson)
-                    if (likesCountStr.isNullOrBlank()) {
-                        likesCountStr = parseLikesFromNextResponse(nextYoutubeWebJson)
-                        if (!likesCountStr.isNullOrBlank()) {
-                            Log.d("LikesFix", "Count resolved from nextYoutubeWeb: $likesCountStr")
-                        }
+                    if (officialLikeStatus == null) {
+                        officialLikeStatus = com.codetrio.overdrive.data.innertube.parseOfficialLikeStatus(nextYoutubeWebJson)
                     }
-                    if (remoteLikeStatus != null) {
-                        Log.d("LikesFix", "Remote like status resolved: $remoteLikeStatus")
-                        withContext(Dispatchers.Main) {
-                            favoritesManager?.setFavorite(song.id, remoteLikeStatus)
-                            _isCurrentSongFavorite.value = remoteLikeStatus
-                        }
+                    if (likesCountStr.isNullOrBlank()) {
+                        likesCountStr = com.codetrio.overdrive.data.innertube.parseOfficialLikeCount(nextYoutubeWebJson)
                     }
                 } catch (e: Exception) {
                     Log.w("LikesFix", "nextYoutubeWeb failed: ${e.message}")
                 }
 
-                // Fallback 2: Try nextAndroid endpoint (extremely reliable for mobile engagement/exact likes)
-                if (likesCountStr.isNullOrBlank()) {
-                    try {
-                        val nextAndroidJson = InnerTubeClient.nextAndroid(song.videoId)
-                        likesCountStr = parseLikesFromNextResponse(nextAndroidJson)
-                        if (!likesCountStr.isNullOrBlank()) {
-                            Log.d("LikesFix", "Count resolved from nextAndroid: $likesCountStr")
-                        }
-                    } catch (e: Exception) {
-                        Log.w("LikesFix", "nextAndroid failed: ${e.message}")
-                    }
-                }
-
-                // Fallback 3: Try next web remix endpoint
-                if (likesCountStr.isNullOrBlank()) {
+                // Tier 3: Try next (WEB_REMIX) endpoint
+                if (officialLikeStatus == null || likesCountStr.isNullOrBlank()) {
                     try {
                         val nextJson = InnerTubeClient.next(song.videoId)
-                        likesCountStr = parseLikesFromNextResponse(nextJson)
-                        if (!likesCountStr.isNullOrBlank()) {
-                            Log.d("LikesFix", "Count resolved from next(WEB_REMIX): $likesCountStr")
+                        if (officialLikeStatus == null) {
+                            officialLikeStatus = com.codetrio.overdrive.data.innertube.parseOfficialLikeStatus(nextJson)
+                        }
+                        if (likesCountStr.isNullOrBlank()) {
+                            likesCountStr = com.codetrio.overdrive.data.innertube.parseOfficialLikeCount(nextJson)
                         }
                     } catch (e: Exception) {
                         Log.w("LikesFix", "next(WEB_REMIX) failed: ${e.message}")
                     }
                 }
 
-                if (likesCountStr.isNullOrBlank()) {
-                    Log.e("LikesFix", "All tiers failed — no likes count found for videoId=${song.videoId}")
+                // Tier 4: Try nextAndroid endpoint
+                if (officialLikeStatus == null || likesCountStr.isNullOrBlank()) {
+                    try {
+                        val nextAndroidJson = InnerTubeClient.nextAndroid(song.videoId)
+                        if (officialLikeStatus == null) {
+                            officialLikeStatus = com.codetrio.overdrive.data.innertube.parseOfficialLikeStatus(nextAndroidJson)
+                        }
+                        if (likesCountStr.isNullOrBlank()) {
+                            likesCountStr = com.codetrio.overdrive.data.innertube.parseOfficialLikeCount(nextAndroidJson)
+                        }
+                    } catch (e: Exception) {
+                        Log.w("LikesFix", "nextAndroid failed: ${e.message}")
+                    }
                 }
 
+                // Tier 5: Return YouTube Dislike (RYD) API fallback for real likes & dislikes count
+                if (likesCountStr.isNullOrBlank()) {
+                    try {
+                        val ryd = InnerTubeClient.fetchRydEngagement(videoId)
+                        if (ryd != null && ryd.likes > 0) {
+                            likesCountStr = ryd.likes.toString()
+                            Log.d("LikesFix", "Resolved count from RYD API: ${ryd.likes}")
+                        }
+                    } catch (e: Exception) {
+                        Log.w("LikesFix", "RYD fetch failed: ${e.message}")
+                    }
+                }
+
+                // Apply resolved official Like/Dislike status to UI and Local DB
+                if (officialLikeStatus != null) {
+                    withContext(Dispatchers.Main) {
+                        when (officialLikeStatus) {
+                            com.codetrio.overdrive.data.innertube.YouTubeMusic.LikeStatus.LIKE -> {
+                                favoritesManager?.setFavorite(song.id, true)
+                                _isCurrentSongFavorite.value = true
+                                _isCurrentSongDisliked.value = false
+                            }
+                            com.codetrio.overdrive.data.innertube.YouTubeMusic.LikeStatus.DISLIKE -> {
+                                favoritesManager?.setFavorite(song.id, false)
+                                _isCurrentSongFavorite.value = false
+                                _isCurrentSongDisliked.value = true
+                            }
+                            com.codetrio.overdrive.data.innertube.YouTubeMusic.LikeStatus.INDIFFERENT -> {
+                                favoritesManager?.setFavorite(song.id, false)
+                                _isCurrentSongFavorite.value = false
+                                _isCurrentSongDisliked.value = false
+                            }
+                        }
+                    }
+                }
+
+                // Apply resolved likes count
                 likesCountStr?.let { count ->
                     baseLikesCountInt = parseLikesCount(count)
-                    // Post to Main thread safely to update display Flow
                     withContext(Dispatchers.Main) {
                         updateLikesCountDisplay(_isCurrentSongFavorite.value)
                     }
@@ -1005,6 +1142,10 @@ class PlayerSharedViewModel @Inject constructor(
                 _canvasArtwork.value = null
                 _hasMusicVideo.value = false
 
+                if (song == null || song.videoId.isNullOrBlank()) {
+                    _isMvMode.value = false
+                }
+
                 // Reset lyrics state & provider locks on song change
                 lyricsController.clearForSongChange(song)
 
@@ -1026,6 +1167,9 @@ class PlayerSharedViewModel @Inject constructor(
                     // Trigger exact real engagement likes count and watch history fetching
                     fetchEngagementAndHistoryForSong(song)
                     trackHistoryForSong(song)
+
+                    // Non-blocking prefetch of artist avatar/metadata for instant display in track info & artist dialogs
+                    com.codetrio.overdrive.data.artist.ArtistCacheManager.prefetchArtistForSong(song, appContext)
                 } else {
                     _currentSongArtwork.value = null
                     _miniPlayerBlendColor.value = 0
@@ -1321,6 +1465,7 @@ class PlayerSharedViewModel @Inject constructor(
     // Lyrics delegated flows
     val syncedLyrics get() = lyricsController.syncedLyrics
     val plainLyrics get() = lyricsController.plainLyrics
+    val translatedPlainLyrics get() = lyricsController.translatedPlainLyrics
     val isLyricsLoading get() = lyricsController.isLoading
     val lyricsError get() = lyricsController.error
     val isLyricsModeEnabled get() = lyricsController.isLyricsModeEnabled
@@ -2235,7 +2380,7 @@ class PlayerSharedViewModel @Inject constructor(
     fun toggleMvMode() { _isMvMode.value = !_isMvMode.value }
 
     val musicVideoUrl: StateFlow<String?> = _currentSong.map { song -> 
-        if (!song?.videoId.isNullOrBlank()) "innertube://${song?.videoId}" else null 
+        if (!song?.videoId.isNullOrBlank()) "innertube://${song.videoId}" else null 
     }.stateIn(bgScope, SharingStarted.WhileSubscribed(), null)
 
     private val _hasMusicVideo = MutableStateFlow(false)

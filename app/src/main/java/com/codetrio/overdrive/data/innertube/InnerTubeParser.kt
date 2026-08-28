@@ -735,19 +735,29 @@ object InnerTubeParser {
     private fun parseHomeSection(section: JsonObject): HomeSection? {
         val carousel = section.getAsJsonObject("musicCarouselShelfRenderer") 
             ?: section.getAsJsonObject("musicImmersiveCarouselShelfRenderer")
-            ?: return null
             
-        val header = carousel.path(
-            "header.musicCarouselShelfBasicHeaderRenderer.title.runs.0.text"
-        )?.asString 
-            ?: carousel.path("header.musicImmersiveCarouselShelfHeaderRenderer.title.runs.0.text")?.asString
-            ?: return null
+        val shelf = section.getAsJsonObject("musicShelfRenderer")
+            ?: section.getAsJsonObject("musicCardShelfRenderer")
+            ?: section.getAsJsonObject("musicPlaylistShelfRenderer")
+
+        if (carousel == null && shelf == null) return null
+
+        val header = if (carousel != null) {
+            carousel.path("header.musicCarouselShelfBasicHeaderRenderer.title.runs.0.text")?.asString 
+                ?: carousel.path("header.musicImmersiveCarouselShelfHeaderRenderer.title.runs.0.text")?.asString
+        } else {
+            shelf?.path("title.runs.0.text")?.asString
+                ?: shelf?.path("header.musicShelfHeaderRenderer.title.runs.0.text")?.asString
+                ?: shelf?.path("header.musicHeaderRenderer.title.runs.0.text")?.asString
+        } ?: "Top songs"
 
         val items = mutableListOf<SearchItem>()
-        val contents = carousel.getAsJsonArray("contents")
+        val contents = carousel?.getAsJsonArray("contents") 
+            ?: shelf?.getAsJsonArray("contents")
+            ?: shelf?.getAsJsonArray("items")
 
         contents?.forEach { content ->
-            val obj = content.asJsonObject
+            val obj = content.takeIf { it.isJsonObject }?.asJsonObject ?: return@forEach
             val twoRowRenderer = obj.getAsJsonObject("musicTwoRowItemRenderer")
             val listRenderer = obj.getAsJsonObject("musicResponsiveListItemRenderer")
 
@@ -755,18 +765,32 @@ object InnerTubeParser {
                 parseTwoRowItem(twoRowRenderer)?.let { items.add(it) }
             } else if (listRenderer != null) {
                 parseSearchItem(obj)?.let { items.add(it) }
+            } else {
+                parseSearchItem(obj)?.let { items.add(it) }
             }
         }
 
         if (items.isEmpty()) return null
 
-        val browseEndpoint = carousel.path(
-            "header.musicCarouselShelfBasicHeaderRenderer.moreContentButton.buttonRenderer.navigationEndpoint.browseEndpoint.browseId"
-        )?.asString
+        val browseEndpoint = if (carousel != null) {
+            carousel.path(
+                "header.musicCarouselShelfBasicHeaderRenderer.moreContentButton.buttonRenderer.navigationEndpoint.browseEndpoint.browseId"
+            )?.asString
+        } else {
+            shelf?.path("bottomEndpoint.browseEndpoint.browseId")?.asString
+                ?: shelf?.path("title.runs.0.navigationEndpoint.browseEndpoint.browseId")?.asString
+                ?: shelf?.path("header.musicShelfHeaderRenderer.title.runs.0.navigationEndpoint.browseEndpoint.browseId")?.asString
+        }
 
-        val params = carousel.path(
-            "header.musicCarouselShelfBasicHeaderRenderer.moreContentButton.buttonRenderer.navigationEndpoint.browseEndpoint.params"
-        )?.asString
+        val params = if (carousel != null) {
+            carousel.path(
+                "header.musicCarouselShelfBasicHeaderRenderer.moreContentButton.buttonRenderer.navigationEndpoint.browseEndpoint.params"
+            )?.asString
+        } else {
+            shelf?.path("bottomEndpoint.browseEndpoint.params")?.asString
+                ?: shelf?.path("title.runs.0.navigationEndpoint.browseEndpoint.params")?.asString
+                ?: shelf?.path("header.musicShelfHeaderRenderer.title.runs.0.navigationEndpoint.browseEndpoint.params")?.asString
+        }
 
         return HomeSection(
             title = header,
@@ -1299,18 +1323,18 @@ object InnerTubeParser {
         } catch (e: Exception) { null }
         val dataSaver = prefs?.getBoolean("data_saver", false) ?: false
 
-        val targetRes = if (dataSaver) "=w540-h540" else "=w1080-h1080"
+        val targetRes = if (dataSaver) "=w540-h540" else "=w1440-h1440-l90-rj"
 
         // YouTube music album covers usually have a pattern like: =w120-h120-l90-rj
-        // We replace any =w... block with =w1080-h1080 or =w540-h540
+        // We replace any =w... block with =w1440-h1440-l90-rj or =w540-h540
         if (finalUrl.contains("=w") && finalUrl.contains("-h")) {
-            return finalUrl.replace(Regex("=w\\d+-h\\d+"), targetRes)
+            return finalUrl.replace(Regex("=w\\d+-h\\d+.*"), targetRes)
         }
         
         // Account avatars usually have a pattern like: =s88-c-k-c0x00...
-        // We replace any =s88 or =s\d+ with =s1080
+        // We replace any =s88 or =s\d+ with =s1440
         if (finalUrl.contains("=s")) {
-            val targetSquareRes = if (dataSaver) "=s540" else "=s1080"
+            val targetSquareRes = if (dataSaver) "=s540" else "=s1440"
             return finalUrl.replace(Regex("=s\\d+"), targetSquareRes)
         }
 
@@ -1390,7 +1414,8 @@ object InnerTubeParser {
             part.isNotEmpty() &&
             !part.matches(Regex("(\\d+:)?\\d+:\\d+|\\d{4}|.*(subscriber|listener|登録者|リスナー|回視聴|views|フォロワー).*"))
         }
-        return cleanParts.firstOrNull() ?: "Unknown Artist"
+        val raw = cleanParts.firstOrNull() ?: "Unknown Artist"
+        return raw.replace("、", ", ").replace(Regex(",\\s*"), ", ").trim()
     }
 
     private fun parseQueryString(query: String): Map<String, String> {
@@ -1465,4 +1490,202 @@ fun String.resize(width: Int? = null, height: Int? = null): String {
         }
     }
     return this
+}
+
+/**
+ * Parses user's official YouTube / YouTube Music Like/Dislike status from InnerTube JSON.
+ * Supports segmentedLikeDislikeButtonViewModel, segmentedLikeDislikeButtonRenderer,
+ * likeButtonViewModel, likeButtonRenderer, toggleButtonRenderer, etc.
+ */
+fun parseOfficialLikeStatus(json: JsonElement?): YouTubeMusic.LikeStatus? {
+    if (json == null) return null
+
+    if (json.isJsonObject) {
+        val obj = json.asJsonObject
+
+        // 1. Direct likeStatus string property
+        if (obj.has("likeStatus")) {
+            val status = obj.get("likeStatus")?.asString
+            when (status) {
+                "LIKE" -> return YouTubeMusic.LikeStatus.LIKE
+                "DISLIKE" -> return YouTubeMusic.LikeStatus.DISLIKE
+                "INDIFFERENT" -> return YouTubeMusic.LikeStatus.INDIFFERENT
+            }
+        }
+
+        // 2. segmentedLikeDislikeButtonViewModel (YouTube 2025/2026 UI)
+        if (obj.has("segmentedLikeDislikeButtonViewModel")) {
+            val vm = obj.getAsJsonObject("segmentedLikeDislikeButtonViewModel")
+            val lbvm = vm.getAsJsonObject("likeButtonViewModel")
+            val isLikeToggled = lbvm?.path("toggleButtonViewModel.toggleButtonViewModel.isToggled")?.asBoolean
+                ?: lbvm?.path("toggleButtonViewModel.isToggled")?.asBoolean
+            if (isLikeToggled == true) return YouTubeMusic.LikeStatus.LIKE
+
+            val dbvm = vm.getAsJsonObject("dislikeButtonViewModel")
+            val isDislikeToggled = dbvm?.path("toggleButtonViewModel.toggleButtonViewModel.isToggled")?.asBoolean
+                ?: dbvm?.path("toggleButtonViewModel.isToggled")?.asBoolean
+            if (isDislikeToggled == true) return YouTubeMusic.LikeStatus.DISLIKE
+        }
+
+        // 3. segmentedLikeDislikeButtonRenderer
+        if (obj.has("segmentedLikeDislikeButtonRenderer")) {
+            val seg = obj.getAsJsonObject("segmentedLikeDislikeButtonRenderer")
+            val likeBtn = seg.getAsJsonObject("likeButton")
+            if (likeBtn != null) {
+                val lbr = likeBtn.getAsJsonObject("likeButtonRenderer")
+                val status = lbr?.get("likeStatus")?.asString
+                if (status == "LIKE") return YouTubeMusic.LikeStatus.LIKE
+                if (status == "DISLIKE") return YouTubeMusic.LikeStatus.DISLIKE
+                val isToggled = likeBtn.path("toggleButtonRenderer.isToggled")?.asBoolean
+                if (isToggled == true) return YouTubeMusic.LikeStatus.LIKE
+            }
+            val dislikeBtn = seg.getAsJsonObject("dislikeButton")
+            if (dislikeBtn != null) {
+                val dbr = dislikeBtn.getAsJsonObject("dislikeButtonRenderer")
+                val status = dbr?.get("likeStatus")?.asString
+                if (status == "DISLIKE") return YouTubeMusic.LikeStatus.DISLIKE
+                val isToggled = dislikeBtn.path("toggleButtonRenderer.isToggled")?.asBoolean
+                if (isToggled == true) return YouTubeMusic.LikeStatus.DISLIKE
+            }
+        }
+
+        // 4. toggleButtonRenderer with icon recognition
+        if (obj.has("toggleButtonRenderer")) {
+            val toggleRenderer = obj.getAsJsonObject("toggleButtonRenderer")
+            val isToggled = toggleRenderer.get("isToggled")?.asBoolean ?: false
+            if (isToggled) {
+                val iconType = toggleRenderer.path("defaultIcon.iconType")?.asString
+                    ?: toggleRenderer.path("defaultIcon.icon.iconType")?.asString
+                    ?: toggleRenderer.path("toggledIcon.iconType")?.asString
+                if (iconType != null) {
+                    if (iconType.contains("DISLIKE", ignoreCase = true) || iconType.contains("THUMBS_DOWN", ignoreCase = true)) {
+                        return YouTubeMusic.LikeStatus.DISLIKE
+                    }
+                    if (iconType.contains("LIKE", ignoreCase = true) || iconType.contains("THUMBS_UP", ignoreCase = true) || iconType.contains("FAVORITE", ignoreCase = true)) {
+                        return YouTubeMusic.LikeStatus.LIKE
+                    }
+                }
+            }
+        }
+
+        // 5. Recursive check
+        for (entry in obj.entrySet()) {
+            val result = parseOfficialLikeStatus(entry.value)
+            if (result != null) return result
+        }
+    } else if (json.isJsonArray) {
+        val arr = json.asJsonArray
+        for (element in arr) {
+            val result = parseOfficialLikeStatus(element)
+            if (result != null) return result
+        }
+    }
+    return null
+}
+
+/**
+ * Parses official YouTube Likes count string from InnerTube JSON.
+ */
+fun parseOfficialLikeCount(json: JsonElement?): String? {
+    if (json == null) return null
+
+    if (json.isJsonObject) {
+        val obj = json.asJsonObject
+
+        // 1. segmentedLikeDislikeButtonViewModel
+        if (obj.has("segmentedLikeDislikeButtonViewModel")) {
+            val vm = obj.getAsJsonObject("segmentedLikeDislikeButtonViewModel")
+            val lbvm = vm.getAsJsonObject("likeButtonViewModel")
+            if (lbvm != null) {
+                // Check toggledText / defaultText
+                lbvm.path("toggleButtonViewModel.toggleButtonViewModel.defaultButtonViewModel.buttonViewModel.title")
+                    ?.asString?.let { if (it.isNotBlank() && it.any(Char::isDigit)) return it }
+                lbvm.path("toggleButtonViewModel.toggledText.styleText.style1.text.content")
+                    ?.asString?.let { if (it.isNotBlank() && it.any(Char::isDigit)) return it }
+                lbvm.path("toggleButtonViewModel.defaultText.styleText.style1.text.content")
+                    ?.asString?.let { if (it.isNotBlank() && it.any(Char::isDigit)) return it }
+                lbvm.path("likeCountEntity.likeCountIfIndifferent")
+                    ?.asString?.let { if (it.isNotBlank()) return it }
+                lbvm.path("likeCountEntity.likeCountIfLiked")
+                    ?.asString?.let { if (it.isNotBlank()) return it }
+            }
+        }
+
+        // 2. segmentedLikeDislikeButtonRenderer
+        if (obj.has("segmentedLikeDislikeButtonRenderer")) {
+            val seg = obj.getAsJsonObject("segmentedLikeDislikeButtonRenderer")
+            val likeBtn = seg.getAsJsonObject("likeButton")
+            if (likeBtn != null) {
+                val lbr = likeBtn.getAsJsonObject("likeButtonRenderer")
+                val el = lbr?.get("likeCount") ?: lbr?.get("likesCount")
+                if (el != null && el.isJsonPrimitive) {
+                    val s = el.asString
+                    if (s.isNotBlank() && s.any(Char::isDigit)) return s
+                }
+            }
+        }
+
+        // 3. factoidRenderer
+        if (obj.has("factoidRenderer")) {
+            val factoid = obj.getAsJsonObject("factoidRenderer")
+            val label = factoid.path("label.runs.0.text")?.asString 
+                ?: factoid.path("label.simpleText")?.asString
+            if (label?.contains("like", ignoreCase = true) == true || label?.contains("高評価", ignoreCase = true) == true) {
+                factoid.path("value.simpleText")?.asString?.let { if (it.isNotBlank()) return it }
+                factoid.path("value.runs.0.text")?.asString?.let { if (it.isNotBlank()) return it }
+            }
+        }
+
+        // 4. likeButtonRenderer
+        if (obj.has("likeButtonRenderer")) {
+            val likeRenderer = obj.getAsJsonObject("likeButtonRenderer")
+            val likesCountEl = likeRenderer.get("likesCount") ?: likeRenderer.get("likeCount")
+            if (likesCountEl != null) {
+                if (likesCountEl.isJsonPrimitive) {
+                    val str = likesCountEl.asString
+                    if (str.isNotBlank() && str.any(Char::isDigit)) return str
+                } else if (likesCountEl.isJsonObject) {
+                    val countObj = likesCountEl.asJsonObject
+                    countObj.get("simpleText")?.asString?.let { if (it.isNotBlank() && it.any(Char::isDigit)) return it }
+                    countObj.getAsJsonArray("runs")?.firstOrNull()?.asJsonObject?.get("text")?.asString?.let {
+                        if (it.isNotBlank() && it.any(Char::isDigit)) return it
+                    }
+                }
+            }
+            val likesText = likeRenderer.getAsJsonObject("likesCountText") ?: likeRenderer.getAsJsonObject("likeCountText")
+            if (likesText != null) {
+                likesText.get("simpleText")?.asString?.let { if (it.isNotBlank() && it.any(Char::isDigit)) return it }
+                likesText.getAsJsonArray("runs")?.firstOrNull()?.asJsonObject?.get("text")?.asString?.let {
+                    if (it.isNotBlank() && it.any(Char::isDigit)) return it
+                }
+            }
+        }
+
+        // 5. toggleButtonRenderer with digits in text
+        if (obj.has("toggleButtonRenderer")) {
+            val toggleRenderer = obj.getAsJsonObject("toggleButtonRenderer")
+            val iconType = toggleRenderer.path("defaultIcon.iconType")?.asString 
+                ?: toggleRenderer.path("defaultIcon.icon.iconType")?.asString
+            val isLikeButton = iconType == "LIKE" || iconType?.contains("THUMB", ignoreCase = true) == true || iconType?.contains("FAVORITE", ignoreCase = true) == true
+            if (isLikeButton) {
+                toggleRenderer.path("defaultText.simpleText")?.asString?.let { if (it.isNotBlank() && it.any(Char::isDigit)) return it }
+                toggleRenderer.path("defaultText.runs.0.text")?.asString?.let { if (it.isNotBlank() && it.any(Char::isDigit)) return it }
+                toggleRenderer.path("toggledText.simpleText")?.asString?.let { if (it.isNotBlank() && it.any(Char::isDigit)) return it }
+                toggleRenderer.path("toggledText.runs.0.text")?.asString?.let { if (it.isNotBlank() && it.any(Char::isDigit)) return it }
+            }
+        }
+
+        // Recursive check
+        for (entry in obj.entrySet()) {
+            val result = parseOfficialLikeCount(entry.value)
+            if (result != null) return result
+        }
+    } else if (json.isJsonArray) {
+        val arr = json.asJsonArray
+        for (element in arr) {
+            val result = parseOfficialLikeCount(element)
+            if (result != null) return result
+        }
+    }
+    return null
 }

@@ -150,12 +150,12 @@ fun LibraryQuickAccessHero(
                 item {
                     QuickAccessTile(
                         title = stringResource(R.string.lib_hero_downloads),
-                        countText = "$downloadedCount",
+                        countText = stringResource(R.string.lib_hero_songs_count, downloadedCount),
                         icon = Icons.Default.DownloadDone,
                         iconBgColor = MaterialTheme.colorScheme.primaryContainer,
                         iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                         onClick = onDownloadsClick,
-                        modifier = Modifier.width(150.dp)
+                        modifier = Modifier.width(175.dp)
                     )
                 }
 
@@ -167,7 +167,7 @@ fun LibraryQuickAccessHero(
                         iconBgColor = MaterialTheme.colorScheme.secondaryContainer,
                         iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                         onClick = onStatsClick,
-                        modifier = Modifier.width(150.dp)
+                        modifier = Modifier.width(175.dp)
                     )
                 }
             }
@@ -304,9 +304,9 @@ private fun QuickAccessTile(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -323,10 +323,13 @@ private fun QuickAccessTile(
                 )
             }
 
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,

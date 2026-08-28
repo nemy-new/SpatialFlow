@@ -22,11 +22,17 @@ abstract class MusicDatabase : RoomDatabase() {
                     MusicDatabase::class.java,
                     "spatialflow_music_database"
                 )
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
-                .fallbackToDestructiveMigration(false)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .fallbackToDestructiveMigration(true)
+                .fallbackToDestructiveMigrationOnDowngrade(true)
                 .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+        val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Version 1 to 2 migration safety
             }
         }
         val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {

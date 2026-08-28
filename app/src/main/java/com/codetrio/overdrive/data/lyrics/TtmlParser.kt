@@ -157,6 +157,13 @@ object TtmlParser {
                 }
             }
 
+            if (lines.size > 1 && lines.all { it.startTimeMs == 0L }) {
+                return emptyList()
+            }
+            if (lines.size > 2 && lines.map { it.startTimeMs }.distinct().size == 1) {
+                return emptyList()
+            }
+
             lines.sorted()
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing TTML lyrics: ${e.message}")

@@ -92,3 +92,34 @@
 
 # ============ Media3 / ExoPlayer ============
 -dontwarn androidx.media3.**
+
+# ============ Log Suppression for Release Builds ============
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(java.lang.String, java.lang.String);
+    public static int w(java.lang.String, java.lang.Throwable);
+    public static int w(java.lang.String, java.lang.String, java.lang.Throwable);
+    public static int println(...);
+}
+
+# ============ Firebase & Crashlytics ============
+-keepattributes *Annotation*, SourceFile, LineNumberTable
+-keepclassmembers class * {
+    @com.google.firebase.crashlytics.** *;
+}
+-dontwarn com.google.firebase.**
+
+# ============ Room Database ============
+-keep class * extends androidx.room.RoomDatabase
+-dontwarn androidx.room.paging.**
+
+# ============ Hilt & Dependency Injection ============
+-keep class * extends android.app.Application { *; }
+-keep class * extends android.app.Service { *; }
+-keep class * extends android.content.BroadcastReceiver { *; }
+-keep class * extends android.app.Activity { *; }
+-keep class * extends androidx.fragment.app.Fragment { *; }
+

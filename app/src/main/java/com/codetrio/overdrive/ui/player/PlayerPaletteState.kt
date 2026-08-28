@@ -20,4 +20,8 @@ object PlayerPaletteState {
     val darkMutedColor: MutableState<Color>    = mutableStateOf(Color(0xFF141E18))
     val dominantColor: MutableState<Color>     = mutableStateOf(Color(0xFF24332A))
     val accentColor: MutableState<Color>       = mutableStateOf(Color(0xFF3A86FF))
+
+    // Dedicated smart immersion color slots
+    val topImmersionColor: MutableState<Color>     = mutableStateOf(Color(0xFF2A3A30))
+    val bottomImmersionColor: MutableState<Color>  = mutableStateOf(Color(0xFF141E18))
 }
